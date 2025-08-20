@@ -49,26 +49,27 @@ logger = logging.getLogger(__name__)
 def setup_logging() -> None:
     """Configure logging based on environment variables"""
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-    log_format = os.environ.get(
-        "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
     # Validate log level
     numeric_level = getattr(logging, log_level, None)
     if not isinstance(numeric_level, int):
         print(f"Invalid log level: {log_level}, defaulting to INFO")
         numeric_level = logging.INFO
-
+    else:
+        pass
+    
+    log_format = os.environ.get(
+        "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     logging.basicConfig(
         level=numeric_level,
         format=log_format,
         force=True,  # Override any existing configuration
     )
-
     logger.info(
         "Logging configured",
         extra={"log_level": log_level, "numeric_level": numeric_level},
     )
+
     return None
 
 
