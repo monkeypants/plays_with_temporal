@@ -65,14 +65,10 @@ def setup_logging() -> None:
         force=True,  # Override any existing configuration
     )
 
-    try:
-        logger.info(
-            "Logging configured",
-            extra={"log_level": log_level, "numeric_level": numeric_level},
-        )
-    except Exception:
-        # If logging fails, continue silently
-        pass
+    logger.info(
+        "Logging configured",
+        extra={"log_level": log_level, "numeric_level": numeric_level},
+    )
     return None
 
 
