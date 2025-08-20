@@ -66,7 +66,7 @@ class DependencyContainer:
         client = await self.get_or_create(
             "temporal_client", self._create_temporal_client
         )
-        return client  # type: ignore[return-value]
+        return client  # type: ignore[no-any-return]
 
     async def _create_temporal_client(self) -> Client:
         """Create Temporal client with proper configuration."""

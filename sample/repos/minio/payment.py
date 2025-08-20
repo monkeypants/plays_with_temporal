@@ -9,6 +9,7 @@ from typing import Optional
 from minio import Minio  # type: ignore[import-untyped]
 from minio.error import S3Error  # type: ignore[import-untyped]
 
+from typing import Literal
 from sample.domain import (
     Order,
     Payment,
