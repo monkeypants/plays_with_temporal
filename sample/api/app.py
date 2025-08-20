@@ -153,13 +153,13 @@ async def create_order(request: CreateOrderRequest) -> OrderRequestResponse:
         )
 
 
-@app.get("/order-requests/{request_id}")
+@app.get("/order-requests/{request_id}", response_model=None)
 async def get_request_status(
     request_id: str,
     request_repo: Any = Depends(
         get_minio_order_request_repository
     ),  # Changed to use direct Minio repo
-) -> OrderRequestStatusResponse | RedirectResponse:
+):
     """
     Get the status of an order request.
     If the request has progressed to order creation, redirect to the order
