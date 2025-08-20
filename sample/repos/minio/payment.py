@@ -263,9 +263,9 @@ class MinioPaymentRepository(PaymentRepository):
                 reason=payment_reason,
             )
         else:
-            outcome_status: Literal["completed", "failed", "refunded"] = "failed"
+            failed_outcome_status: Literal["completed", "failed", "refunded"] = "failed"
             return PaymentOutcome(
-                status=outcome_status,
+                status=failed_outcome_status,
                 payment=None,
                 reason=payment_reason,
             )
