@@ -127,9 +127,9 @@ services:
       - SYNC_COLLECTION_ID=work
       - SYNC_INTERVAL_MINUTES=15
     volumes:
-      - ./config:/app/config:ro
-      - ./credentials.json:/app/credentials.json:ro
-      - ./token.json:/app/token.json:rw
+      - ./config:/app/config
+      - ./credentials.json:/app/credentials.json
+      - ./token.json:/app/token.json
     restart: on-failure
     healthcheck:
       test: ["CMD", "python", "-c", "import temporalio; print('OK')"]
