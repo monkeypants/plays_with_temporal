@@ -159,7 +159,7 @@ async def get_request_status(
     request_repo: Any = Depends(
         get_minio_order_request_repository
     ),  # Changed to use direct Minio repo
-):
+) -> Any:
     """
     Get the status of an order request.
     If the request has progressed to order creation, redirect to the order

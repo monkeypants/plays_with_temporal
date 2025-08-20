@@ -61,4 +61,4 @@ class TemporalFileStorageRepository(FileStorageRepository):
         )
         
         result = await handle.result()
-        return result  # type: ignore[return-value]
+        return result  # type: ignore[no-any-return]
