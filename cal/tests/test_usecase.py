@@ -26,7 +26,7 @@ def dt(hour: int) -> datetime:
 
 
 class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up mocks and the use case instance for each test."""
         self.calendar_repo = AsyncMock(spec=CalendarRepository)
         self.schedule_repo = AsyncMock(spec=ScheduleRepository)
@@ -58,7 +58,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
         # Set up CalendarSyncUseCase for testing file storage integration
         self.sync_use_case = None  # Will be created in tests that need it
 
-    async def test_execute_creates_schedule_with_default_dates(self):
+    async def test_execute_creates_schedule_with_default_dates(self) -> None:
         """
         Tests that the use case creates a schedule for today when no dates
         provided.
@@ -108,7 +108,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Event 1", time_block_titles)
         self.assertIn("Event 2", time_block_titles)
 
-    async def test_execute_creates_schedule_with_custom_dates(self):
+    async def test_execute_creates_schedule_with_custom_dates(self) -> None:
         """
         Tests that the use case creates a schedule for specified date range.
         """
@@ -141,7 +141,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
         self.time_block_classifier_repo.classify_block_type.assert_called()
         self.time_block_classifier_repo.classify_responsibility_area.assert_called()
 
-    async def test_execute_filters_events_by_date_range(self):
+    async def test_execute_filters_events_by_date_range(self) -> None:
         """
         Tests that the repository is called with the correct date range.
         Note: The actual filtering is now done by the repository, not the
@@ -176,7 +176,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
             saved_schedule.time_blocks[0].title, "Event In Range"
         )
 
-    async def test_execute_converts_events_to_time_blocks_correctly(self):
+    async def test_execute_converts_events_to_time_blocks_correctly(self) -> None:
         """
         Tests that calendar events are correctly converted to time blocks.
         """
@@ -206,7 +206,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
             event
         )
 
-    async def test_execute_handles_empty_calendar(self):
+    async def test_execute_handles_empty_calendar(self) -> None:
         """
         Tests that the use case handles calendars with no events.
         """
@@ -223,7 +223,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
         self.time_block_classifier_repo.classify_block_type.assert_not_called()
         self.time_block_classifier_repo.classify_responsibility_area.assert_not_called()
 
-    async def test_execute_uses_classifier_for_time_block_type(self):
+    async def test_execute_uses_classifier_for_time_block_type(self) -> None:
         """
         Tests that the use case calls the classifier repository to determine
         the time block type.
@@ -287,7 +287,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
             time_block.metadata.get("calendar_id"), event.calendar_id
         )
 
-    async def test_execute_uses_classifier_for_responsibility_area(self):
+    async def test_execute_uses_classifier_for_responsibility_area(self) -> None:
         """
         Tests that the use case calls the classifier repository for
         responsibility area and includes it if provided.
@@ -330,7 +330,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
         )  # Just checking a random other field to ensure TimeBlock is not
         # modified for this yet.
 
-    async def test_execute_uses_classifier_for_event_triage(self):
+    async def test_execute_uses_classifier_for_event_triage(self) -> None:
         """
         Tests that the use case calls the classifier repository for event
         triage and includes the results in the TimeBlock.
@@ -375,7 +375,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(time_block.end_time, event.end_time)
         self.assertEqual(time_block.source_calendar_event_id, event.event_id)
 
-    async def test_execute_handles_multiple_events_with_triage(self):
+    async def test_execute_handles_multiple_events_with_triage(self) -> None:
         """
         Tests that the use case correctly applies triage to multiple events.
         """
@@ -399,7 +399,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
 
         # Configure classifier mock to return different decisions for each
         # event
-        def mock_triage_event(event):
+        def mock_triage_event(event: Any) -> tuple[ExecutiveDecision, str]:
             if "Standup" in event.title:
                 return ExecutiveDecision.ATTEND, "Important team coordination"
             else:
@@ -444,7 +444,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(meeting_block.decision_reason, "Large meeting")
 
-    async def test_calendar_sync_use_case_with_file_storage(self):
+    async def test_calendar_sync_use_case_with_file_storage(self) -> None:
         """
         Tests that CalendarSyncUseCase correctly handles file storage for
         large payloads.
@@ -513,7 +513,7 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(events_to_create[0].title, "Test Event 1")
         self.assertEqual(events_to_create[1].title, "Test Event 2")
 
-    async def test_calendar_sync_use_case_without_file_storage(self):
+    async def test_calendar_sync_use_case_without_file_storage(self) -> None:
         """
         Tests that CalendarSyncUseCase works normally when no file ID is
         present.

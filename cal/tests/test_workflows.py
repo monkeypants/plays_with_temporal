@@ -22,8 +22,8 @@ class TestPublishScheduleWorkflow:
 
     @pytest.mark.asyncio
     async def test_workflow_orchestrates_schedule_creation_and_file_writing(
-        self, tmp_path
-    ):
+        self, tmp_path: Any
+    ) -> None:
         """Test that the workflow calls the expected activities in the right
         order when using a mock calendar source."""
 
@@ -96,7 +96,7 @@ class TestPublishScheduleWorkflow:
                     )
 
     @pytest.mark.asyncio
-    async def test_workflow_handles_different_calendar_parameters(self):
+    async def test_workflow_handles_different_calendar_parameters(self) -> None:
         """Test that the workflow passes through different parameter
         combinations and uses the correct calendar source type."""
 
@@ -156,8 +156,8 @@ class TestPublishScheduleWorkflow:
 
     @pytest.mark.asyncio
     async def test_workflow_handles_unsupported_calendar_source_type(
-        self, tmp_path
-    ):
+        self, tmp_path: Any
+    ) -> None:
         """Test that the workflow gracefully handles an unsupported
         calendar_source_type."""
 

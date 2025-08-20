@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime, timedelta, timezone
+from typing import List, Any
 
 from cal.domain import TimeBlockType, ExecutiveDecision
 from cal.org import generate_org_content
@@ -13,7 +14,7 @@ def dt(i: int) -> datetime:
 
 
 class TestOrgGenerator(unittest.TestCase):
-    def _create_schedule(self, blocks):
+    def _create_schedule(self, blocks: List[Any]) -> Any:
         """Helper to create a schedule for testing."""
         return minimal_schedule(
             schedule_id="sched1",
@@ -22,7 +23,7 @@ class TestOrgGenerator(unittest.TestCase):
             time_blocks=blocks,
         )
 
-    def test_generate_org_content_with_timed_event(self):
+    def test_generate_org_content_with_timed_event(self) -> None:
         """Tests org content for a timed event with time range."""
         block = minimal_time_block(
             time_block_id="1",
@@ -50,7 +51,7 @@ class TestOrgGenerator(unittest.TestCase):
         self.assertIn("*Attendees*: 5 people", content)
         self.assertIn("*Status*: confirmed", content)
 
-    def test_generate_org_content_with_all_day_event(self):
+    def test_generate_org_content_with_all_day_event(self) -> None:
         """Tests org-mode content for an all-day event with a time range."""
         block = minimal_time_block(
             time_block_id="2",
@@ -74,7 +75,7 @@ class TestOrgGenerator(unittest.TestCase):
         self.assertIn("*All Day*: Yes", content)
         self.assertIn("National holiday - office closed", content)
 
-    def test_generate_org_content_multiple_events_are_sorted(self):
+    def test_generate_org_content_multiple_events_are_sorted(self) -> None:
         """Tests that multiple time blocks are sorted by start time."""
         block2 = minimal_time_block(
             time_block_id="2",
@@ -104,7 +105,7 @@ class TestOrgGenerator(unittest.TestCase):
         afternoon_pos = content.find("Afternoon Sync")
         self.assertLess(morning_pos, afternoon_pos)
 
-    def test_title_sanitation(self):
+    def test_title_sanitation(self) -> None:
         """Tests that titles are sanitized and time ranges work."""
         block = minimal_time_block(
             time_block_id="1",
@@ -121,7 +122,7 @@ class TestOrgGenerator(unittest.TestCase):
         self.assertIn("* Meeting with newlines", content)
         self.assertIn("SCHEDULED: <2024-07-22 Mon 09:00-10:00>", content)
 
-    def test_empty_title(self):
+    def test_empty_title(self) -> None:
         """Tests that an empty title is handled with time range."""
         block = minimal_time_block(
             time_block_id="1",

@@ -238,7 +238,7 @@ def create_meeting_event(
     title: str = "Team Meeting",
     attendee_count: int = 3,
     organizer: str = "organizer@example.com",
-    **kwargs,
+    **kwargs: Any,
 ) -> CalendarEvent:
     """Create a calendar event that looks like a typical meeting."""
     attendees = [
@@ -260,7 +260,7 @@ def create_meeting_event(
 
 
 def create_large_meeting_event(
-    title: str = "All-Hands Meeting", attendee_count: int = 15, **kwargs
+    title: str = "All-Hands Meeting", attendee_count: int = 15, **kwargs: Any
 ) -> CalendarEvent:
     """Create a calendar event with many attendees (suitable for DELEGATE
     triage)."""
@@ -270,7 +270,7 @@ def create_large_meeting_event(
 
 
 def create_optional_event(
-    title: str = "Optional: Training Session (FYI)", **kwargs
+    title: str = "Optional: Training Session (FYI)", **kwargs: Any
 ) -> CalendarEvent:
     """Create a calendar event that should be triaged as SKIP."""
     return minimal_calendar_event(
@@ -279,7 +279,7 @@ def create_optional_event(
 
 
 def create_one_on_one_event(
-    title: str = "1:1 with Manager", **kwargs
+    title: str = "1:1 with Manager", **kwargs: Any
 ) -> CalendarEvent:
     """Create a calendar event that should be triaged as ATTEND."""
     return create_meeting_event(

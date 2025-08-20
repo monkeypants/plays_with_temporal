@@ -33,7 +33,7 @@ from cal.tests.factories import (
 def create_mock_calendar_repository(
     events: Optional[List[CalendarEvent]] = None,
     sync_state: Optional[SyncState] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> AsyncMock:
     """
     Create a mock CalendarRepository with sensible defaults.
@@ -75,7 +75,7 @@ def create_mock_calendar_repository(
 def create_mock_schedule_repository(
     schedule_id: str = "mock-schedule-123",
     schedule: Optional[Schedule] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> AsyncMock:
     """
     Create a mock ScheduleRepository with sensible defaults.
@@ -111,7 +111,7 @@ def create_mock_classifier_repository(
     responsibility_area: Optional[str] = None,
     triage_decision: ExecutiveDecision = ExecutiveDecision.ATTEND,
     triage_reason: str = "Default test reason",
-    **kwargs,
+    **kwargs: Any,
 ) -> AsyncMock:
     """
     Create a mock TimeBlockClassifierRepository with sensible defaults.
@@ -145,7 +145,7 @@ def create_mock_classifier_repository(
 
 
 def create_mock_config_repository(
-    collections: Optional[List[CalendarCollection]] = None, **kwargs
+    collections: Optional[List[CalendarCollection]] = None, **kwargs: Any
 ) -> AsyncMock:
     """
     Create a mock CalendarConfigurationRepository with sensible defaults.
@@ -225,8 +225,8 @@ def create_test_calendar_collection(
 def create_mock_repositories_for_use_case(
     events: Optional[List[CalendarEvent]] = None,
     schedule_id: str = "test-schedule",
-    **kwargs,
-):
+    **kwargs: Any,
+) -> tuple[AsyncMock, AsyncMock, AsyncMock, AsyncMock]:
     """
     Create a complete set of mock repositories for use case testing.
 
@@ -258,8 +258,8 @@ def create_mock_repositories_for_use_case(
 
 
 def setup_use_case_with_mocks(
-    use_case_class, events: Optional[List[CalendarEvent]] = None, **kwargs
-):
+    use_case_class: Any, events: Optional[List[CalendarEvent]] = None, **kwargs: Any
+) -> tuple[Any, Dict[str, Any]]:
     """
     Set up a use case with standard mock repositories.
 
