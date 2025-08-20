@@ -1,11 +1,19 @@
-#+TITLE: System Patterns
+#+TITLE: Architectural Enforcement Patterns
 #+STARTUP: overview
 
-* System Patterns
+* Architectural Enforcement Patterns
+
+** Framework Philosophy
+
+This document defines the mandatory architectural patterns that must be followed within the Fun-Police Framework. These are not suggestions - they are requirements enforced to ensure system reliability, maintainability, and long-term architectural health.
+
+The framework embodies the principle that strict discipline reduces friction, which enables creativity. By eliminating architectural decision-making during implementation, developers can focus their creative energy on solving business problems rather than debating patterns.
 
 ** Architecture Overview
 
 The system implements Clean Architecture with Hexagonal Architecture principles, creating clear separation between business logic and external concerns. The architecture is specifically designed for Temporal workflow orchestration while maintaining framework independence in the core domain.
+
+All implementations must follow these patterns exactly - innovation on architecture is explicitly prohibited to prevent technical debt and maintain system coherence.
 
 ** Core Architectural Patterns
 

@@ -5,6 +5,8 @@
 
 This system is a fully self-hosted AI personal assistant that provides comprehensive technical and research support capabilities integrated with executive and administrative functions. The system manages complex, multi-domain workflows across personal, professional, and research activities through reliable, long-running task orchestration.
 
+This project serves dual purposes: implementing a sophisticated personal AI assistant AND validating the Fun-Police Framework - a comprehensive system for enforcing architectural discipline in AI pair programming contexts.
+
 Core technical capabilities include:
 - Personal information management integrated with operational workflows
 - Multi-domain workflow orchestration (personal, business, research operations)
@@ -15,6 +17,8 @@ Core technical capabilities include:
 - Complete self-hosting with air-gapped operation capabilities
 
 * Architecture Principles
+
+The Fun-Police Framework enforces these architectural principles as mandatory requirements, not optional guidelines:
 
 - *Clean Architecture & Dependency Inversion*: Business logic remains framework-agnostic through protocol-based dependency injection. Use cases depend only on repository abstractions, never concrete implementations.
 

@@ -1,9 +1,14 @@
-#+TITLE: Task Management Methodology
+#+TITLE: Engineering Discipline Methodology
+#+SUBTITLE: Architectural Enforcement and Quality Assurance Framework
 #+STARTUP: overview
 
-* Task Management Methodology
+* Engineering Discipline Methodology
 
-This methodology extracts the proven patterns from the successful POC implementation (documented in sample/todo.org) and generalizes them for robust, architecturally-aligned task management. It integrates with the memory bank system described in memory-bank/instructions.org and applies the architectural principles from memory-bank/systemPatterns.org.
+This methodology extracts the proven patterns from the successful POC implementation (documented in sample/todo.org) and generalizes them into a comprehensive engineering discipline framework. The Fun-Police Framework enforces architectural rigor through systematic constraints that reduce friction and enable creativity.
+
+Following the climbing principle that "slow is smooth and smooth is fast," this methodology prioritizes methodical adherence to proven patterns over rapid iteration. Strict discipline in architectural decisions eliminates decision paralysis and prevents technical debt, ultimately accelerating development velocity.
+
+The framework integrates with the comprehensive documentation system and applies the mandatory architectural principles from systemPatterns.org.
 
 ** Core Principles
 
@@ -57,14 +62,16 @@ Each task includes architectural reasoning that cross-references:
 - memory-bank/projectbrief.org for domain boundary validation
 - sample/GUIDE.md for implementation pattern adherence
 
-** Implementation Constraints (MANDATORY)
+** Architectural Compliance Requirements (MANDATORY)
+
+The Fun-Police Framework enforces strict compliance with proven patterns. These are not suggestions - they are requirements that prevent architectural violations and technical debt.
 
 *File Creation Rule*: Only create files explicitly listed in the current NEXT task.
 *Scope Boundary*: If the task doesn't mention repositories, don't create repository protocols.
 *Architecture Timing*: Don't implement Clean Architecture patterns until explicitly requested.
 *Test Timing*: Don't write integration or end-to-end tests until the basic functionality works. Unit tests for use cases, which use mocked dependencies, should be written alongside the use case itself.
 
-*Violation Signals*:
+*Architectural Violations (Framework Enforcement)*:
 - Creating more than 5 files for a single task
 - Implementing patterns not mentioned in the task
 - Building abstractions before concrete implementations
@@ -72,6 +79,7 @@ Each task includes architectural reasoning that cross-references:
 - Using "unsafe_mock_*" functions in production workflows
 - Mixing multiple architectural layers in a single task
 - Testing integration instead of units in workflow tests
+- Innovating on architecture instead of following proven patterns
 
 ** Task Structure Template
 
