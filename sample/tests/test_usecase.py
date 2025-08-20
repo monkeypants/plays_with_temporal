@@ -25,7 +25,7 @@ from sample.domain import (
 
 
 @pytest.mark.asyncio
-async def test_fulfill_order_successful_payment():
+async def test_fulfill_order_successful_payment() -> None:
     """Test that an order with valid payment is processed successfully"""
     # Arrange
     mock_payment_repo = MagicMock(spec=PaymentRepository)
@@ -96,7 +96,7 @@ async def test_fulfill_order_successful_payment():
 
 
 @pytest.mark.asyncio
-async def test_get_order_status_returns_from_order_repo():
+async def test_get_order_status_returns_from_order_repo() -> None:
     """Test that get_order_status prioritizes order repository."""
     # Arrange
     mock_order_repo = AsyncMock(spec=OrderRepository)
@@ -134,7 +134,7 @@ async def test_get_order_status_returns_from_order_repo():
 
 
 @pytest.mark.asyncio
-async def test_get_order_status_falls_back_to_payment_repo():
+async def test_get_order_status_falls_back_to_payment_repo() -> None:
     """Test that get_order_status falls back to payment repository if order
     not found."""
     # Arrange
@@ -176,7 +176,7 @@ async def test_get_order_status_falls_back_to_payment_repo():
 
 
 @pytest.mark.asyncio
-async def test_get_order_status_from_payment_refunded():
+async def test_get_order_status_from_payment_refunded() -> None:
     """Test get_order_status when payment is refunded via fallback."""
     # Arrange
     mock_order_repo = AsyncMock(spec=OrderRepository)
@@ -209,7 +209,7 @@ async def test_get_order_status_from_payment_refunded():
 
 
 @pytest.mark.asyncio
-async def test_get_order_status_returns_processing_if_neither_found():
+async def test_get_order_status_returns_processing_if_neither_found() -> None:
     """Test that get_order_status returns 'processing' if neither order nor
     payment found."""
     # Arrange

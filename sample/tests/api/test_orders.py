@@ -16,7 +16,7 @@ from sample.usecase import OrderFulfillmentUseCase, GetOrderUseCase
 from util.domain import FileMetadata
 
 
-def test_create_order_endpoint():
+def test_create_order_endpoint() -> None:
     """Test that the create_order endpoint correctly handles valid requests"""
     # Mock the Temporal client to avoid actual workflow execution
     mock_client = AsyncMock()
@@ -44,7 +44,7 @@ def test_create_order_endpoint():
         mock_client.start_workflow.assert_called_once()
 
 
-def test_get_request_status_no_mapping():
+def test_get_request_status_no_mapping() -> None:
     """Test request status when no order mapping exists yet"""
     # Mock the request repository
     mock_repo = AsyncMock()
@@ -66,7 +66,7 @@ def test_get_request_status_no_mapping():
     app.dependency_overrides = {}
 
 
-def test_get_request_status_with_redirect():
+def test_get_request_status_with_redirect() -> None:
     """Test request status when order mapping exists - should redirect"""
     # Mock the request repository
     mock_repo = AsyncMock()
@@ -87,7 +87,7 @@ def test_get_request_status_with_redirect():
     app.dependency_overrides = {}
 
 
-def test_get_order_status_endpoint():
+def test_get_order_status_endpoint() -> None:
     """Test that the get_order_status endpoint correctly handles valid
     requests by mocking the use case.
     """
@@ -134,7 +134,7 @@ def test_get_order_status_endpoint():
 
 
 @pytest.mark.asyncio
-async def test_upload_order_attachment_endpoint():
+async def test_upload_order_attachment_endpoint() -> None:
     """Test the /orders/{order_id}/attachments endpoint for file upload."""
     mock_use_case = AsyncMock(spec=OrderFulfillmentUseCase)
 
@@ -209,7 +209,7 @@ async def test_upload_order_attachment_endpoint():
 
 
 @pytest.mark.asyncio
-async def test_download_order_attachment_endpoint():
+async def test_download_order_attachment_endpoint() -> None:
     """Test the /orders/{order_id}/attachments/{file_id} endpoint for file
     download.
     """
@@ -263,7 +263,7 @@ async def test_download_order_attachment_endpoint():
 
 
 @pytest.mark.asyncio
-async def test_get_order_attachment_metadata_endpoint():
+async def test_get_order_attachment_metadata_endpoint() -> None:
     """Test the /orders/{order_id}/attachments/{file_id}/metadata endpoint."""
     mock_use_case = AsyncMock(spec=OrderFulfillmentUseCase)
 
@@ -312,7 +312,7 @@ async def test_get_order_attachment_metadata_endpoint():
     app.dependency_overrides = {}
 
 
-def test_cancel_order_endpoint():
+def test_cancel_order_endpoint() -> None:
     """Test that the cancel_order endpoint correctly initiates a valid
     cancellation workflow.
     """
@@ -356,7 +356,7 @@ def test_cancel_order_endpoint():
     app.dependency_overrides = {}
 
 
-def test_cancel_order_endpoint_already_running():
+def test_cancel_order_endpoint_already_running() -> None:
     """Test that the cancel_order endpoint correctly initiates a cancellation
     workflow, even if the workflow itself might handle idempotency.
     """

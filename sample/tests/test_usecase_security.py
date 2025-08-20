@@ -35,7 +35,7 @@ from util.domain import FileMetadata
 class TestOrderFulfillmentUseCaseSecurity:
     """Security-focused tests for OrderFulfillmentUseCase."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up mocks and use case for each test."""
         self.mock_payment_repo = AsyncMock(spec=PaymentRepository)
         self.mock_inventory_repo = AsyncMock(spec=InventoryRepository)
@@ -457,7 +457,7 @@ class TestOrderFulfillmentUseCaseSecurity:
 class TestCancelOrderUseCaseSecurity:
     """Security-focused tests for CancelOrderUseCase."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up mocks and use case for each test."""
         self.mock_order_repo = AsyncMock(spec=OrderRepository)
         self.mock_payment_repo = AsyncMock(spec=PaymentRepository)

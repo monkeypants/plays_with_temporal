@@ -16,13 +16,13 @@ class TestMinioPaymentRepositoryContract:
     """Test MinioPaymentRepository against PaymentRepository protocol."""
 
     @pytest_asyncio.fixture
-    async def payment_repo(self):
+    async def payment_repo(self) -> MinioPaymentRepository:
         """Create a MinioPaymentRepository instance for testing."""
         # Use localhost:9000 as per docker-compose.test.yml
         return MinioPaymentRepository(endpoint="localhost:9000")
 
     @pytest.fixture
-    def sample_order(self):
+    def sample_order(self) -> Order:
         """Create a sample order for testing."""
         return Order(
             order_id="test-order-123",
@@ -36,7 +36,7 @@ class TestMinioPaymentRepositoryContract:
         )
 
     @pytest.mark.asyncio
-    async def test_process_payment_success(self, payment_repo, sample_order):
+    async def test_process_payment_success(self, payment_repo: MinioPaymentRepository, sample_order: Order) -> None:
         """Test successful payment processing."""
         outcome = await payment_repo.process_payment(sample_order)
 
@@ -46,7 +46,7 @@ class TestMinioPaymentRepositoryContract:
         assert outcome.payment.amount == sample_order.total_amount
 
     @pytest.mark.asyncio
-    async def test_get_payment_existing(self, payment_repo, sample_order):
+    async def test_get_payment_existing(self, payment_repo: MinioPaymentRepository, sample_order: Order) -> None:
         """Test retrieving an existing payment."""
         # First process a payment
         outcome = await payment_repo.process_payment(sample_order)
@@ -60,13 +60,13 @@ class TestMinioPaymentRepositoryContract:
         assert retrieved_payment.order_id == sample_order.order_id
 
     @pytest.mark.asyncio
-    async def test_get_payment_nonexistent(self, payment_repo):
+    async def test_get_payment_nonexistent(self, payment_repo: MinioPaymentRepository) -> None:
         """Test retrieving a non-existent payment."""
         payment = await payment_repo.get_payment("nonexistent-payment-id")
         assert payment is None
 
     @pytest.mark.asyncio
-    async def test_payment_repository_idempotency(self, payment_repo):
+    async def test_payment_repository_idempotency(self, payment_repo: MinioPaymentRepository) -> None:
         """Verify payment processing is idempotent"""
         order = Order(
             order_id="test-order-123",

@@ -52,9 +52,9 @@ class DependencyContainer:
     """
 
     def __init__(self) -> None:
-        self._instances = {}
+        self._instances: dict[str, any] = {}
 
-    async def get_or_create(self, key: str, factory):
+    async def get_or_create(self, key: str, factory: any) -> any:
         """Get or create a singleton instance."""
         if key not in self._instances:
             self._instances[key] = await factory()
@@ -65,7 +65,7 @@ class DependencyContainer:
         client = await self.get_or_create(
             "temporal_client", self._create_temporal_client
         )
-        return client
+        return client  # type: ignore[return-value]
 
     async def _create_temporal_client(self) -> Client:
         """Create Temporal client with proper configuration."""

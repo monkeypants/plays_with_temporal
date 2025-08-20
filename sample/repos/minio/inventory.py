@@ -5,8 +5,8 @@ Minio implementation of InventoryRepository.
 import io
 import logging
 from typing import List
-from minio import Minio
-from minio.error import S3Error
+from minio import Minio  # type: ignore[import-untyped]
+from minio.error import S3Error  # type: ignore[import-untyped]
 
 from sample.domain import Order, InventoryItem, InventoryReservationOutcome
 from sample.repositories import InventoryRepository

@@ -7,7 +7,7 @@ from sample.api.app import app
 
 
 @pytest.mark.e2e
-def test_order_fulfillment_e2e():
+def test_order_fulfillment_e2e() -> None:
     """Test the entire order fulfillment process from API to repositories"""
     # Use environment variables to connect to test environment
     os.environ["MINIO_ENDPOINT"] = "localhost:9000"
@@ -135,7 +135,7 @@ def test_order_fulfillment_e2e():
 
 
 @pytest.mark.e2e
-def test_order_cancellation_e2e():
+def test_order_cancellation_e2e() -> None:
     """E2E test: Verify order cancellation workflow."""
     os.environ["MINIO_ENDPOINT"] = "localhost:9000"
     os.environ["TEMPORAL_ENDPOINT"] = os.environ.get(

@@ -7,8 +7,8 @@ import uuid
 import logging
 from datetime import datetime
 from typing import Optional
-from minio import Minio
-from minio.error import S3Error
+from minio import Minio  # type: ignore[import-untyped]
+from minio.error import S3Error  # type: ignore[import-untyped]
 
 from sample.domain import Order
 from sample.repositories import OrderRepository

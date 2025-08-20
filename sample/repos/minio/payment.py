@@ -6,8 +6,8 @@ import io
 import logging
 from datetime import datetime
 from typing import Optional
-from minio import Minio
-from minio.error import S3Error
+from minio import Minio  # type: ignore[import-untyped]
+from minio.error import S3Error  # type: ignore[import-untyped]
 
 from sample.domain import (
     Order,
@@ -73,7 +73,7 @@ class MinioPaymentRepository(PaymentRepository):
             },
         )
 
-        payment_status: Literal["completed", "failed", "pending", "cancelled", "refunded"] = "completed"
+        payment_status = "completed"
         payment_reason = None
 
         # Create the payment object with the determined status
@@ -254,7 +254,7 @@ class MinioPaymentRepository(PaymentRepository):
             )
             raise
 
-        outcome_status: Literal["completed", "failed", "refunded"] = "completed" if payment_status == "completed" else "failed"
+        outcome_status = "completed" if payment_status == "completed" else "failed"
         return PaymentOutcome(
             status=outcome_status,
             payment=payment if payment_status == "completed" else None,

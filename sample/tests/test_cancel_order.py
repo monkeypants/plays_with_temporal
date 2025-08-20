@@ -19,7 +19,7 @@ from sample.domain import (
 
 
 @pytest.mark.asyncio
-async def test_cancel_order_successful_refund_and_release():
+async def test_cancel_order_successful_refund_and_release() -> None:
     """Test successful order cancellation with payment refund and inventory
     release."""
     # Arrange
@@ -52,7 +52,7 @@ async def test_cancel_order_successful_refund_and_release():
     # time of call
     saved_order_statuses = []
 
-    async def save_order_side_effect(order_obj: Order):
+    async def save_order_side_effect(order_obj: Order) -> None:
         saved_order_statuses.append(order_obj.status)
         # The mock itself doesn't need to return anything for save_order
         pass
@@ -112,7 +112,7 @@ async def test_cancel_order_successful_refund_and_release():
 
 
 @pytest.mark.asyncio
-async def test_cancel_order_not_found():
+async def test_cancel_order_not_found() -> None:
     """Test cancellation of a non-existent order."""
     # Arrange
     mock_order_repo = MagicMock(spec=OrderRepository)
@@ -143,7 +143,7 @@ async def test_cancel_order_not_found():
 
 
 @pytest.mark.asyncio
-async def test_cancel_order_already_cancelled():
+async def test_cancel_order_already_cancelled() -> None:
     """Test cancellation of an order that is already cancelled."""
     # Arrange
     mock_order_repo = MagicMock(spec=OrderRepository)
@@ -185,7 +185,7 @@ async def test_cancel_order_already_cancelled():
 
 
 @pytest.mark.asyncio
-async def test_cancel_order_no_payment_to_refund():
+async def test_cancel_order_no_payment_to_refund() -> None:
     """Test cancellation when no payment was made (e.g., order failed
     early)."""
     # Arrange
@@ -235,7 +235,7 @@ async def test_cancel_order_no_payment_to_refund():
 
 
 @pytest.mark.asyncio
-async def test_cancel_order_refund_fails_but_continues():
+async def test_cancel_order_refund_fails_but_continues() -> None:
     """Test that if refund fails, cancellation still proceeds (logs error)."""
     # Arrange
     mock_order_repo = MagicMock(spec=OrderRepository)
@@ -267,7 +267,7 @@ async def test_cancel_order_refund_fails_but_continues():
     # time of call
     saved_order_statuses = []
 
-    async def save_order_side_effect(order_obj: Order):
+    async def save_order_side_effect(order_obj: Order) -> None:
         saved_order_statuses.append(order_obj.status)
         pass
 
@@ -308,7 +308,7 @@ async def test_cancel_order_refund_fails_but_continues():
 
 
 @pytest.mark.asyncio
-async def test_cancel_order_unexpected_exception():
+async def test_cancel_order_unexpected_exception() -> None:
     """Test that an unexpected exception during cancellation is handled
     gracefully."""
     # Arrange
@@ -333,7 +333,7 @@ async def test_cancel_order_unexpected_exception():
     # time of call
     saved_order_statuses = []
 
-    async def save_order_side_effect(order_obj: Order):
+    async def save_order_side_effect(order_obj: Order) -> None:
         saved_order_statuses.append(order_obj.status)
         pass
 
