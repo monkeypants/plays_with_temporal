@@ -73,6 +73,7 @@ def setup_logging() -> None:
     except Exception:
         # If logging fails, continue silently
         pass
+    return None
 
 
 async def get_temporal_client_with_retries(
