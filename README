@@ -1,0 +1,250 @@
+Fun-Police Framework: AI Personal Assistant with Architectural Discipline
+========================================================================
+
+Welcome to the Fun-Police Framework - where strict architectural discipline 
+meets AI pair programming to build a sophisticated personal assistant system.
+The "Fun Police" enforce proven patterns so you can focus on solving real 
+problems instead of debating architecture.
+
+Think of it as having a very opinionated senior architect who never lets you
+cut corners, but also never lets you get stuck in analysis paralysis. The
+framework embodies the climbing principle: "slow is smooth, and smooth is fast."
+
+Quick Start
+-----------
+
+1. Install dependencies:
+   pip install -r requirements.txt
+
+2. Start development services:
+   make e2e-test-setup
+
+3. Run quality checks:
+   make quality-fast
+
+4. See all available commands:
+   make help
+
+The Makefile provides a comprehensive build system with quality gates,
+testing infrastructure, and development workflows. Start with `make help`
+to see all available targets.
+
+Architecture Overview (The Fun Police Way)
+------------------------------------------
+
+This system follows Clean Architecture with religious devotion, enforced by
+the Fun-Police Framework. Here's what that means in practice:
+
+CORE PRINCIPLE: Dependencies point inward, always. No exceptions. No "just this once."
+
+The architecture has four layers, like an onion that makes you cry if you
+violate the dependency rule:
+
+1. DOMAIN (The Sacred Center)
+   - Pure business logic with zero external dependencies
+   - Pydantic models with business rule validation
+   - If it imports anything other than standard library, you're doing it wrong
+
+2. USE CASES (The Orchestrators) 
+   - Business logic coordination
+   - Depends only on domain models and repository protocols
+   - Framework-agnostic (can run in any context)
+   - If your use case knows about HTTP or databases, the Fun Police will find you
+
+3. INTERFACE ADAPTERS (The Translators)
+   - Repository implementations (the famous three-layer pattern)
+   - API controllers and request/response models
+   - Workflow definitions and activity wrappers
+   - This is where frameworks live and die
+
+4. FRAMEWORKS & DRIVERS (The Necessary Evils)
+   - FastAPI, Temporal, Docker, databases
+   - Configuration and dependency injection
+   - The outer ring where chaos is contained
+
+THE THREE-LAYER REPOSITORY PATTERN (Mandatory)
+----------------------------------------------
+
+Every repository follows this exact pattern. No shortcuts. No "simpler" approaches.
+
+Layer 1: Pure Backend Repository
+- Direct interaction with storage technology (Minio, PostgreSQL, etc.)
+- Zero Temporal dependencies
+- Contains actual business logic for data persistence
+- Example: MinioOrderRepository
+
+Layer 2: Temporal Activity Implementation  
+- Wraps pure backend repository
+- Methods decorated with @activity.defn
+- Simple delegation pattern
+- Example: TemporalMinioOrderRepository
+
+Layer 3: Workflow Proxy
+- Used inside workflows for determinism
+- Calls workflow.execute_activity()
+- No business logic, pure delegation
+- Example: WorkflowOrderRepositoryProxy
+
+Why three layers? Because two isn't enough and four is too many. The Fun Police
+have empirically determined that three is the optimal number for maintaining
+sanity while achieving architectural nirvana.
+
+WORKFLOW DETERMINISM (Non-Negotiable)
+-------------------------------------
+
+Temporal workflows must be deterministic for replay. This means:
+
+✅ ALLOWED in workflows:
+- Pure business logic
+- Calling workflow.execute_activity()
+- Deterministic computations
+- Repository proxy method calls
+
+❌ FORBIDDEN in workflows (The Fun Police are watching):
+- Direct database calls
+- HTTP requests  
+- Random number generation
+- Current time access (use activities)
+- File I/O operations
+- Anything that might return different results on replay
+
+Violate workflow determinism and face the wrath of the Fun Police. They have
+very long memories and excellent debugging skills.
+
+The Two Applications
+====================
+
+This repository contains two complete applications that demonstrate the
+Fun-Police Framework in action:
+
+SAMPLE: Order Fulfillment System
+--------------------------------
+
+Location: sample/
+Purpose: Reference implementation and architectural validation
+
+The sample application is a complete order fulfillment system that demonstrates
+every architectural pattern in the framework. It's not just a toy - it's a
+fully functional system with:
+
+- Order processing with saga pattern compensation
+- Payment processing with retry logic
+- Inventory management with reservation/release
+- File attachment handling for large payloads
+- Order cancellation with refund workflows
+- Complete API with FastAPI
+- Comprehensive testing (unit, integration, E2E)
+- Docker-based deployment
+
+Key Features:
+- POST /orders - Create orders (starts Temporal workflow)
+- GET /orders/{id} - Check order status
+- POST /orders/{id}/cancel - Cancel orders with compensation
+- File upload/download for order attachments
+- Background processing with Temporal workflows
+
+The sample app serves as the "golden standard" - when in doubt about how to
+implement something, look at how sample/ does it and copy that pattern exactly.
+The Fun Police have pre-approved all patterns in sample/.
+
+CAL: Calendar Intelligence System  
+---------------------------------
+
+Location: cal/
+Purpose: AI-powered calendar analysis and decision support
+
+The calendar application transforms raw calendar data into executive decision
+support. It's designed for busy professionals who need AI assistance to manage
+their time effectively:
+
+- Google Calendar integration with OAuth
+- AI-powered event triage (attend/delegate/reschedule/skip)
+- Multi-calendar support with priority-based processing
+- PostgreSQL persistence for efficient querying
+- Org-mode output for GTD workflow integration
+- Background sync with Temporal scheduling
+- CLI tools for manual operations
+
+Key Features:
+- Sync calendars: bin/sync-calendar --calendar-collection work
+- Generate analysis: bin/run-google-calendar-demo --output-path schedule.org
+- Background daemon: bin/calendar-sync-daemon start
+- Multi-calendar collections via config/calendars.yaml
+
+The cal app demonstrates how to build domain-specific AI applications using
+the Fun-Police Framework while maintaining architectural discipline.
+
+Development Workflow
+====================
+
+The Fun Police enforce a specific development workflow:
+
+1. NEVER work on tasks not marked NEXT in fun-police/tasks.org
+2. ALWAYS follow the three-layer repository pattern
+3. NEVER innovate on architecture (copy from sample/)
+4. ALWAYS write tests following the testing pyramid
+5. NEVER use "unsafe_mock_*" functions in production code
+
+Quality Gates (Enforced by Makefile):
+- make quality-fast: Pre-commit checks (black, ruff, quick tests)
+- make quality-full: Complete quality suite (types, security, all tests)
+- make test-e2e: End-to-end validation with Docker services
+
+The Fun Police have determined that following these rules religiously results
+in higher development velocity, fewer bugs, and better sleep at night.
+
+Testing Philosophy
+==================
+
+Testing follows the pyramid strategy:
+
+MANY unit tests (use cases with mocked repositories)
+- Fast feedback during development
+- Test business logic in isolation
+- Mock at repository boundaries
+
+SOME integration tests (repositories with real dependencies)
+- Validate repository contracts
+- Test against real databases/APIs
+- Focused on data access patterns
+
+FEW end-to-end tests (complete workflows with Docker)
+- Critical user journeys only
+- Full system validation
+- Expensive but comprehensive
+
+The Fun Police mandate that you cannot skip levels of the pyramid. No jumping
+straight to E2E tests because "it's easier." Easier for whom? Not for the
+person debugging a flaky test at 2 AM.
+
+Memory Bank System
+==================
+
+The Fun-Police Framework includes a comprehensive memory bank system in
+fun-police/ that maintains project knowledge across AI pair programming sessions:
+
+- projectbrief.org: Core requirements and domain boundaries
+- systemPatterns.org: Architectural patterns and implementation rules
+- techContext.org: Technology stack and development environment
+- methodology.org: Development workflow and task management
+- tasks.org: Current work focus and active tasks (org-mode TODO states)
+
+The memory bank ensures consistent architectural decisions and prevents the
+dreaded "why did we do it this way?" conversations. The Fun Police have
+excellent institutional memory.
+
+Getting Help
+============
+
+1. Start with `make help` for build system options
+2. Read sample/GUIDE.md for comprehensive architecture guide
+3. Check fun-police/systemPatterns.org for implementation patterns
+4. Look at sample/ for reference implementations
+5. Follow the three-layer pattern religiously
+6. When in doubt, ask the Fun Police (they're surprisingly helpful)
+
+Remember: The Fun Police are here to help you build better software by
+preventing architectural mistakes before they happen. Embrace the discipline,
+and you'll find that constraints actually enable creativity.
+
+Now go forth and build something amazing, architecturally speaking.
