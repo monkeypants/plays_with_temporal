@@ -6,6 +6,7 @@ not on testing business logic which should be tested in use case tests.
 """
 
 import pytest
+from typing import Any
 from unittest.mock import AsyncMock, patch
 from datetime import datetime, timezone
 

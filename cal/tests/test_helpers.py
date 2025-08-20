@@ -7,7 +7,7 @@ customization.
 """
 
 from unittest.mock import AsyncMock
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 
 from cal.domain import (
     CalendarEvent,
