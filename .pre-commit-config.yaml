@@ -1,0 +1,17 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.5.1"
+    hooks:
+      - id: ruff
+  - repo: local
+    hooks:
+      - id: quality-fast
+        name: quality-fast
+        entry: make quality-fast
+        language: system
+        types: [python]
+        pass_filenames: false

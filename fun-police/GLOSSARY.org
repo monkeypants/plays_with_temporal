@@ -1,0 +1,39 @@
+#+TITLE: Project Glossary
+#+STARTUP: overview
+
+This document defines the key nouns and verbs of the system to prevent ambiguity and ensure consistent terminology.
+
+* Architectural Patterns
+  - *Clean Architecture*: A software design philosophy that separates the elements of a design into ring-like layers. The core principle is that dependencies point inward: use cases and domain models are independent of frameworks and external concerns like databases or UIs.
+  - *CLI (Command-Line Interface)*: An application entry point that resides in the outermost "Frameworks & Drivers" layer, parallel to the web API. It translates command-line arguments into calls to use cases, acting as a "driver" for the core application logic.
+  - *Co-Evolutionary Symbiotic Relationship*: The core philosophy of the project, where the human and AI partners grow and evolve together. The system is designed to explicitly foster this mutual development, enhancing human capability rather than creating dependency.
+  - *Data Sovereignty*: A non-negotiable requirement that all data and AI processing occur locally on user-controlled infrastructure, with no cloud dependencies for core functionality. This ensures user privacy and control.
+  - *Gall's Law*: The principle that "a complex system that works is invariably found to have evolved from a simple system that worked." This guides the project's incremental development strategy.
+  - *Repository Protocol Pattern*: A design pattern that uses protocols (interfaces) to define the contract for data access. This decouples business logic (use cases) from concrete data storage implementations, enabling dependency inversion.
+  - *Saga Pattern*: A failure management pattern for long-running, distributed transactions. It uses a sequence of forward actions and corresponding compensating actions to undo previous steps if a subsequent one fails, ensuring data consistency across multiple services.
+  - *Three-Layer Repository Pattern*: The project's specific implementation of the Repository Protocol Pattern, consisting of three distinct layers:
+    1. *Pure Backend Repository*: The layer that interacts directly with a storage technology (e.g., Minio, PostgreSQL). It contains the actual persistence logic and has no Temporal dependencies.
+    2. *Temporal Activity Implementation*: A wrapper around the Pure Backend Repository whose methods are decorated with =@activity.defn=. It delegates calls to the backend, making the operations available to workflows.
+    3. *Workflow Proxy*: A deterministic client used inside a workflow to invoke activities. It implements the same repository protocol but contains no business logic, ensuring workflow replay safety by delegating calls to the Temporal cluster.
+  - *Use Case Constructor Parameter Activity Naming*: A naming convention for Temporal activities that uses use case constructor parameter names to define semantic roles, ensuring workflows remain implementation-agnostic while providing unique activity names. Format: `{domain}.{usecase}.{constructor_param_name}.{method}`. This prevents abstraction leaks by mapping activity names directly to the semantic roles already defined in use case constructors.
+  - *Workflow Determinism*: The principle that workflow code must produce the same result every time it is replayed. All non-deterministic operations (e.g., I/O, network calls, random number generation) must be delegated to Temporal Activities to maintain this property.
+
+* Methodology & Process
+  - *Event Triage*: The process of analyzing a calendar event to provide an initial classification and decision recommendation (e.g., attend, delegate, skip). This is the first step in adding analytical intelligence to the calendar workflow.
+  - *File-Centric Task Definition*: The practice of defining tasks by the specific files that need to be created or modified, rather than by abstract outcomes. This provides clear scope, concrete completion criteria, and prevents scope creep.
+  - *Meta-Task*: A task in =tasks.org= that aims to improve the development process, documentation, or methodology itself, rather than implementing a product feature.
+  - *Semantic Line Breaks*: The practice of wrapping long lines in docstrings and comments at natural semantic boundaries (e.g., clauses or phrases). This improves readability in raw source files and aids in reviewing diffs.
+
+* Application Domain Models
+** =sample= Domain
+   - *Order*: Represents a customer's request to purchase one or more items. It tracks items, total amount, and fulfillment status.
+   - *Payment*: Represents a financial transaction associated with an =Order=.
+   - *InventoryItem*: Represents a product in the inventory, tracking total quantity and reserved quantity.
+   - *FileMetadata*: Represents metadata about a large file stored externally (e.g., in Minio) to avoid Temporal payload size limits.
+
+** =cal= Domain
+   - *CalendarEvent*: Represents the raw, external state of an event from a source calendar (e.g., Google Calendar). It is a snapshot of data from an external system.
+   - *ExecutiveDecision*: An AI-generated suggestion for how to handle a =TimeBlock=. It is stored separately from the final decision made by the executive, enabling a clear distinction between AI recommendation and human choice. Possible values include =ATTEND=, =RESCHEDULE=, =DELEGATE=, =SKIP=.
+   - *Event Triage*: The process of analyzing a calendar event to provide an initial classification and decision recommendation (e.g., attend, delegate, skip). This is the first step in adding analytical intelligence to the calendar workflow.
+   - *TimeBlock*: The core internal entity for time management and planning. It represents a block of time in the executive's schedule and can be created from a =CalendarEvent= or manually.
+   - *Schedule*: A collection of =TimeBlock=s for a given period (e.g., a day or week), representing a plan that can be reviewed and finalized.

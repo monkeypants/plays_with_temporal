@@ -1,0 +1,184 @@
+* DONE: Refactor API Tests to Mock Use Case Directly
+** Description
+   The `GUIDE.md` states that API tests should mock the use case layer to isolate the API from business logic. Currently, `sample/tests/api/test_orders.py` mocks the Temporal client and the request repository, which is a lower-level mocking strategy.
+** Files to change
+   - `sample/api/app.py`: Introduced a dependency injection mechanism for the `OrderFulfillmentUseCase` in the API endpoints, making it easier to mock. Specifically, the `/orders/{order_id}` endpoint now directly calls the use case.
+   - `sample/tests/api/test_orders.py`: Updated `test_get_order_status_endpoint` to mock `OrderFulfillmentUseCase` directly instead of Temporal client and `TemporalOrderRequestRepository`. The `create_order` endpoint still starts a workflow, so its test continues to mock the Temporal client.
+** Rationale
+   Aligns code with documented architectural principles, improves test isolation, and makes API tests faster and less brittle by not relying on Temporal client mocks for order status.
+
+* DONE: Review and Potentially Remove `OrderResult` from `sample/domain.py`
+** Description
+   The `OrderResult` model in `sample/domain.py` seemed to overlap significantly with `OrderStatusResponse` in `sample/api/responses.py`. Given that the use case now returns `OrderStatusResponse` directly, `OrderResult` was redundant.
+** Files changed
+   - `sample/domain.py`: Removed `OrderResult`.
+   - `sample/usecase.py`: Removed import for `OrderResult`.
+   - `sample/tests/test_business_rules.py`: Removed import for `OrderResult`.
+   - `sample/tests/test_saga_pattern.py`: Removed import for `OrderResult`.
+   - `sample/tests/e2e/test_order_fulfillment.py`: Updated assertion for "completed" status to match lowercase.
+   - `sample/tests/test_usecase.py`: Updated assertion for "completed" status to match lowercase.
+** Rationale
+   Simplified the domain model, reduced redundancy, and improved clarity. Fixed E2E test failure due to case sensitivity mismatch.
+
+* DONE: Review `sample/tests/test_usecase.py` and `sample/tests/test_saga_pattern.py` for Removed Domain Exceptions
+** Description
+   The custom domain exceptions (`PaymentServiceUnavailable`, `InsufficientInventory`) were removed from `sample/domain.py`. While the use case now primarily uses outcome objects, it's crucial to ensure that no tests in these files are still expecting or asserting on these specific exception types being raised.
+** Files to change
+   - `sample/tests/test_usecase.py`
+   - `sample/tests/test_saga_pattern.py`
+** Rationale
+   Ensure tests are consistent with the updated business error handling strategy and do not rely on removed code.
+
+* DONE: Review `sample/validation.py` for `ensure_order_repository` and `ensure_order_request_repository`
+** Description
+   The `ensure_order_repository` and `ensure_order_request_repository` functions in `sample/validation.py` are used in `sample/workflow.py` to validate the workflow stubs. While they provide runtime validation, it's worth reviewing if this level of validation is strictly necessary for internal workflow stubs, or if static type checking (mypy) is sufficient, potentially simplifying the workflow code.
+** Files to change
+   - `sample/validation.py`: Potentially remove or simplify these `ensure_` functions.
+   - `sample/workflow.py`: Adjust how repository stubs are instantiated if validation functions are removed/changed.
+** Rationale
+   The `OrderFulfillmentUseCase` already performs runtime validation of all injected repositories. Therefore, the explicit `ensure_*_repository` calls when instantiating the `Workflow*Repository` stubs within `sample/workflow.py` are redundant. Removing these calls simplifies the workflow code without losing the overall validation provided by the use case.
+
+* DONE: Refactor Repository Implementations for Clearer Separation
+** Description
+   Refactor the repository layer to achieve a clearer separation of concerns, improving testability, flexibility, and role clarity. This addresses the current mixing of backend technology details (Minio client) and Temporal activity definitions (`@activity.defn`) within the same `Temporal*Repository` classes.
+** End State
+   The repository layer will be structured into three distinct types of components, all adhering to the domain protocols defined in `sample/repositories.py`:
+   1.  **Pure Backend Repositories**:
+       -   **Location**: New directory `sample/repos/minio/` (e.g., `sample/repos/minio/order.py`, `sample/repos/minio/payment.py`).
+       -   **Purpose**: These classes will contain the direct, low-level interactions with the backend technology (e.g., Minio client calls). They are completely unaware of Temporal.
+       -   **Characteristics**: They *implement* their respective domain protocols (e.g., `MinioOrderRepository` implements `OrderRepository`). Their methods *do not* have `@activity.defn` decorators.
+   2.  **Temporal Activity Implementations**:
+       -   **Location**: New directory `sample/repos/temporal/` (e.g., `sample/repos/temporal/minio_orders.py`, `sample/repos/temporal/minio_payments.py`).
+       -   **Purpose**: These classes act as the concrete Temporal activity layer. They wrap the pure backend repositories and expose their methods as Temporal activities.
+       -   **Characteristics**: They *implement* their respective domain protocols (e.g., `TemporalMinioOrderRepository` implements `OrderRepository`). Their methods *do* have `@activity.defn` decorators. They take an instance of the corresponding pure backend repository in their constructor and delegate calls to it.
+   3.  **Workflow-Specific Repository Proxies**:
+       -   **Location**: New directory `sample/repos/temporal/proxies/` (e.g., `sample/repos/temporal/proxies/order.py`, `sample/repos/temporal/proxies/payment.py`).
+       -   **Purpose**: These classes provide deterministic proxies within the workflow that delegate to Temporal activities. They are the "shims" that ensure workflow determinism.
+       -   **Characteristics**: They *implement* their respective domain protocols (e.g., `WorkflowOrderRepositoryProxy` implements `OrderRepository`). Their methods *only* contain `await workflow.execute_activity(...)` calls and *do not* have `@activity.defn` decorators. A docstring will explicitly state their workflow-only usage.
+   4.  **Workflow Code (`sample/workflow.py`)**:
+       -   Will import and instantiate the `Workflow...RepositoryProxy` classes from `sample/repos/temporal/proxies/`.
+       -   These proxy instances will then be passed to the `OrderFulfillmentUseCase` constructor.
+   5.  **Worker Code (`sample/worker.py`)**:
+       -   Will instantiate the pure backend repositories (e.g., `MinioOrderRepository`).
+       -   Then, it will instantiate the `TemporalMinio...Repository` classes (the actual activity implementations), injecting the pure backend instances into them.
+       -   Finally, it will register the methods of these `TemporalMinio...Repository` instances as the actual Temporal activities with the worker.
+   6.  **API Code (`sample/api/app.py`)**:
+       -   The `get_order_fulfillment_use_case_for_api` and `get_request_repository` dependency functions will be updated to instantiate the new concrete `TemporalMinio...Repository` classes (the actual activity implementations) and pass them to the `OrderFulfillmentUseCase`.
+   7.  **Documentation (`sample/GUIDE.md`)**:
+       -   Will be updated to reflect the new repository structure and the explicit proxy concept in the "Repository Implementations" and "Workflow Flow" sections.
+** Files to change
+   - **New Directories**:
+     - `sample/repos/`
+     - `sample/repos/minio/`
+     - `sample/repos/temporal/`
+     - `sample/repos/temporal/proxies/`
+   - **New Files (examples, one for each domain concept)**:
+     - `sample/repos/minio/order.py`
+     - `sample/repos/minio/payment.py`
+     - `sample/repos/minio/inventory.py`
+     - `sample/repos/minio/order_request.py`
+     - `sample/repos/temporal/minio_orders.py`
+     - `sample/repos/temporal/minio_payments.py`
+     - `sample/repos/temporal/minio_inventory.py`
+     - `sample/repos/temporal/minio_order_requests.py`
+     - `sample/repos/temporal/proxies/order.py`
+     - `sample/repos/temporal/proxies/payment.py`
+     - `sample/repos/temporal/proxies/inventory.py`
+     - `sample/repos/temporal/proxies/order_request.py`
+   - **Deleted Files**:
+     - `sample/temporal_repositories.py` (its content will be split and moved)
+   - **Modified Files**:
+     - `sample/api/app.py`
+     - `sample/usecase.py`
+     - `sample/workflow.py`
+     - `sample/worker.py`
+     - `sample/tests/test_repository_contracts.py`
+     - `sample/tests/test_validation.py`
+     - `sample/tests/test_business_rules.py`
+     - `sample/tests/test_usecase.py`
+     - `sample/tests/test_saga_pattern.py`
+     - `sample/tests/e2e/test_order_fulfillment.py`
+     - `sample/GUIDE.md`
+** Rationale
+   This refactor significantly enhances separation of concerns by clearly delineating:
+   - Pure backend interaction (Minio-specific code)
+   - Temporal activity definitions (the `@activity.defn` layer)
+   - Workflow-specific deterministic proxies (the `workflow.execute_activity` shims).
+   It improves testability by allowing isolated unit testing of each layer. It increases flexibility for swapping backend technologies (e.g., Minio for S3) without impacting the Temporal activity layer or the use case. It provides clearer naming and roles for each component in the repository hierarchy, aligning more closely with the principles outlined in `GUIDE.md` and ensuring strict adherence to Temporal's deterministic execution model.
+
+* DONE: Implement `FileStorageRepository` and integrate it for large payload handling
+** Description
+   The `sample/minio_repositories.py` file currently defines a `MinioFileStorageRepository` that implements a `FileStorageRepository` protocol. This protocol and its implementation are not yet integrated into the main order fulfillment workflow or use case. The goal is to demonstrate how large payloads (e.g., order attachments, detailed logs) can be stored externally (in Minio) and referenced within Temporal workflows, rather than being passed directly through workflow arguments, which can hit payload size limits.
+** End State
+   - The `FileStorageRepository` protocol will be properly defined in `sample/repositories.py`.
+   - The `MinioFileStorageRepository` will be moved to `sample/repos/minio/file_storage.py`.
+   - A `TemporalMinioFileStorageRepository` (activity implementation) will be created in `sample/repos/temporal/minio_file_storage.py`.
+   - A `WorkflowFileStorageRepositoryProxy` will be created in `sample/repos/temporal/proxies/file_storage.py`.
+   - The `OrderFulfillmentUseCase` will be updated to optionally accept a `FileStorageRepository`.
+   - The `OrderFulfillmentWorkflow` will be updated to pass the `WorkflowFileStorageRepositoryProxy` to the use case.
+   - The `worker.py` will register the `TemporalMinioFileStorageRepository` activities.
+   - A new endpoint (e.g., `/orders/{order_id}/attachment`) will be added to `sample/api/app.py` to demonstrate uploading and downloading a file associated with an order, using the `FileStorageRepository`.
+   - Relevant tests will be added/updated.
+   - `sample/GUIDE.md` will be updated to explain the large payload handling strategy.
+** Files to change
+   - `sample/repositories.py` (add `FileStorageRepository` protocol)
+   - `sample/minio_repositories.py` (delete, content moved)
+   - `sample/repos/minio/file_storage.py` (new file, pure backend)
+   - `sample/repos/temporal/minio_file_storage.py` (new file, activity impl)
+   - `sample/repos/temporal/proxies/file_storage.py` (new file, workflow proxy)
+   - `sample/usecase.py` (add optional `file_storage_repo` to constructor)
+   - `sample/workflow.py` (instantiate and pass `WorkflowFileStorageRepositoryProxy`)
+   - `sample/worker.py` (instantiate and register `TemporalMinioFileStorageRepository`)
+   - `sample/api/app.py` (add new endpoint, update `get_order_fulfillment_use_case_for_api`)
+   - `sample/domain.py` (add `UploadFileArgs` if not already present, or similar model for file metadata)
+   - `sample/api/requests.py` (add request model for file upload)
+   - `sample/api/responses.py` (add response model for file upload/download)
+   - `sample/tests/` (add new tests for file storage, update existing if necessary)
+   - `sample/GUIDE.md` (update documentation)
+
+* DONE: Implement a "Cancel Order" Workflow
+** Description
+   Add a new workflow and associated use case/repository methods to support cancelling an order. This will demonstrate a compensation-driven workflow that can be triggered externally.
+** End State
+   - New `CancelOrderUseCase` and `CancelOrderWorkflow`.
+   - `OrderRepository` updated with `cancel_order` method.
+   - `InventoryRepository` updated with `release_items` (already exists, but ensure it's used).
+   - `PaymentRepository` updated with `refund_payment` method.
+   - API endpoint for cancelling an order.
+   - Tests for the cancellation flow.
+** Files to change
+   - `sample/domain.py`
+   - `sample/repositories.py`
+   - `sample/usecase.py`
+   - `sample/workflow.py`
+   - `sample/worker.py`
+   - `sample/api/app.py`
+   - `sample/api/requests.py`
+   - `sample/api/responses.py`
+   - `sample/repos/minio/` (update relevant repos)
+   - `sample/repos/temporal/` (update relevant repos)
+   - `sample/repos/temporal/proxies/` (update relevant repos)
+   - `sample/tests/`
+   - `sample/GUIDE.md`
+
+* NEXT: Implement a "Refund Order" Workflow (if different from Cancel)
+** Description
+   If "Cancel Order" doesn't fully cover refund scenarios (e.g., partial refunds, refunds for already completed orders without full cancellation), this workflow would handle those.
+** End State
+   - New `RefundOrderUseCase` and `RefundOrderWorkflow`.
+   - API endpoint for initiating refunds.
+   - Tests for refund flow.
+** Files to change
+   - `sample/domain.py`
+   - `sample/repositories.py`
+   - `sample/usecase.py`
+   - `sample/workflow.py`
+   - `sample/worker.py`
+   - `sample/api/app.py`
+   - `sample/api/requests.py`
+   - `sample/api/responses.py`
+   - `sample/repos/minio/` (update relevant repos)
+   - `sample/repos/temporal/` (update relevant repos)
+   - `sample/repos/temporal/proxies/` (update relevant repos)
+   - `sample/tests/`
+   - `sample/GUIDE.md`

@@ -1,0 +1,434 @@
+#+TITLE: Architectural Enforcement Patterns
+#+STARTUP: overview
+
+* Architectural Enforcement Patterns
+
+** Framework Philosophy
+
+This document defines the mandatory architectural patterns that must be followed within the Fun-Police Framework. These are not suggestions - they are requirements enforced to ensure system reliability, maintainability, and long-term architectural health.
+
+The framework embodies the principle that strict discipline reduces friction, which enables creativity. By eliminating architectural decision-making during implementation, developers can focus their creative energy on solving business problems rather than debating patterns.
+
+** Architecture Overview
+
+The system implements Clean Architecture with Hexagonal Architecture principles, creating clear separation between business logic and external concerns. The architecture is specifically designed for Temporal workflow orchestration while maintaining framework independence in the core domain.
+
+All implementations must follow these patterns exactly - innovation on architecture is explicitly prohibited to prevent technical debt and maintain system coherence.
+
+** Core Architectural Patterns
+
+*** 1. Clean Architecture Layers
+
+#+BEGIN_EXAMPLE
+┌─────────────────────────────────────────────────────────────┐
+│                    Frameworks & Drivers                     │
+│  FastAPI, CLI Programs, Temporal, Docker, Minio            │
+├─────────────────────────────────────────────────────────────┤
+│                   Interface Adapters                       │
+│  API Controllers, Repository Implementations, Workflows    │
+├─────────────────────────────────────────────────────────────┤
+│                     Use Cases                              │
+│  OrderFulfillmentUseCase, CancelOrderUseCase              │
+├─────────────────────────────────────────────────────────────┤
+│                      Domain                                │
+│  Order, Payment, InventoryItem (Pydantic Models)          │
+└─────────────────────────────────────────────────────────────┘
+#+END_EXAMPLE
+
+*Key Principle*: Dependencies point inward. Domain has no external dependencies. Use cases depend only on domain and repository protocols.
+
+*** 2. Repository Protocol Pattern
+
+*Protocol Definition* (=sample/repositories.py=):
+#+BEGIN_SRC python
+@runtime_checkable
+class PaymentRepository(Protocol):
+    async def process_payment(self, order: Order) -> PaymentOutcome: ...
+    async def get_payment(self, payment_id: str) -> Optional[Payment]: ...
+    async def refund_payment(self, args: RefundPaymentArgs) -> RefundPaymentOutcome: ...
+#+END_SRC
+
+*Three-Layer Implementation*:
+
+1. *Pure Backend Repository* (=sample/repos/minio/payment.py=):
+   - Direct interaction with storage technology (Minio)
+   - No Temporal dependencies
+   - Implements domain protocol
+   - Contains actual business logic for data persistence
+
+2. *Temporal Activity Implementation* (=sample/repos/temporal/minio_payments.py=):
+   - Wraps pure backend repository
+   - Methods decorated with =@activity.defn=
+   - Simple delegation pattern
+   - Registered with Temporal worker
+
+3. *Workflow Proxy* (=sample/repos/temporal/proxies/payment.py=):
+   - Used inside workflows for determinism
+   - Calls =workflow.execute_activity()=
+   - No actual business logic
+   - Ensures workflow replay safety
+
+*** 3. Temporal Workflow Determinism Pattern
+
+*Deterministic Workflow Code*:
+#+BEGIN_SRC python
+@workflow.defn
+class OrderFulfillmentWorkflow:
+    @workflow.run
+    async def run(self, request_dict: dict) -> OrderStatusResponse:
+        # Create deterministic proxies
+        payment_repo = WorkflowPaymentRepositoryProxy()
+        
+        # Use case remains unaware of Temporal
+        use_case = OrderFulfillmentUseCase(payment_repo=payment_repo)
+        
+        # Business logic execution
+        return await use_case.fulfill_order(request, request_id)
+#+END_SRC
+
+*Non-Deterministic Operations Delegated to Activities*:
+- ID generation (=generate_order_id=)
+- External API calls (=process_payment=)
+- Database writes (=save_order=)
+- File I/O operations (=upload_file=)
+
+*** 4. Saga Pattern Implementation
+
+*Forward Actions with Compensation*:
+#+BEGIN_SRC python
+async def fulfill_order(self, request, request_id):
+    inventory_reserved = False
+    
+    try:
+        # Forward Action 1: Reserve Inventory
+        inventory_outcome = await self.inventory_repo.reserve_items(order)
+        if inventory_outcome.status == "failed":
+            return failure_response
+        inventory_reserved = True
+        
+        # Forward Action 2: Process Payment
+        payment_outcome = await self.payment_repo.process_payment(order)
+        if payment_outcome.status == "failed":
+            # Compensation: Release inventory
+            await self.inventory_repo.release_items(order)
+            return failure_response
+            
+        return success_response
+    except Exception as e:
+        # Defensive compensation on unexpected errors
+        if inventory_reserved:
+            try:
+                await self.inventory_repo.release_items(order)
+            except Exception as comp_error:
+                logger.error("Compensation failed", exc_info=True)
+                # Don't re-raise - log and continue
+        raise
+#+END_SRC
+
+*Compensation Requirements*:
+- Every forward action has corresponding compensation
+- Compensations are idempotent
+- Compensation failures are logged but don't prevent error responses
+- Manual intervention escalation for compensation failures
+
+*** 5. Domain Model Validation Pattern
+
+*Pydantic Models with Business Rules*:
+#+BEGIN_SRC python
+class Order(BaseModel):
+    order_id: str
+    customer_id: str
+    items: List[OrderItem]
+    total_amount: Decimal
+    status: Literal["pending", "completed", "FAILED", "PAYMENT_FAILED"]
+    
+    @field_validator('items')
+    @classmethod
+    def items_must_not_be_empty(cls, v):
+        if not v:
+            raise ValueError('Order must contain at least one item')
+        return v
+    
+    @field_validator('total_amount')
+    @classmethod
+    def total_amount_must_be_positive(cls, v):
+        if v <= 0:
+            raise ValueError('Total amount must be positive')
+        return v
+#+END_SRC
+
+*Validation Strategy*:
+- Domain models enforce business rules through Pydantic validators
+- API boundaries validate input before business logic
+- Repository protocols validated at dependency injection
+- Runtime validation complements static type checking
+
+*** 6. Error Handling Strategy
+
+*Four-Layer Error Handling*:
+
+1. *Validation Layer* (Fail Fast):
+   #+BEGIN_SRC python
+   # API request validation
+   request = CreateOrderRequest(**request_data)  # Pydantic validation
+   
+   # Repository protocol validation
+   validated_repo = ensure_payment_repository(repo)
+   #+END_SRC
+
+2. *Business Outcome Layer*:
+   #+BEGIN_SRC python
+   # Expected business failures return outcome objects
+   payment_outcome = await self.payment_repo.process_payment(order)
+   if payment_outcome.status == "failed":
+       return OrderStatusResponse(status="PAYMENT_FAILED", reason=payment_outcome.reason)
+   #+END_SRC
+
+3. *Compensation Layer* (Saga Pattern):
+   #+BEGIN_SRC python
+   # Automatic compensation for multi-step operations
+   try:
+       await self.inventory_repo.release_items(order)
+   except Exception as e:
+       logger.error("Compensation failed", exc_info=True)
+       # Don't re-raise - defensive programming
+   #+END_SRC
+
+4. *API Layer*:
+   #+BEGIN_SRC python
+   # Convert internal errors to HTTP responses
+   try:
+       result = await use_case.fulfill_order(request, request_id)
+       return result
+   except Exception as e:
+       logger.error("Internal error", exc_info=True)
+       raise HTTPException(status_code=500, detail="Internal server error")
+   #+END_SRC
+
+*** 7. Large Payload Handling Pattern
+
+*FileStorageRepository Pattern*:
+#+BEGIN_SRC python
+# Store large data externally, pass references through workflows
+file_metadata = await self.file_storage_repo.upload_file(UploadFileArgs(
+    file_id=file_id,
+    data=large_file_content,
+    metadata={"order_id": order_id}
+))
+
+# Workflow only handles small reference
+return OrderStatusResponse(attachment_id=file_metadata.file_id)
+#+END_SRC
+
+*Benefits*:
+- Avoids Temporal 2MB payload limits
+- Maintains workflow determinism
+- Enables efficient large file handling
+
+*** 8. Dependency Injection Pattern
+
+*Protocol-Based Injection*:
+#+BEGIN_SRC python
+class OrderFulfillmentUseCase:
+    def __init__(
+        self, 
+        payment_repo: PaymentRepository,  # Protocol, not concrete class
+        inventory_repo: InventoryRepository,
+        order_repo: OrderRepository,
+    ):
+        # Runtime validation ensures protocol compliance
+        self.payment_repo = ensure_payment_repository(payment_repo)
+        self.inventory_repo = ensure_inventory_repository(inventory_repo)
+        self.order_repo = ensure_order_repository(order_repo)
+#+END_SRC
+
+*Context-Specific Injection*:
+- *API Context*: Concrete Temporal activity implementations
+- *Workflow Context*: Workflow proxy implementations
+- *Test Context*: Mock implementations
+- *Direct Context*: Pure backend implementations
+
+*** 9. Data Serialization Pattern
+
+*Pydantic DataConverter Integration*:
+With the =temporalio[pydantic]= extra installed, the default data converter handles
+Pydantic models automatically. No explicit configuration is needed.
+
+#+BEGIN_SRC python
+# Client and Worker use same data converter
+# Assumes 'endpoint', 'OrderFulfillmentWorkflow', and 'activities' are defined
+from temporalio.worker import Worker
+
+client = await Client.connect(endpoint, namespace="default")
+
+worker = Worker(
+    client,  # Inherits data converter
+    task_queue="some-queue",
+    workflows=[OrderFulfillmentWorkflow],
+    activities=activities,
+)
+#+END_SRC
+
+*Boundary Serialization*:
+#+BEGIN_SRC python
+# API to Workflow: Pydantic → JSON-serializable dict
+await client.start_workflow(
+    OrderFulfillmentWorkflow.run,
+    request.model_dump(mode="json"),  # Decimal → str conversion
+    id=request_id
+)
+
+# Workflow to Use Case: dict → Pydantic
+request = CreateOrderRequest(**request_dict)
+#+END_SRC
+
+*** 10. Testing Strategy Pattern
+
+*Testing Pyramid Implementation*:
+
+1. *Unit Tests* (Most): Use case logic with mocked repositories
+2. *Integration Tests* (Some): Repository implementations with real dependencies  
+3. *End-to-End Tests* (Few): Full workflow execution with Docker services
+
+*Mock Strategy*:
+#+BEGIN_SRC python
+# API tests mock at use case level
+mock_use_case = AsyncMock(spec=OrderFulfillmentUseCase)
+app.dependency_overrides[get_order_fulfillment_use_case_for_api] = lambda: mock_use_case
+
+# Use case tests mock at repository level
+mock_payment_repo = MagicMock(spec=PaymentRepository)
+use_case = OrderFulfillmentUseCase(payment_repo=mock_payment_repo)
+#+END_SRC
+
+** Component Relationships
+
+*** Repository Layer Hierarchy
+#+BEGIN_EXAMPLE
+Domain Protocol (PaymentRepository)
+    ↑ implements
+Pure Backend (MinioPaymentRepository)
+    ↑ wraps
+Temporal Activity (TemporalMinioPaymentRepository)
+    ↑ delegates to
+Workflow Proxy (WorkflowPaymentRepositoryProxy)
+#+END_EXAMPLE
+
+*** Workflow Execution Flow
+#+BEGIN_EXAMPLE
+API Request → Temporal Client → Workflow → Use Case → Repository Proxy → Activity → Backend Repository → External System
+#+END_EXAMPLE
+
+*** Data Flow Pattern
+#+BEGIN_EXAMPLE
+HTTP JSON → Pydantic Model → JSON Dict → Workflow → Pydantic Model → Domain Logic → Repository Protocol → External Storage
+#+END_EXAMPLE
+
+** Key Design Decisions
+
+*** Why Three Repository Layers?
+- *Separation of Concerns*: Backend logic separate from Temporal concerns
+- *Testability*: Each layer can be tested independently
+- *Flexibility*: Backend can be swapped without changing Temporal layer
+- *Determinism*: Workflow proxies ensure replay safety
+
+*CRITICAL*: Never use "unsafe_mock_*" functions in workflows. These violate Clean Architecture by mixing concerns and creating untestable, non-deterministic code. Always use proper repository proxies that delegate to real activities.
+
+*** Why Protocol-Based Dependency Injection?
+- *Type Safety*: Static and runtime validation
+- *Framework Independence*: Use cases don't depend on concrete implementations
+- *Testing*: Easy mocking and substitution
+- *Architecture Enforcement*: Prevents dependency rule violations
+
+*** Why Saga Pattern Over Transactions?
+- *Distributed Systems*: No global transaction coordinator
+- *Long-Running Processes*: Workflows can run for hours/days
+- *Failure Isolation*: Partial failures don't block entire system
+- *Observability*: Clear compensation audit trail
+
+*** Why Pydantic for Domain Models?
+- *Validation*: Business rules enforced at model level
+- *Serialization*: Seamless JSON conversion for Temporal
+- *Type Safety*: Runtime validation complements static typing
+- *Documentation*: Self-documenting model structure
+
+*** 11. Use Case Constructor Parameter Activity Naming Pattern
+
+*Problem*: Temporal activities need unique names across the entire namespace, but workflows must not know about specific repository implementations to avoid abstraction leaks.
+
+*Solution*: Use case constructor parameter names define the semantic roles within each use case context. Activity names follow the pattern: `{domain}.{usecase}.{constructor_param_name}.{method}`
+
+*Example*:
+#+BEGIN_SRC python
+class CalendarSyncUseCase:
+    def __init__(self, source_repo: CalendarRepository, sink_repo: CalendarRepository):
+        # Activity names derived from parameter names:
+        # cal.calendar_sync.source_repo.get_changes
+        # cal.calendar_sync.sink_repo.apply_changes
+
+class CreateScheduleUseCase:
+    def __init__(self, calendar_repo: CalendarRepository, schedule_repo: ScheduleRepository, classifier_repo: TimeBlockClassifierRepository):
+        # Activity names:
+        # cal.create_schedule.calendar_repo.get_events_by_date_range
+        # cal.create_schedule.schedule_repo.save_schedule
+        # cal.create_schedule.classifier_repo.triage_event
+#+END_SRC
+
+*Implementation Pattern*:
+#+BEGIN_SRC python
+# Activity Definition
+@activity.defn(name="cal.calendar_sync.source_repo.get_changes")
+async def get_changes(self, calendar_id: str, sync_state: Optional[SyncState]) -> CalendarChanges:
+    return await self.concrete_repo.get_changes(calendar_id, sync_state)
+
+# Workflow Proxy
+class CalendarSyncSourceRepositoryProxy(CalendarRepository):
+    async def get_changes(self, calendar_id: str, sync_state: Optional[SyncState]):
+        return await workflow.execute_activity(
+            "cal.calendar_sync.source_repo.get_changes",
+            (calendar_id, sync_state),
+            start_to_close_timeout=self.activity_timeout,
+        )
+#+END_SRC
+
+*Benefits*:
+- *No Abstraction Leaks*: Workflows only know about use case structure, not implementation details
+- *Self-Documenting*: Activity names directly map to use case constructor parameters
+- *Refactor-Safe*: Parameter renames automatically indicate needed activity name changes
+- *No Invented Role Concepts*: Uses existing semantic meaning from constructor parameters
+- *Scalable*: New domains and use cases follow the same consistent pattern
+
+*Implementation Requirements*:
+- All Temporal activities must follow this naming convention
+- Use case constructor parameters define the semantic roles
+- Activity registration maps parameter names to activity names
+- Workflow proxies use identical naming for `workflow.execute_activity()` calls
+- No implementation details (google, postgresql, etc.) in activity names
+
+This pattern collection enables building complex, distributed, long-running workflows while maintaining clean architecture principles and ensuring system reliability through comprehensive error handling and compensation strategies.
+
+** Pattern Violation Recovery
+
+When architectural violations are detected (such as using "unsafe_mock_*" functions or skipping repository layers), follow this recovery process:
+
+*** 1. Stop and Assess
+- Identify which Clean Architecture principles were violated
+- Determine which layers were incorrectly mixed or skipped
+- Review the proven patterns in sample/ for correct implementation
+
+*** 2. Break Down the Problem
+- Split complex tasks into single-layer tasks
+- Create separate tasks for: Pure Backend → Temporal Activity → Workflow Proxy
+- Ensure each task has clear, testable completion criteria
+
+*** 3. Follow Proven Patterns
+- Use sample/ implementations as exact templates
+- Copy-paste-adapt rather than innovating on architecture
+- Maintain the exact same structure and naming conventions
+
+*** 4. Validate Each Layer
+- Test each layer independently before moving to the next
+- Ensure repository protocols are properly implemented
+- Verify workflow determinism is maintained
+
+This recovery process prevents architectural debt and ensures the system maintains its proven patterns.

@@ -1,0 +1,110 @@
+#+TITLE: FIXME: Sample Domain Technical Debt
+#+TODO: TODO NEXT WIP BLOCKED | DONE CANCELLED ABANDONED
+#+STARTUP: overview
+
+* Sample Domain Technical Debt Tasks
+
+This file manages executable tasks for technical debt specific to the sample/ domain. Cross-domain issues are tracked in the root fixme.org file.
+
+All tasks follow the methodology documented in memory-bank/methodology.org and maintain Clean Architecture boundaries from memory-bank/systemPatterns.org.
+
+** Active Sample Domain Tasks
+
+*** NEXT Remove Sample Empty Files
+Clean up obsolete empty files specific to sample domain, following file-centric task definition from memory-bank/methodology.org.
+
+**** Architectural Rationale
+Empty files from architectural evolution create confusion and violate intentional code organization. These sample-specific files are no longer needed after moving to the three-layer repository pattern documented in memory-bank/systemPatterns.org.
+
+**** Files to create/modify
+- `sample/converters.py`: Remove empty file
+- `sample/temporal_repositories.py`: Remove empty file
+- `sample/minio_repositories.py`: Remove empty file
+
+**** Completion Criteria
+- [ ] All three empty sample files are removed
+- [ ] No import errors occur in sample domain after removal
+- [ ] All sample tests pass after cleanup
+- [ ] No references to removed files exist in sample codebase
+
+*** TODO Implement Sample File Upload Security
+Add comprehensive security measures for sample domain file uploads through FileStorageRepository, maintaining Clean Architecture boundaries.
+
+**** Architectural Rationale
+Current sample file upload endpoints lack security validation, violating security best practices. Per memory-bank/systemPatterns.org Large Payload Handling Pattern, file uploads must use FileStorageRepository with security measures implemented in repository layer.
+
+**** Files to create/modify
+- `sample/repos/minio/file_storage.py`: Add file size limits, content-type validation, malicious content scanning
+- `sample/api/app.py`: Remove direct file handling from upload_order_attachment endpoint
+- `sample/domain.py`: Add FileUploadSecurityArgs model with validation rules
+- `sample/tests/api/test_file_upload_security.py`: Add security validation tests
+
+**** Completion Criteria
+- [ ] File size limits enforced in MinioFileStorageRepository
+- [ ] Content-type validation against actual file content
+- [ ] Malicious file upload prevention
+- [ ] API endpoints delegate all file operations to FileStorageRepository
+- [ ] Security tests pass for all file upload scenarios
+
+*** TODO Fix Sample File Streaming Performance
+Implement streaming file operations in sample domain following Large Payload Handling Pattern from memory-bank/systemPatterns.org.
+
+**** Architectural Rationale
+Current sample file operations load entire files into memory, violating the Large Payload Handling Pattern. Should implement streaming through FileStorageRepository to handle large files efficiently without memory exhaustion.
+
+**** Files to create/modify
+- `sample/repos/minio/file_storage.py`: Implement streaming upload/download methods
+- `sample/api/app.py`: Update file endpoints to use streaming operations
+- `sample/domain.py`: Add streaming-specific models and validation
+- `sample/tests/api/test_file_streaming.py`: Add streaming performance tests
+
+**** Completion Criteria
+- [ ] File upload supports streaming for large files
+- [ ] File download returns streaming response
+- [ ] Memory usage remains constant regardless of file size
+- [ ] All file operations use FileStorageRepository streaming methods
+- [ ] Performance tests validate streaming behavior
+
+*** TODO Improve Sample E2E Test Reliability
+Fix sample domain E2E test reliability issues following Testing Strategy Pattern from memory-bank/systemPatterns.org.
+
+**** Architectural Rationale
+Current sample E2E tests have reliability issues with hardcoded timeouts and poor error handling. Per memory-bank/systemPatterns.org Testing Strategy Pattern, E2E tests should be minimal, reliable, and focus on critical paths.
+
+**** Files to create/modify
+- `sample/tests/e2e/test_order_fulfillment.py`: Implement exponential backoff, better error handling
+- `sample/tests/e2e/conftest.py`: Add test cleanup utilities and timeout configuration
+- `sample/tests/e2e/test_order_cancellation.py`: Fix timeout and polling issues
+- `sample/tests/e2e/utils.py`: Create E2E test utilities for reliable polling
+
+**** Completion Criteria
+- [ ] E2E tests use exponential backoff instead of fixed intervals
+- [ ] Configurable timeouts based on environment
+- [ ] Proper cleanup of created orders/files after test execution
+- [ ] Robust error handling in all E2E test scenarios
+- [ ] E2E tests pass consistently in slow environments
+
+** Completed Sample Domain Tasks
+
+*** DONE Example Completed Task
+This section will contain completed sample domain tasks moved from active sections above.
+
+** Implementation Notes
+
+*** Task Execution Guidelines
+- Only work on tasks marked NEXT (following memory-bank/methodology.org)
+- Each task focuses on single architectural boundary within sample domain
+- All changes must maintain Clean Architecture principles
+- Cross-reference memory-bank/systemPatterns.org for implementation patterns
+
+*** Sample Domain Quality Standards
+- Repository changes must follow exact three-layer pattern
+- Security fixes implemented in repository layer, not API layer
+- Performance improvements must not violate Large Payload Handling Pattern
+- E2E tests should be minimal and focus on critical sample domain paths
+
+*** Success Metrics
+- All tasks have concrete completion criteria with specific sample files
+- File changes are explicitly specified for sample domain
+- Architectural rationale references memory bank documentation
+- Tasks can be executed independently without scope creep in sample domain

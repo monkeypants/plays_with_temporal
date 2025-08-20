@@ -1,0 +1,141 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  calendar-postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: calendar
+      POSTGRES_PASSWORD: calendar
+      POSTGRES_DB: calendar
+    volumes:
+      - calendar-postgres-data:/var/lib/postgresql/data
+      - ./cal/repos/postgresql/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calendar"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  temporal:
+    image: temporalio/auto-setup:1.27.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+    ports:
+      - "7234:7233"
+      - "8233:8233"
+
+  temporal-ui:
+    image: temporalio/ui:2.10.3
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - "8001:8080"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  sample-worker:
+    build:
+      context: .
+      dockerfile: sample/Dockerfile.worker
+    depends_on:
+      temporal:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ENDPOINT=temporal:7233
+      - MINIO_ENDPOINT=minio:9000
+      - LOG_LEVEL=INFO
+    restart: on-failure
+
+  sample-api:
+    build:
+      context: .
+      dockerfile: sample/Dockerfile.api
+    depends_on:
+      temporal:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ENDPOINT=temporal:7233
+      - MINIO_ENDPOINT=minio:9000
+      - LOG_LEVEL=INFO
+    ports:
+      - "8002:8000"
+
+  calendar-worker:
+    build:
+      context: .
+      dockerfile: cal/Dockerfile.worker
+    depends_on:
+      temporal:
+        condition: service_started
+      calendar-postgres:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - CALENDAR_DB_HOST=calendar-postgres
+      - CALENDAR_DB_PORT=5432
+      - CALENDAR_DB_USER=calendar
+      - CALENDAR_DB_PASSWORD=calendar
+      - CALENDAR_DB_NAME=calendar
+      - LOG_LEVEL=INFO
+      - SYNC_COLLECTION_ID=work
+      - SYNC_INTERVAL_MINUTES=15
+    volumes:
+      - ./config:/app/config:ro
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.json:/app/token.json:rw
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import temporalio; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres-data:
+  calendar-postgres-data:
+  minio-data:

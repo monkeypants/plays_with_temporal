@@ -1,0 +1,25 @@
+aider-chat
+pytest>=8.0.0
+pytest-asyncio>=1.0.0
+pytest-cov>=4.1.0
+mypy>=1.0.0
+fastapi>=0.100.0
+pydantic>=2.0.0
+temporalio[pydantic]>=1.3.0
+minio>=7.0.0
+uvicorn>=0.20.0
+python-multipart
+click>=8.0.0
+Jinja2>=3.0.0
+hypothesis>=6.0.0
+
+# Development and linting tools
+pre-commit>=3.0.0
+black>=24.0.0
+ruff>=0.5.0
+google-api-python-client
+google-auth-oauthlib
+PyYAML>=6.0.0
+asyncpg
+bandit
+python-magic>=0.4.27

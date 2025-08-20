@@ -1,0 +1,16 @@
+#!/bin/bash
+# Wrapper script for calendar sync CLI
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Change to project root directory
+cd "$PROJECT_ROOT"
+
+# Handle Docker networking - map TEMPORAL_ENDPOINT to TEMPORAL_ADDRESS
+# Default to Docker host port mapping (7234 maps to container 7233)
+export TEMPORAL_ADDRESS=${TEMPORAL_ADDRESS:-${TEMPORAL_ENDPOINT:-localhost:7234}}
+
+# Run the calendar sync CLI with all arguments passed through
+python -m cal.cli.sync_calendar "$@"

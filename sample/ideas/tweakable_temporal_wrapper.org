@@ -1,0 +1,73 @@
+* Problem: Non-Tweakable Boilerplate from Code Generation
+** Context
+   As discussed in [[file:dynamic_temporal_wrappers.org][`sample/ideas/dynamic_temporal_wrappers.org`]], we've identified a significant amount of boilerplate in our `Temporal Activity Implementation` classes (e.g., `TemporalMinioOrderRepository`). These classes primarily delegate calls from Temporal activities to our pure backend repositories. Our previous analysis recommended a build-time code generation approach (via Makefile/macro) to eliminate this boilerplate.
+
+** The Limitation of Simple Code Generation
+   The straightforward code generation approach, while excellent for reducing initial boilerplate and ensuring consistency, has a limitation: it typically overwrites existing files entirely. This means:
+   -   Any manual customisations (e.g., specific `start_to_close_timeout` for a particular activity, custom logging within a specific activity method, or pre/post-processing logic) would be lost every time the generator runs.
+   -   Developers would be forced to either:
+       1.  Avoid customisation entirely, even when a valid need arises.
+       2.  Manually maintain the entire wrapper class outside the generator's scope, losing the benefits of automation for that specific class.
+       3.  Re-apply their customisations after every regeneration, which is tedious and error-prone.
+
+   This creates friction and can lead to developers "fighting" the generator, potentially undermining the benefits of the automated approach. We need a way to have the best of both worlds: automated generation for boilerplate, but flexibility for specific, justified customisations.
+
+* Proposed Solution: Smart, Non-Destructive Code Generation
+** Description
+   The proposed solution is to implement a "smart" code generator that is non-destructive and provides intelligent feedback. Instead of simply overwriting files, this generator would:
+   -   **Add Missing Components**: If a `Temporal Activity Implementation` class (e.g., `TemporalMinioOrderRepository`) is missing, it will be generated. If a method within an existing generated class is missing (based on the `Protocol` definition), that method will be added.
+   -   **Preserve Existing Code**: If a `Temporal Activity Implementation` class or a method within it already exists, the generator will *not* overwrite it. This allows developers to manually tweak or extend the generated code without fear of their changes being lost.
+   -   **Provide Intelligent Warnings**: The generator will analyze existing code and report discrepancies, helping developers maintain the codebase.
+
+** Technical Approach for the Smart Generator
+   The `scripts/generate_temporal_wrappers.py` script would be enhanced to perform the following steps:
+   1.  **Parse Existing Files**: Before generating, the script would read and parse the existing Python files in `sample/repos/temporal/` (and potentially `sample/repos/temporal/proxies/` if we extend this idea there). This would likely involve using Python's `ast` module to build an Abstract Syntax Tree of the existing code, allowing the generator to understand the classes and methods already present.
+   2.  **Compare and Merge**: For each `Temporal Activity Implementation` class that *should* exist (based on `PROTOCOL_BACKEND_MAP`):
+       -   If the file/class doesn't exist, generate it completely.
+       -   If the file/class exists, iterate through the methods defined in the corresponding `Protocol`.
+       -   For each protocol method:
+           -   If the method is *missing* in the existing generated class, generate and add it.
+           -   If the method *exists* in the existing generated class:
+               -   **Compare Signature and Body**: Compare the existing method's signature and body against what the generator *would* produce for a standard delegation.
+               -   **Log INFO for Variations**: If the existing method's signature or body differs from the standard generated version (indicating a manual tweak), log an `INFO` message. This informs developers that a specific method has been customised and was intentionally left untouched.
+               -   **Log WARNING for Obsolete/Unexpected Code**: If a method exists in the file/class that is *not* part of the current `Protocol` (or is an unexpected custom addition that doesn't fit the delegation pattern), log a `WARNING` message. This flags potential cruft or methods that might be obsolete due to protocol changes.
+   3.  **Write Updated Files**: The generator would then write the modified (or newly created) Python files back to disk. This might involve using a library like `libcst` or `black` to ensure consistent formatting of the merged code, or carefully reconstructing the code string.
+
+** How the Smart Generator Assists Maintenance (Logging Levels)
+   The two levels of logging are crucial for providing actionable feedback to developers:
+
+   -   **INFO Level Logging (Identifying Variations)**:
+       -   **Purpose**: To inform developers when a generated file or method has been manually modified and was intentionally *not* overwritten. This confirms that their customisations are being respected.
+       -   **Example Message**: "INFO: `sample/repos/temporal/minio_orders.py::TemporalMinioOrderRepository.save_order` differs from generated template. Skipping overwrite."
+       -   **Action for Developer**: Typically, no action is required. This is a confirmation that their custom code is safe. It helps them remember where custom logic resides.
+
+   -   **WARNING Level Logging (Identifying Obsolete/Unexpected Code)**:
+       -   **Purpose**: To alert developers to code that exists in a generated file but is no longer expected or relevant based on the current `Protocol` definitions. This helps identify potential cruft or methods that need manual review/removal.
+       -   **Example Message**: "WARNING: `sample/repos/temporal/minio_orders.py::TemporalMinioOrderRepository.old_unsupported_method` exists but is not part of `OrderRepository` protocol. Consider removal."
+       -   **Action for Developer**: Review the flagged code. It might be:
+           -   An old method from a previous version of the protocol that is no longer needed.
+           -   A custom method that was added but is no longer relevant or correctly integrated.
+           -   A typo or misnamed method.
+           -   A method that needs to be explicitly excluded from generation if it's truly custom and not protocol-bound.
+
+** Pros
+   -   **Maximum Flexibility**: Developers can freely customise generated files when necessary, without losing their changes on subsequent runs.
+   -   **Reduced Friction**: Eliminates the "fighting the generator" problem, leading to a smoother development workflow.
+   -   **Intelligent Feedback**: The INFO/WARNING logging provides clear, actionable insights into the state of the generated code, helping to manage customisations and identify cruft.
+   -   **Gradual Customisation**: Start with fully generated code, and only introduce manual tweaks as specific needs arise.
+   -   **Protocol Guardrails Remain**: Static type checking (MyPy) against the `Protocol` definitions still ensures that even tweaked methods adhere to the expected interface, catching errors early.
+
+** Cons
+   -   **Significant Generator Complexity**: Building a generator that can parse, compare, and intelligently merge Python code (especially handling imports, comments, and formatting) is a non-trivial task. It often requires deep knowledge of Python's `ast` module or external libraries designed for code manipulation. This is a substantial upfront investment.
+   -   **Increased Maintenance of the Generator**: The generator itself becomes a complex piece of software that needs to be maintained and tested. Changes to Python versions, `temporalio` library updates, or even subtle changes in how protocols are defined might require updates to the generator.
+   -   **Manual Update Burden for Tweaked Code**: While the generator won't *overwrite* tweaks, it also won't *update* them. If a protocol method's signature changes, developers are still responsible for manually updating any corresponding tweaked methods in the generated files. The generator will warn them, but the manual work remains.
+   -   **Potential for Subtle Bugs**: Merging code programmatically can introduce subtle bugs if not handled perfectly (e.g., incorrect indentation, misplaced comments, or unintended side effects).
+   -   **Reduced Strict Consistency**: While flexibility is a pro, it also means the codebase will have a mix of strictly generated and manually tweaked code, which can lead to minor inconsistencies in style or implementation details over time.
+
+* Recommendation
+   This "smart" code generation approach is a powerful pattern for managing boilerplate while retaining flexibility. However, it represents a significant increase in complexity for the generator itself.
+
+   -   **If the anticipated need for customisation is high and varied**, and the team is prepared to invest in building and maintaining a sophisticated code generation tool, then this approach is highly recommended. It provides the best long-term balance between automation and developer freedom.
+   -   **If the need for customisation is expected to be rare and simple**, the overhead of building such a "smart" generator might outweigh the benefits. In that case, a simpler, fully overwriting generator (as discussed in `dynamic_temporal_wrappers.org`) combined with a clear policy for manually maintaining *truly custom* wrapper classes (by explicitly excluding them from generation) might be more pragmatic.
+
+   Given the current stage of the project, it's a valuable idea to keep in mind for when the boilerplate becomes a more significant pain point and the need for granular customisation becomes clearer. It's a step up in sophistication that should be considered when the benefits clearly justify the increased complexity.

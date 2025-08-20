@@ -1,0 +1,306 @@
+#+TITLE: Engineering Discipline Methodology
+#+SUBTITLE: Architectural Enforcement and Quality Assurance Framework
+#+STARTUP: overview
+
+* Engineering Discipline Methodology
+
+This methodology extracts the proven patterns from the successful POC implementation (documented in sample/todo.org) and generalizes them into a comprehensive engineering discipline framework. The Fun-Police Framework enforces architectural rigor through systematic constraints that reduce friction and enable creativity.
+
+Following the climbing principle that "slow is smooth and smooth is fast," this methodology prioritizes methodical adherence to proven patterns over rapid iteration. Strict discipline in architectural decisions eliminates decision paralysis and prevents technical debt, ultimately accelerating development velocity.
+
+The framework integrates with the comprehensive documentation system and applies the mandatory architectural principles from systemPatterns.org.
+
+** Core Principles
+
+*** Architecture-Driven Task Decomposition
+Tasks must map directly to architectural boundaries defined in memory-bank/systemPatterns.org:
+- Domain model changes (Pydantic models with validation)
+- Repository protocol updates (three-layer pattern: Pure Backend → Temporal Activity → Workflow Proxy)
+- Use case modifications (business logic orchestration)
+- API endpoint additions (FastAPI with dependency injection)
+- Test coverage expansion (testing pyramid: unit → integration → E2E)
+
+*** Activity Naming Requirements
+When implementing Temporal activities, follow the Use Case Constructor Parameter naming pattern documented in systemPatterns.org:
+
+*Naming Rule*: Activity names must derive from use case constructor parameter names using the format `{domain}.{usecase}.{constructor_param_name}.{method}`
+
+*Validation Criteria*:
+- Use case constructor parameters define semantic roles (source_repo, sink_repo, etc.)
+- Activity names map directly to these parameter names
+- Workflow proxies use identical naming for `workflow.execute_activity()` calls
+
+*Example Task Validation*:
+If implementing a new use case with constructor `__init__(self, data_repo: DataRepository, cache_repo: CacheRepository)`, the activities must be named:
+- `{domain}.{usecase}.data_repo.{method}`
+- `{domain}.{usecase}.cache_repo.{method}`
+
+*Architecture Compliance Check*:
+- [ ] Use case constructor parameters define clear semantic roles
+- [ ] Activity names follow the exact naming pattern
+- [ ] Workflow proxies use matching activity names
+- [ ] No abstraction leaks (implementation details) in names
+
+*** File-Centric Task Definition
+Following the successful pattern from sample/todo.org, tasks are defined by specific files that need to change, not abstract outcomes. This provides:
+- Clear completion criteria (all specified files changed as described)
+- Architectural traceability (changes map to system boundaries)
+- Incremental progress tracking (file-by-file validation)
+- Reduced scope creep (concrete boundaries prevent expansion)
+
+*** Incremental Evolution Pattern
+Rather than "build new system," tasks follow "evolve existing system" using Gall's Law principles:
+- Start with working patterns from sample/ reference implementation
+- Apply minimal changes to support new domain requirements
+- Maintain working system at each evolutionary step
+- Validate architectural principles are preserved throughout
+
+*** Technical Rationale Integration
+Each task includes architectural reasoning that cross-references:
+- memory-bank/systemPatterns.org for architectural compliance
+- memory-bank/techContext.md for technology stack alignment
+- memory-bank/projectbrief.org for domain boundary validation
+- sample/GUIDE.md for implementation pattern adherence
+
+** Architectural Compliance Requirements (MANDATORY)
+
+The Fun-Police Framework enforces strict compliance with proven patterns. These are not suggestions - they are requirements that prevent architectural violations and technical debt.
+
+*File Creation Rule*: Only create files explicitly listed in the current NEXT task.
+*Scope Boundary*: If the task doesn't mention repositories, don't create repository protocols.
+*Architecture Timing*: Don't implement Clean Architecture patterns until explicitly requested.
+*Test Timing*: Don't write integration or end-to-end tests until the basic functionality works. Unit tests for use cases, which use mocked dependencies, should be written alongside the use case itself.
+
+*Architectural Violations (Framework Enforcement)*:
+- Creating more than 5 files for a single task
+- Implementing patterns not mentioned in the task
+- Building abstractions before concrete implementations
+- Working on tasks not marked NEXT
+- Using "unsafe_mock_*" functions in production workflows
+- Mixing multiple architectural layers in a single task
+- Testing integration instead of units in workflow tests
+- Innovating on architecture instead of following proven patterns
+
+** Task Structure Template
+
+*** Org-Mode Task Hierarchy
+Org-mode supports hierarchical structure where high-level items can be documentation/objectives, with specific TODO tasks as sub-items:
+
+#+BEGIN_EXAMPLE
+* Personal Assistant Implementation          # Documentation section
+** Create Google Calendar → calendar.org MVP # High-level objective (not TODO)
+This section describes the overall goal and context.
+
+*** NEXT Stage 1: Basic Calendar Polling    # Specific executable task
+Brief description of what needs to be done.
+
+**** Files to create/modify
+- [specific file]: [specific change description]
+- [specific file]: [specific change description]
+
+**** Completion Criteria
+- [ ] All specified files changed as described
+- [ ] Basic functionality works as demonstrated
+- [ ] Ready for next stage
+
+*** TODO Stage 2: Data Processing          # Next specific task
+*** TODO Stage 3: Output Generation        # Future specific task
+#+END_EXAMPLE
+
+*** Task Specification Requirements
+Only items marked with TODO/NEXT/DONE need specific file lists and completion criteria. Higher-level sections can be objective-oriented and provide context.
+
+*Executable Task Requirements*:
+- Must specify exact files to create/modify
+- Must have clear completion criteria
+- Must maintain working system
+
+*Documentation Section Guidelines*:
+- Provide context and rationale
+- Explain overall objectives
+- Cross-reference memory bank files
+- No specific implementation requirements
+
+*** Task Granularity Guidelines
+Based on successful patterns from sample/todo.org:
+
+**** Optimal Task Size
+- 1-5 files changed per task
+- Single architectural boundary crossed
+- Clear, testable completion criteria
+
+**** Task Decomposition Signals
+Break down tasks when they involve:
+- Multiple architectural layers simultaneously
+- More than 5 file changes
+- Unclear completion criteria
+- Dependencies on other incomplete work
+
+**** Task Combination Signals
+Combine tasks when they:
+- Change the same files for related reasons
+- Implement complementary aspects of same feature
+- Have identical architectural rationale
+- Cannot be validated independently
+
+** Implementation Workflow
+
+*** Phase 1: Architecture Mapping
+Before defining implementation tasks:
+
+**** Domain Analysis
+- Map target functionality to domain models (memory-bank/projectbrief.org)
+- Identify required repository protocols
+- Define use case orchestration patterns
+- Validate against Clean Architecture principles (memory-bank/systemPatterns.org)
+
+**** Pattern Identification
+- Locate equivalent patterns in sample/ reference implementation
+- Identify architectural boundaries that need modification
+- Map to three-layer repository pattern requirements
+- Cross-reference with memory-bank/techContext.md for technology constraints
+
+**** Dependency Mapping
+- Identify file dependencies and change ordering
+- Map to org-mode task hierarchy (parent/child relationships)
+- Establish validation checkpoints
+- Plan incremental working system maintenance
+
+*** Phase 2: Task Definition
+Using the standard task format:
+
+**** Technical Outcome Specification
+- Use concrete, measurable outcomes
+- Reference specific architectural patterns
+- Include validation criteria
+- Cross-reference memory bank documentation
+
+**** File Change Documentation
+- List every file that needs modification
+- Describe specific changes required
+- Include new files that need creation
+- Reference deletion of obsolete files
+
+**** Architectural Rationale
+- Explain how changes maintain system patterns
+- Justify approach against alternatives
+- Reference relevant memory bank sections
+- Include lessons learned from sample/todo.org
+
+*** Phase 3: Execution and Validation
+Following the proven workflow from sample/todo.org:
+
+**** Implementation Tracking
+- Update task progress as files are modified
+- Use org-mode TODO state transitions (TODO → NEXT → DONE)
+- Document implementation discoveries and adjustments
+- Maintain architectural compliance throughout
+
+**** Validation Checkpoints
+- Run tests after each file modification
+- Validate architectural principles are maintained
+- Check cross-references to memory bank remain accurate
+- Ensure working system is preserved
+
+**** Completion Documentation
+- Mark tasks DONE (git history provides timing)
+- Document any deviations from original plan
+- Update memory bank files if architectural insights discovered
+- Archive completed tasks to maintain focus on active work
+
+** Integration with Memory Bank System
+
+*** Cross-Reference Requirements
+Tasks must reference relevant memory bank files:
+- memory-bank/projectbrief.org for domain boundary validation
+- memory-bank/systemPatterns.org for architectural compliance
+- memory-bank/techContext.org for technology stack alignment
+- memory-bank/instructions.org for AI pair programming patterns
+
+*** Memory Bank Update Triggers
+Update memory bank when tasks reveal:
+- New architectural patterns or insights
+- Changes to technology stack or constraints
+- Evolution of domain understanding
+- Improvements to development methodology
+
+*** Documentation Synchronization
+Maintain consistency between:
+- Task descriptions and memory bank context
+- Architectural rationale and systemPatterns.org
+- Technical constraints and techContext.org
+- Progress tracking and current status in tasks.org
+
+** Quality Assurance Patterns
+
+*** Architectural Validation
+Each task must demonstrate:
+- Clean Architecture principles maintained (dependency inversion, separation of concerns)
+- Repository pattern correctly implemented (three-layer structure)
+- Workflow determinism preserved (non-deterministic operations in activities)
+- Error handling follows saga pattern (forward/compensation pairs)
+
+*** Testing Integration
+Testing follows the pyramid strategy documented in systemPatterns.org:
+- Unit tests for use case logic with mocked repositories
+- Integration tests for repository contract compliance
+- E2E tests for critical workflow paths
+- Type safety validation with mypy
+
+*** Code Quality Standards
+Aligned with memory-bank/techContext.org:
+- Pydantic v2 models with field validators
+- Structured logging with business context
+- Protocol-based dependency injection
+- Comprehensive error handling with defensive compensation
+- *Semantic Line Breaks*: For docstrings and long comments, use
+  semantic line breaks. This practice improves readability in raw source
+  files and aids in reviewing diffs. It is also the required method for
+  adhering to line-length limits in documentation, as =black= does not
+  automatically format them.
+
+** Lessons Learned from sample/todo.org
+
+*** What Worked Well
+- Concrete file-change specifications prevented scope creep
+- Architectural rationale embedded in tasks maintained system coherence
+- Incremental refactoring approach preserved working system
+- Clear completion criteria enabled definitive progress tracking
+- Technical focus over product focus accelerated implementation
+
+*** Anti-Patterns Identified
+- Avoid abstract, high-level task descriptions without implementation details
+- Don't define tasks without specific file changes
+- Prevent large-scope tasks that span multiple architectural boundaries
+- Avoid vague completion criteria that can't be objectively validated
+- Don't separate architectural reasoning from task implementation
+- *Never use "unsafe_mock_*" functions in production workflows* - these violate Clean Architecture
+- *Don't skip the three-layer repository pattern* - always implement Pure Backend → Activity → Proxy
+- *Don't test business logic in workflow tests* - workflow tests should only verify orchestration
+- *Don't jump to complex implementations* - follow the proven patterns from sample/ exactly
+
+*** Success Patterns to Replicate
+- Start with working reference implementation patterns
+- Define tasks as evolutionary steps, not revolutionary changes
+- Include architectural reasoning in every task description
+- Specify exact files and changes required
+- Maintain working system throughout development process
+- Use org-mode TODO states for clear progress tracking
+- Document rationale for future reference and learning
+- *Follow the exact three-layer pattern from sample/* - Pure Backend → Temporal Activity → Workflow Proxy
+- *Never innovate on architecture* - replicate proven patterns exactly
+- *Break complex tasks into single-layer tasks* - one architectural boundary per task
+- *Validate each layer independently* - ensure each layer works before moving to next
+
+This methodology transforms the successful ad-hoc approach from sample/todo.org into a systematic, repeatable process that maintains architectural integrity while enabling rapid, confident development progress.
+
+** Enhancing the Methodology (Meta-Tasks)
+
+The Memory Bank and its methodology are not static; they are expected to evolve. Tasks aimed at improving the documentation, tooling, or the methodology itself are called "meta-tasks." These are distinct from feature implementation tasks and follow a slightly different pattern.
+
+*Characteristics of Meta-Tasks*:
+- *Focus*: They improve the process of development and documentation, not the product's features.
+- *Scope*: They often involve research, design, and updates to the =memory-bank/= files themselves (e.g., =methodology.org=, =systemPatterns.org=).
+- *Structure*: While they reside in =tasks.org=, their definition may be more goal-oriented than file-centric. The "Files to create/modify" section might be less prescriptive, focusing on the concepts to be documented rather than specific lines of code.
+
+The core principles of incremental evolution still apply. Meta-tasks should be broken down into manageable steps that maintain a working, coherent Memory Bank at every stage.

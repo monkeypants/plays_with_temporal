@@ -1,0 +1,5 @@
+temporalio==1.2.0
+fastapi==0.95.1
+uvicorn==0.22.0
+pydantic==2.5.0
+minio==7.1.14
