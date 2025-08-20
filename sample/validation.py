@@ -413,7 +413,7 @@ def create_validated_repository_factory(
         >>> repo = factory()  # Will validate on creation
     """
 
-    def factory(*args, **kwargs):
+    def factory(*args: Any, **kwargs: Any) -> Any:
         logger.debug(
             "Creating validated repository",
             extra={

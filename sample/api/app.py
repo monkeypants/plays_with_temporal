@@ -156,7 +156,7 @@ async def create_order(request: CreateOrderRequest) -> OrderRequestResponse:
 @app.get("/order-requests/{request_id}")
 async def get_request_status(
     request_id: str,
-    request_repo=Depends(
+    request_repo: Any = Depends(
         get_minio_order_request_repository
     ),  # Changed to use direct Minio repo
 ) -> OrderRequestStatusResponse | RedirectResponse:
