@@ -74,7 +74,7 @@ class MinioPaymentRepository(PaymentRepository):
             },
         )
 
-        payment_status: Literal["completed", "failed", "pending", "cancelled", "refunded"] = "completed"
+        payment_status: Literal["completed", "failed"] = "completed"
         payment_reason = None
 
         # Create the payment object with the determined status
@@ -263,7 +263,7 @@ class MinioPaymentRepository(PaymentRepository):
                 reason=payment_reason,
             )
         else:
-            outcome_status = "failed"
+            outcome_status: Literal["completed", "failed", "refunded"] = "failed"
             return PaymentOutcome(
                 status=outcome_status,
                 payment=None,
