@@ -1,14 +1,14 @@
-Fun-Police Framework: AI Personal Assistant with Architectural Discipline
-========================================================================
+Temporal.io Architecture Bootstrap
+==================================
 
-Welcome to the Fun-Police Framework - where strict architectural discipline 
-meets AI pair programming to build a sophisticated personal assistant system.
-The "Fun Police" enforce proven patterns so you can focus on solving real 
-problems instead of debating architecture.
+A production-ready architecture template for building distributed applications
+with Temporal.io workflows. This repository provides a complete foundation with
+Clean Architecture patterns, comprehensive testing, and two reference applications
+to demonstrate best practices.
 
-Think of it as having a very opinionated senior architect who never lets you
-cut corners, but also never lets you get stuck in analysis paralysis. The
-framework embodies the climbing principle: "slow is smooth, and smooth is fast."
+The long-term vision includes building toward a benevolent sentient assistant,
+but the immediate goal is providing a solid architectural foundation for any
+Temporal-based application.
 
 Quick Start
 -----------
@@ -29,16 +29,17 @@ The Makefile provides a comprehensive build system with quality gates,
 testing infrastructure, and development workflows. Start with `make help`
 to see all available targets.
 
-Architecture Overview (The Fun Police Way)
-------------------------------------------
+Architecture Overview
+--------------------
 
-This system follows Clean Architecture with religious devotion, enforced by
-the Fun-Police Framework. Here's what that means in practice:
+This system implements Clean Architecture principles with strict dependency
+management optimized for Temporal.io workflows. The architecture ensures
+maintainability, testability, and deterministic workflow execution.
 
-CORE PRINCIPLE: Dependencies point inward, always. No exceptions. No "just this once."
+CORE PRINCIPLE: Dependencies point inward, always. This enables clean separation
+of concerns and makes the system resilient to framework changes.
 
-The architecture has four layers, like an onion that makes you cry if you
-violate the dependency rule:
+The architecture has four layers:
 
 1. DOMAIN (The Sacred Center)
    - Pure business logic with zero external dependencies
@@ -49,7 +50,7 @@ violate the dependency rule:
    - Business logic coordination
    - Depends only on domain models and repository protocols
    - Framework-agnostic (can run in any context)
-   - If your use case knows about HTTP or databases, the Fun Police will find you
+   - Completely isolated from infrastructure concerns
 
 3. INTERFACE ADAPTERS (The Translators)
    - Repository implementations (the famous three-layer pattern)
@@ -62,10 +63,11 @@ violate the dependency rule:
    - Configuration and dependency injection
    - The outer ring where chaos is contained
 
-THE THREE-LAYER REPOSITORY PATTERN (Mandatory)
-----------------------------------------------
+THE THREE-LAYER REPOSITORY PATTERN
+----------------------------------
 
-Every repository follows this exact pattern. No shortcuts. No "simpler" approaches.
+Every repository follows this pattern to ensure proper separation between
+business logic, Temporal activities, and workflow determinism:
 
 Layer 1: Pure Backend Repository
 - Direct interaction with storage technology (Minio, PostgreSQL, etc.)
@@ -85,14 +87,14 @@ Layer 3: Workflow Proxy
 - No business logic, pure delegation
 - Example: WorkflowOrderRepositoryProxy
 
-Why three layers? Because two isn't enough and four is too many. The Fun Police
-have empirically determined that three is the optimal number for maintaining
-sanity while achieving architectural nirvana.
+This three-layer approach ensures clean separation of concerns while maintaining
+Temporal workflow determinism and enabling comprehensive testing at each level.
 
-WORKFLOW DETERMINISM (Non-Negotiable)
--------------------------------------
+WORKFLOW DETERMINISM
+-------------------
 
-Temporal workflows must be deterministic for replay. This means:
+Temporal workflows must be deterministic for replay. This is a core requirement
+of the Temporal platform:
 
 ✅ ALLOWED in workflows:
 - Pure business logic
@@ -100,7 +102,7 @@ Temporal workflows must be deterministic for replay. This means:
 - Deterministic computations
 - Repository proxy method calls
 
-❌ FORBIDDEN in workflows (The Fun Police are watching):
+❌ FORBIDDEN in workflows:
 - Direct database calls
 - HTTP requests  
 - Random number generation
@@ -108,8 +110,8 @@ Temporal workflows must be deterministic for replay. This means:
 - File I/O operations
 - Anything that might return different results on replay
 
-Violate workflow determinism and face the wrath of the Fun Police. They have
-very long memories and excellent debugging skills.
+Violating workflow determinism will cause replay failures and unpredictable
+behavior in production environments.
 
 The Two Applications
 ====================
@@ -124,8 +126,7 @@ Location: sample/
 Purpose: Reference implementation and architectural validation
 
 The sample application is a complete order fulfillment system that demonstrates
-every architectural pattern in the framework. It's not just a toy - it's a
-fully functional system with:
+every architectural pattern in the bootstrap. It's a fully functional system with:
 
 - Order processing with saga pattern compensation
 - Payment processing with retry logic
@@ -143,9 +144,9 @@ Key Features:
 - File upload/download for order attachments
 - Background processing with Temporal workflows
 
-The sample app serves as the "golden standard" - when in doubt about how to
-implement something, look at how sample/ does it and copy that pattern exactly.
-The Fun Police have pre-approved all patterns in sample/.
+The sample app serves as the reference implementation - when implementing new
+features, follow the established patterns demonstrated in sample/ for consistency
+and maintainability.
 
 CAL: Calendar Intelligence System  
 ---------------------------------
@@ -171,27 +172,27 @@ Key Features:
 - Background daemon: bin/calendar-sync-daemon start
 - Multi-calendar collections via config/calendars.yaml
 
-The cal app demonstrates how to build domain-specific AI applications using
-the Fun-Police Framework while maintaining architectural discipline.
+The cal app demonstrates how to build domain-specific applications using
+this Temporal architecture while maintaining clean separation of concerns.
 
 Development Workflow
 ====================
 
-The Fun Police enforce a specific development workflow:
+This repository follows a disciplined development workflow:
 
-1. NEVER work on tasks not marked NEXT in fun-police/tasks.org
-2. ALWAYS follow the three-layer repository pattern
-3. NEVER innovate on architecture (copy from sample/)
-4. ALWAYS write tests following the testing pyramid
-5. NEVER use "unsafe_mock_*" functions in production code
+1. Work on tasks marked NEXT in fun-police/tasks.org
+2. Follow the three-layer repository pattern consistently
+3. Use established patterns from sample/ for new implementations
+4. Write tests following the testing pyramid
+5. Avoid "unsafe_mock_*" functions in production code
 
 Quality Gates (Enforced by Makefile):
 - make quality-fast: Pre-commit checks (black, ruff, quick tests)
 - make quality-full: Complete quality suite (types, security, all tests)
 - make test-e2e: End-to-end validation with Docker services
 
-The Fun Police have determined that following these rules religiously results
-in higher development velocity, fewer bugs, and better sleep at night.
+Following these patterns consistently results in higher development velocity,
+fewer bugs, and more maintainable code.
 
 Testing Philosophy
 ==================
@@ -213,15 +214,14 @@ FEW end-to-end tests (complete workflows with Docker)
 - Full system validation
 - Expensive but comprehensive
 
-The Fun Police mandate that you cannot skip levels of the pyramid. No jumping
-straight to E2E tests because "it's easier." Easier for whom? Not for the
-person debugging a flaky test at 2 AM.
+Each level of the testing pyramid serves a specific purpose. Skipping levels
+leads to gaps in test coverage and makes debugging more difficult.
 
 Memory Bank System
 ==================
 
-The Fun-Police Framework includes a comprehensive memory bank system in
-fun-police/ that maintains project knowledge across AI pair programming sessions:
+This repository includes a comprehensive memory bank system in fun-police/
+that maintains project knowledge and architectural decisions:
 
 - projectbrief.org: Core requirements and domain boundaries
 - systemPatterns.org: Architectural patterns and implementation rules
@@ -229,9 +229,8 @@ fun-police/ that maintains project knowledge across AI pair programming sessions
 - methodology.org: Development workflow and task management
 - tasks.org: Current work focus and active tasks (org-mode TODO states)
 
-The memory bank ensures consistent architectural decisions and prevents the
-dreaded "why did we do it this way?" conversations. The Fun Police have
-excellent institutional memory.
+The memory bank ensures consistent architectural decisions and maintains
+institutional knowledge across development sessions.
 
 Getting Help
 ============
@@ -240,11 +239,8 @@ Getting Help
 2. Read sample/GUIDE.md for comprehensive architecture guide
 3. Check fun-police/systemPatterns.org for implementation patterns
 4. Look at sample/ for reference implementations
-5. Follow the three-layer pattern religiously
-6. When in doubt, ask the Fun Police (they're surprisingly helpful)
+5. Follow the established three-layer pattern consistently
 
-Remember: The Fun Police are here to help you build better software by
-preventing architectural mistakes before they happen. Embrace the discipline,
-and you'll find that constraints actually enable creativity.
-
-Now go forth and build something amazing, architecturally speaking.
+This architecture bootstrap provides the foundation for building robust,
+maintainable Temporal applications. The established patterns and constraints
+enable faster development while ensuring architectural consistency.
