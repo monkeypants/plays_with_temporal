@@ -23,16 +23,12 @@ from sample.repos.temporal.client_proxies.payment import (
 from sample.repos.temporal.client_proxies.inventory import (
     TemporalInventoryRepository,
 )
-from sample.repos.temporal.client_proxies.order import TemporalOrderRepository
 from sample.repos.temporal.client_proxies.order_request import (
     TemporalOrderRequestRepository,
 )
 from sample.repos.minio.order_request import MinioOrderRequestRepository
 from sample.repos.minio.order import MinioOrderRepository
 from sample.repos.minio.payment import MinioPaymentRepository
-from util.repos.temporal.minio_file_storage import (
-    TemporalMinioFileStorageRepository,
-)
 from sample.usecase import (
     OrderFulfillmentUseCase,
     GetOrderUseCase,
@@ -117,9 +113,8 @@ async def get_temporal_inventory_repository() -> InventoryRepository:
 
 async def get_temporal_order_repository() -> OrderRepository:
     """FastAPI dependency for OrderRepository."""
-    client = await get_temporal_client()
-    # Note: TemporalOrderRepository is abstract, this would need a concrete implementation
-    # For now, we'll use the Minio implementation directly
+    # Note: TemporalOrderRepository is abstract, this would need a concrete
+    # implementation. For now, we'll use the Minio implementation directly
     return await get_minio_order_repository()
 
 
