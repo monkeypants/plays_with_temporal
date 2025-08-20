@@ -30,7 +30,7 @@ class WorkflowPostgreSQLCalendarRepositoryProxy(CalendarRepository):
     workflow determinism.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.activity_timeout = workflow.timedelta(
             seconds=30
         )  # Longer timeout for DB operations

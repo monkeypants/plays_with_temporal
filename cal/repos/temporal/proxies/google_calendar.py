@@ -25,7 +25,7 @@ class WorkflowGoogleCalendarRepositoryProxy(CalendarRepository):
     workflow determinism.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.activity_timeout = workflow.timedelta(
             seconds=60
         )  # Longer timeout for API calls
