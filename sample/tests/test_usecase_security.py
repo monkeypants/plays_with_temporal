@@ -84,7 +84,7 @@ class TestOrderFulfillmentUseCaseSecurity:
     @pytest.mark.asyncio
     async def test_fulfill_order_inventory_compensation_on_payment_failure(
         self,
-    ):
+    ) -> None:
         """Test that inventory is released when payment fails after
         reservation."""
         # Arrange: Inventory succeeds, payment fails
