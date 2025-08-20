@@ -33,7 +33,7 @@ class TemporalFileStorageRepository(FileStorageRepository):
         )
         
         result = await handle.result()
-        return result  # type: ignore[return-value]
+        return result  # type: ignore[no-any-return]
 
     async def download_file(self, file_id: str) -> Optional[bytes]:
         """Download a file via Temporal activity."""
