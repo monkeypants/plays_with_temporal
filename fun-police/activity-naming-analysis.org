@@ -1,0 +1,73 @@
+#+TITLE: Activity Naming Convention Analysis (Historical)
+#+AUTHOR: System Architecture
+#+DATE: 2025-08-13
+#+NOTE: This analysis led to the Use Case Constructor Parameter Activity Naming pattern now documented in systemPatterns.org
+
+* Overview
+
+This document contains the historical analysis that led to the development of the Use Case Constructor Parameter Activity Naming pattern. The insights from this analysis have been formally integrated into the memory bank as a core architectural pattern.
+
+**Current Status**: This pattern is now documented in memory-bank/systemPatterns.org as pattern #11 and is part of the established architectural principles.
+
+* Original Analysis
+
+The original analysis identified that use case constructors already define semantic roles through parameter names, eliminating the need to invent new role concepts or create abstraction leaks in activity naming.
+
+* Key Insight
+
+Use case constructor parameters like `source_repo` and `sink_repo` represent the natural semantic roles within each use case context. However, the same role can be filled by different activity implementations, requiring disambiguation in activity names.
+
+The activity implementation layer (`google`, `postgresql`, `mock`, etc.) provides this disambiguation while maintaining the lowest cognitive load, as it directly corresponds to the file where the activity is implemented.
+
+The established pattern includes the activity implementation to resolve naming conflicts:
+
+Format: `{domain}.{usecase}.{constructor_param_name}.{activity_implementation}.{method}`
+
+Where `{activity_implementation}` identifies which Temporal Activity class provides the implementation (google, postgresql, mock, local, etc.).
+
+This provides:
+- No naming conflicts (each activity implementation gets unique names)
+- Self-documenting names (direct mapping to constructor parameters + implementation)  
+- Refactor-safe evolution (parameter renames indicate activity name changes)
+- No invented concepts (uses existing semantic meaning from constructor + actual implementation)
+- Support for multiple implementations per role (the real-world requirement)
+- Lower cognitive load (activity file names directly map to activity namespaces)
+
+* Implementation
+
+The pattern addresses the fundamental issue that activities are global resources requiring unique names, while the same use case role can be fulfilled by different implementations simultaneously.
+
+The 5-part naming structure is **required** to resolve naming conflicts while maintaining lowest cognitive effort:
+
+Example:
+```
+cal.calendar_sync.source_repo.google.get_changes
+cal.calendar_sync.source_repo.mock.get_changes  
+cal.calendar_sync.sink_repo.postgresql.apply_changes
+cal.calendar_sync.sink_repo.local.apply_changes
+cal.create_schedule.calendar_repo.google.get_events_by_date_range
+cal.create_schedule.calendar_repo.postgresql.get_events_by_date_range
+```
+
+## Required Mapping Knowledge Locations
+
+The implementation-to-activity mapping must be known in exactly three places:
+1. **Activity Implementation Files** (where `@activity.defn` is defined)
+2. **Worker Registration** (where activities are registered with Temporal)
+3. **Workflow Proxies** (where `workflow.execute_activity` is called)
+
+Using implementation-specific names makes all three locations explicit and self-documenting.
+
+## Cognitive Load Reduction
+
+The implementation-specific naming reduces cognitive effort because:
+- Activity file names directly map to activity namespaces
+- No mental translation required between file structure and activity names
+- Temporal UI clearly shows which implementation failed
+- Worker registration becomes self-documenting
+
+This pattern is now the established standard for all Temporal activity naming across the system.
+
+* Historical Significance
+
+This analysis represents a key architectural insight that improved the system's adherence to Clean Architecture principles while solving practical naming conflicts in Temporal workflows.

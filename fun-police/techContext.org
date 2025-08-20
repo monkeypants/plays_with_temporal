@@ -1,0 +1,553 @@
+#+TITLE: Technical Context
+#+STARTUP: overview
+
+* Technology Stack
+
+** Core Technologies
+
+*** Python 3.11+
+- Required for modern type hints and performance improvements
+- Pydantic v2 compatibility
+- Enhanced asyncio support for Temporal workflows
+
+*** Temporal.io
+- Version: 1.3.0+ (temporalio Python SDK)
+- Workflow orchestration and durable execution
+- Activity-based non-deterministic operations
+- Built-in retry and compensation mechanisms
+
+*** FastAPI
+- Version: 0.95.1+
+- High-performance async web framework
+- Automatic OpenAPI documentation
+- Native Pydantic integration
+
+*** Pydantic v2
+- Version: 2.5.0+
+- Data validation and serialization
+- JSON-mode serialization for Temporal compatibility
+- Runtime type validation
+
+*** Minio
+- Version: 7.1.14+ (Python client)
+- S3-compatible object storage
+- Local development and production deployment
+- File storage for large payloads
+
+** Infrastructure Technologies
+
+*** Docker & Docker Compose
+- Container orchestration for development and deployment
+- Service isolation and dependency management
+- Consistent environment across development/production
+
+*** PostgreSQL 14
+- Temporal server persistence
+- ACID compliance for workflow state
+- High availability and backup capabilities
+
+*** Uvicorn
+- ASGI server for FastAPI applications
+- High-performance async request handling
+- Production-ready with proper logging
+
+* Development Environment
+
+** Local Development Setup
+
+*** Prerequisites:
+#+BEGIN_SRC bash
+# Required software
+- Docker Engine (Linux)
+- Python 3.11+
+- Git
+
+# Optional but recommended
+- Emacs with python-mode and docker.el
+- GNU Make for build automation
+#+END_SRC
+
+*** Environment Variables:
+#+BEGIN_SRC bash
+# Core service endpoints
+TEMPORAL_ENDPOINT=localhost:7234
+MINIO_ENDPOINT=localhost:9000
+
+# Logging configuration
+LOG_LEVEL=DEBUG
+LOG_FORMAT="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Minio credentials (development only)
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
+#+END_SRC
+
+*** Service Startup:
+#+BEGIN_SRC bash
+# Start all services
+docker-compose -f sample/docker-compose.yml up -d
+
+# Start test environment
+docker-compose -f sample/docker-compose.test.yml up -d
+
+# Check service health
+docker ps
+curl http://localhost:9000/minio/health/live  # Minio health
+curl http://localhost:8002/health             # API health
+#+END_SRC
+
+** Project Structure
+
+#+BEGIN_EXAMPLE
+sample/
+├── api/                    # FastAPI application layer
+│   ├── app.py             # Main FastAPI application
+│   ├── requests.py        # Request models
+│   └── responses.py       # Response models
+├── cli/                    # Command-line interface layer
+│   └── main.py            # Main CLI application (e.g., using Typer)
+├── repos/                 # Repository implementations
+│   ├── minio/            # Pure backend implementations
+│   │   ├── order.py      # Order persistence
+│   │   ├── payment.py    # Payment processing
+│   │   └── inventory.py  # Inventory management
+│   └── temporal/         # Temporal activity implementations
+│       ├── minio_*.py    # Activity wrappers
+│       └── proxies/      # Workflow proxies
+├── tests/                # Test suite
+│   ├── api/             # API integration tests
+│   ├── e2e/             # End-to-end tests
+│   └── test_*.py        # Unit tests
+├── domain.py            # Domain models (Pydantic)
+├── repositories.py      # Repository protocols
+├── usecase.py          # Business logic
+├── workflow.py         # Temporal workflows
+├── worker.py           # Temporal worker
+├── validation.py       # Runtime validation utilities
+└── requirements.txt    # Python dependencies
+#+END_EXAMPLE
+
+A =bin/= directory may exist at the project root to hold shell scripts
+that act as convenient entry points to the CLI applications defined
+in packages like =sample/cli/=. This keeps executable scripts
+separate from the Python source code.
+
+** Dependency Management
+
+*** Core Dependencies (=requirements.txt=):
+#+BEGIN_SRC text
+temporalio[pydantic]>=1.3.0 # Temporal workflow SDK with Pydantic support
+fastapi>=0.100.0           # Web framework
+uvicorn>=0.20.0            # ASGI server
+pydantic>=2.0.0            # Data validation
+minio>=7.0.0               # Object storage client
+asyncpg>=0.29.0            # PostgreSQL async driver
+alembic>=1.13.0            # Database migrations
+#+END_SRC
+
+*** Development Dependencies:
+#+BEGIN_SRC bash
+pytest>=8.0.0             # Testing framework
+pytest-asyncio>=1.0.0     # Async test support
+mypy>=1.0.0               # Static type checking
+black>=24.0.0             # Code formatting
+#+END_SRC
+
+*** Installation:
+#+BEGIN_SRC bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Development dependencies
+pip install pytest pytest-asyncio mypy black
+#+END_SRC
+
+** Repository Implementation Structure
+Repository implementations follow the three-layer pattern documented in systemPatterns.org:
+
+#+BEGIN_EXAMPLE
+sample/repos/
+├── minio/            # Pure backend implementations
+│   ├── order.py      # Direct storage interaction
+│   ├── payment.py    # No Temporal dependencies
+│   └── inventory.py  # Contains actual business logic
+├── temporal/         # Temporal activity implementations
+│   ├── minio_*.py    # Activity wrappers with @activity.defn
+│   └── proxies/      # Workflow-safe delegates
+#+END_EXAMPLE
+
+*** Layer Responsibilities:
+- *Pure Backend*: Direct interaction with storage technology (Minio)
+- *Temporal Activities*: Wrapper methods decorated with =@activity.defn=
+- *Workflow Proxies*: Deterministic delegates that call =workflow.execute_activity()=
+
+*** Activity Naming Convention
+All Temporal activities follow the Use Case Constructor Parameter naming pattern documented in systemPatterns.org:
+
+Format: `{domain}.{usecase}.{constructor_param_name}.{method}`
+
+#+BEGIN_EXAMPLE
+# CalendarSyncUseCase with source_repo and sink_repo parameters
+@activity.defn(name="cal.calendar_sync.source_repo.get_changes")
+@activity.defn(name="cal.calendar_sync.sink_repo.apply_changes")
+
+# CreateScheduleUseCase with calendar_repo, schedule_repo, classifier_repo parameters  
+@activity.defn(name="cal.create_schedule.calendar_repo.get_events_by_date_range")
+@activity.defn(name="cal.create_schedule.schedule_repo.save_schedule")
+@activity.defn(name="cal.create_schedule.classifier_repo.triage_event")
+
+# OrderFulfillmentUseCase with order_repo, payment_repo, inventory_repo parameters
+@activity.defn(name="sample.order_fulfillment.order_repo.generate_order_id")
+@activity.defn(name="sample.order_fulfillment.payment_repo.process_payment")
+@activity.defn(name="sample.order_fulfillment.inventory_repo.reserve_items")
+#+END_EXAMPLE
+
+This ensures workflows remain implementation-agnostic while providing unique, meaningful activity names that map directly to use case constructor parameters.
+
+See systemPatterns.org for detailed architectural rationale and implementation patterns.
+
+* Data Serialization
+
+** Temporal Data Converter
+
+*** Pydantic Integration:
+With the =temporalio[pydantic]= extra installed, the default data converter
+handles Pydantic models automatically. No explicit configuration is needed.
+
+#+BEGIN_SRC python
+# Assumes 'Worker' is imported from 'temporalio.worker'
+# Client configuration
+client = await Client.connect("localhost:7233", namespace="default")
+
+# Worker inherits data converter from client
+worker = Worker(client, task_queue="queue", workflows=[...])
+#+END_SRC
+
+*** Serialization Patterns:
+#+BEGIN_SRC python
+# API to Workflow: Handle Decimal serialization
+request_dict = request.model_dump(mode="json")  # Decimal → str
+
+# Workflow to Use Case: Reconstruct Pydantic models
+request = CreateOrderRequest(**request_dict)    # str → Decimal
+
+# Activity Results: Validate deserialized data
+raw_result = await workflow.execute_activity("process_payment", order)
+result = PaymentOutcome.model_validate(raw_result)  # dict → Pydantic
+#+END_SRC
+
+** Large Payload Handling
+
+*** File Storage Pattern:
+#+BEGIN_SRC python
+# Upload large files to Minio, store references in workflow
+file_metadata = await file_storage_repo.upload_file(UploadFileArgs(
+    file_id=str(uuid.uuid4()),
+    data=large_file_bytes,
+    metadata={"order_id": order_id}
+))
+
+# Workflow only handles small reference
+return OrderStatusResponse(attachment_id=file_metadata.file_id)
+#+END_SRC
+
+*** Payload Size Limits:
+- Temporal default: 2MB per payload
+- Minio object: Unlimited (practical limit: available storage)
+- Recommendation: Use file storage for payloads > 100KB
+
+* Testing Infrastructure
+
+** Test Execution
+
+Testing follows the pyramid strategy documented in systemPatterns.org (unit → integration → E2E).
+
+*** Unit Tests:
+#+BEGIN_SRC bash
+# Run all unit tests
+pytest sample/tests/test_*.py -v
+
+# Run specific test file
+pytest sample/tests/test_usecase.py -v
+
+# Run with coverage
+pytest --cov=sample sample/tests/test_*.py
+#+END_SRC
+
+*** Integration Tests:
+#+BEGIN_SRC bash
+# API integration tests
+pytest sample/tests/api/ -v
+
+# Repository contract tests
+pytest sample/tests/test_repository_contracts.py -v
+#+END_SRC
+
+*** End-to-End Tests:
+#+BEGIN_SRC bash
+# Start test environment
+docker-compose -f sample/docker-compose.test.yml up -d
+
+# Run E2E tests
+pytest sample/tests/e2e/ -v -m e2e
+
+# Cleanup
+docker-compose -f sample/docker-compose.test.yml down
+#+END_SRC
+
+** Test Configuration
+
+*** pytest.ini:
+#+BEGIN_SRC ini
+[pytest]
+asyncio_mode = auto
+markers =
+    e2e: End-to-end tests requiring Docker services
+    integration: Integration tests with external dependencies
+    unit: Fast unit tests with mocked dependencies
+#+END_SRC
+
+*** Mock Patterns:
+#+BEGIN_SRC python
+# Use case testing with mocked repositories
+mock_payment_repo = MagicMock(spec=PaymentRepository)
+mock_payment_repo.process_payment = AsyncMock(return_value=PaymentOutcome(...))
+
+# API testing with mocked use cases
+mock_use_case = AsyncMock(spec=OrderFulfillmentUseCase)
+app.dependency_overrides[get_order_fulfillment_use_case_for_api] = lambda: mock_use_case
+#+END_SRC
+
+* Deployment Architecture
+
+** Container Strategy
+
+*** Multi-Service Deployment:
+#+BEGIN_SRC yaml
+# docker-compose.yml structure
+services:
+  temporal:        # Workflow orchestration
+  postgres:        # Temporal persistence
+  minio:          # Object storage
+  worker:         # Temporal worker process
+  api:            # FastAPI web service
+#+END_SRC
+
+*** Service Dependencies:
+#+BEGIN_EXAMPLE
+API Service → Temporal Client → Temporal Server → PostgreSQL
+Worker Service → Temporal Client → Temporal Server → PostgreSQL
+Worker Service → Minio Client → Minio Server
+API Service → Minio Client → Minio Server (for file operations)
+#+END_EXAMPLE
+
+** Configuration Management
+
+*** Environment-Based Configuration:
+#+BEGIN_SRC python
+# Service discovery via environment variables
+temporal_endpoint = os.environ.get("TEMPORAL_ENDPOINT", "temporal:7233")
+minio_endpoint = os.environ.get("MINIO_ENDPOINT", "minio:9000")
+
+# Logging configuration
+log_level = os.environ.get("LOG_LEVEL", "INFO")
+#+END_SRC
+
+*** Docker Networking:
+- Services communicate via Docker network
+- External access through exposed ports
+- Health checks ensure service readiness
+
+** Monitoring and Observability
+
+*** Structured Logging:
+#+BEGIN_SRC python
+logger.info("Order processing started", extra={
+    "order_id": order.order_id,
+    "customer_id": order.customer_id,
+    "amount": str(order.total_amount)
+})
+#+END_SRC
+
+*** Health Checks:
+#+BEGIN_SRC python
+# API health endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "version": "1.0.0"}
+
+# Docker health checks
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+#+END_SRC
+
+*** Temporal UI:
+- Web interface: http://localhost:8001
+- Workflow execution monitoring
+- Activity failure investigation
+- Performance metrics
+
+* Development Workflow
+
+** Code Quality
+
+Code quality is enforced automatically using =pre-commit= hooks defined in =.pre-commit-config.yaml=, which run =black= for formatting and =ruff= for linting.
+
+*** Static Type Checking:
+#+BEGIN_SRC bash
+# Run mypy on entire codebase
+mypy sample/
+
+# Check specific files
+mypy sample/usecase.py sample/domain.py
+#+END_SRC
+
+*** Code Formatting:
+#+BEGIN_SRC bash
+# Format code with black
+black sample/
+
+# Check formatting without changes
+black --check sample/
+#+END_SRC
+=black= handles most formatting automatically. However, it does not format docstrings or comments. To adhere to the project's line-length limits (enforced by =ruff=), long lines in docstrings and comments must be wrapped manually using semantic line breaks.
+
+*** Linting:
+#+BEGIN_SRC bash
+# Run ruff for style checking
+ruff check sample/
+
+# Run ruff with automatic fixes
+ruff check sample/ --fix
+#+END_SRC
+
+** Development Commands
+
+*** Service Management:
+#+BEGIN_SRC bash
+# Start development environment
+make dev-up
+
+# Stop services
+make dev-down
+
+# View logs
+docker-compose logs -f worker
+docker-compose logs -f api
+#+END_SRC
+
+*** Testing Commands:
+#+BEGIN_SRC bash
+# Run fast unit tests
+make test-unit
+
+# Run all tests including E2E
+make test-all
+
+# Run specific test category
+make test-api
+make test-e2e
+#+END_SRC
+
+*** Database Operations:
+#+BEGIN_SRC bash
+# Reset Temporal database
+docker-compose exec postgres psql -U temporal -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+# Reset Minio data
+docker-compose exec minio rm -rf /data/*
+#+END_SRC
+
+* Performance Considerations
+
+** Temporal Workflow Performance
+
+*** Activity Timeouts:
+#+BEGIN_SRC python
+# Configure appropriate timeouts
+await workflow.execute_activity(
+    "process_payment",
+    order,
+    start_to_close_timeout=workflow.timedelta(seconds=30),
+    retry_policy=RetryPolicy(maximum_attempts=3)
+)
+#+END_SRC
+
+*** Workflow Replay Performance:
+- Keep workflow code deterministic
+- Minimize workflow state size
+- Use activities for all I/O operations
+
+** Database Performance
+
+*** Connection Pooling:
+- PostgreSQL connection limits
+- Temporal server connection management
+- Minio client connection reuse
+
+*** Query Optimization:
+- Temporal visibility queries
+- Workflow history size management
+- Activity result caching
+
+** Memory Management
+
+*** Large Payload Handling:
+- Stream large files through Minio
+- Avoid loading entire files into memory
+- Use file references in workflow state
+
+*** Python Memory Usage:
+- Async context managers for resource cleanup
+- Proper connection closing in repositories
+- Garbage collection for long-running workers
+
+* User Interface Standards
+
+** Text-Only Interface Policy
+All command-line interfaces and text outputs must use plain text without emojis, Unicode symbols, or decorative characters. Emojis are unprofessional and create inconsistent display across different terminals and systems. Use clear, descriptive text instead.
+
+Examples:
+- Use "Calendar sync completed successfully!" instead of "✅ Calendar sync completed!"
+- Use "Error:" instead of "❌"
+- Use "Info:" instead of "ℹ️"
+
+This ensures consistent, professional output across all development and production environments.
+
+* Security Considerations
+
+** Local Development Security
+
+*** Default Credentials (Development Only):
+#+BEGIN_EXAMPLE
+Minio: minioadmin/minioadmin
+PostgreSQL: temporal/temporal
+#+END_EXAMPLE
+
+*** Network Security:
+- Services isolated in Docker network
+- Only necessary ports exposed to host
+- No external network access required
+
+** Production Security Considerations
+
+*** Credential Management:
+- Environment variable injection
+- Secret management systems
+- Credential rotation procedures
+
+*** Network Security:
+- TLS encryption for all service communication
+- Network segmentation
+- Firewall rules for service access
+
+*** Data Security:
+- Encryption at rest (Minio, PostgreSQL)
+- Encryption in transit (TLS)
+- Access logging and audit trails
+
+This technical context provides the foundation for understanding how to develop, test, and deploy the system while maintaining the architectural patterns and quality standards established in the POC implementation.

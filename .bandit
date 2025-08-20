@@ -1,0 +1,7 @@
+[bandit]
+exclude_dirs = cal/tests,sample/tests
+exclude = test_*.py,*_test.py
+skips = B101
+confidence = medium
+# B101 (assert_used) is skipped globally since asserts are primarily in tests
+# Production code should use proper error handling instead of assertions

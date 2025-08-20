@@ -1,0 +1,582 @@
+#+TITLE: MVP Evaluation Plan
+#+TODO: TODO NEXT WIP BLOCKED | DONE CANCELLED
+#+STARTUP: overview
+
+* Context and Background
+
+** Core Hypothesis
+The Calendar MVP tests the hypothesis that:
+
+#+BEGIN_QUOTE
+Executives struggle with fragmented personal information across calendars, email, and task systems, leading to incomplete GTD workflows. By providing AI-assisted calendar triage with clear decision recommendations, we can help executives make better decisions about their time commitments and integrate this information into their existing GTD workflow.
+#+END_QUOTE
+
+** Current Implementation Summary
+The Calendar MVP has successfully implemented:
+- Domain models for calendar events, time blocks, and schedules
+- Three-layer repository pattern with Google Calendar integration
+- AI-assisted event triage with decision recommendations
+- Org-mode output for GTD workflow integration
+- CLI interface for both mock and real calendar data
+
+** Success Criteria
+The MVP evaluation must determine if we've achieved:
+1. *Technical Feasibility*: Reliable calendar data fetching, AI analysis, and output generation
+2. *User Value*: Useful and accurate decision recommendations
+3. *Workflow Integration*: Seamless integration with existing GTD workflows
+4. *Adoption Potential*: Likelihood of regular use by target users
+
+* Evaluation Plan
+
+** DONE Phase 1: Initial Setup and Configuration
+Google Calendar integration configured and initial evaluation completed.
+
+*** Initial Findings
+- **Google Calendar Integration**: Successfully configured with OAuth flow
+- **Calendar Sync Execution**: Ran sync workflow and generated org-mode output
+- **Initial Assessment**: High friction due to technical setup complexity
+- **Architecture Issues Identified**: Monolithic approach created unnecessary complexity
+
+*** Refactoring Response
+Based on initial evaluation, implemented architectural separation:
+- **Sync Component**: Google Calendar → PostgreSQL using Temporal scheduled workflows
+- **Generate Component**: PostgreSQL → Org-mode using CLI interface
+- **Benefits**: Cleaner separation of concerns, reduced coupling, better testability
+
+*** Current Status
+- [X] Google Calendar integration configured
+- [X] Initial sync and generation tested
+- [X] Architecture refactored based on findings
+- [X] Separated sync (Temporal) from generate (CLI) workflows
+- [ ] Refactored architecture validation in progress
+
+** NEXT Phase 2: Refactored Architecture Validation
+Validate the new separated architecture (sync vs generate) addresses the friction issues identified in Phase 1.
+
+*** Architecture Validation Focus
+Testing the new two-component approach:
+1. **Sync Component**: Temporal scheduled workflow (Google Calendar → PostgreSQL)
+2. **Generate Component**: CLI-based generation (PostgreSQL → Org-mode)
+
+*** Atomic Validation Tasks
+
+**** NEXT Task 2.1: Test Sync Component CLI
+**Test**: Verify the calendar sync CLI can fetch from Google Calendar and store in PostgreSQL.
+**Command**: `bin/sync-calendar --source-calendar-id primary --sink-calendar-id postgresql --full-sync`
+**Expected**: CLI completes successfully, shows sync statistics (events synced, time taken), no errors.
+**Validation**: Check that events appear in PostgreSQL, sync state is stored.
+**Time**: ~2-3 minutes
+
+**** TODO Task 2.2: Test Multi-Calendar Sync
+**Test**: Verify sync works with calendar collections from config.
+**Command**: `bin/sync-calendar --calendar-collection work --full-sync`
+**Expected**: CLI processes multiple calendars, shows per-calendar statistics, handles enabled/disabled calendars correctly.
+**Validation**: PostgreSQL contains events from all enabled calendars in collection.
+**Time**: ~3-5 minutes
+
+**** TODO Task 2.3: Test PostgreSQL Data Persistence
+**Test**: Verify data is correctly stored and queryable in PostgreSQL.
+**Command**: Connect to PostgreSQL and run sample queries on calendar_events table.
+**Expected**: Events have proper timestamps, metadata is stored as JSONB, indexes work for date range queries.
+**Validation**: Manual SQL queries return expected results, data matches Google Calendar.
+**Time**: ~5 minutes
+
+**** TODO Task 2.4: Test CLI Generation Speed
+**Test**: Measure org-mode generation performance from PostgreSQL.
+**Command**: `time bin/run-google-calendar-demo --calendar-collection work --output-path test_output.org`
+**Expected**: Completes in <5 seconds, generates proper org-mode output with triage decisions.
+**Validation**: Output file contains expected events with AI triage analysis.
+**Time**: ~2 minutes
+
+**** TODO Task 2.5: Test End-to-End Workflow
+**Test**: Complete pipeline from Google Calendar to final org-mode output.
+**Commands**: 
+1. `bin/sync-calendar --calendar-collection work --full-sync`
+2. `bin/run-google-calendar-demo --calendar-collection work`
+**Expected**: Both steps complete successfully, final output matches Google Calendar data.
+**Validation**: Org-mode file contains events that exist in Google Calendar.
+**Time**: ~5 minutes
+
+**** TODO Task 2.6: Test Incremental Sync
+**Test**: Verify incremental sync works with sync tokens.
+**Commands**:
+1. Run full sync, note sync token
+2. Add/modify event in Google Calendar  
+3. Run incremental sync (without --full-sync flag)
+**Expected**: Only changed events are processed, sync is faster than full sync.
+**Validation**: New/modified events appear in PostgreSQL, unchanged events untouched.
+**Time**: ~10 minutes
+
+**** TODO Task 2.7: Test Error Handling
+**Test**: Verify graceful handling of common failure scenarios.
+**Tests**:
+- Disconnect network during sync
+- Invalid calendar ID
+- PostgreSQL unavailable
+**Expected**: Clear error messages, no data corruption, ability to retry.
+**Validation**: System recovers gracefully, provides actionable error messages.
+**Time**: ~10 minutes
+
+**** TODO Task 2.8: Compare Friction vs Monolithic Approach
+**Test**: Document setup and usage complexity compared to Phase 1.
+**Method**: Time and document steps required for:
+- Initial setup (credentials, database, etc.)
+- Daily usage workflow
+- Troubleshooting common issues
+**Expected**: Reduced complexity, clearer separation of concerns, easier debugging.
+**Validation**: Subjective assessment of user experience improvement.
+**Time**: ~15 minutes
+
+*** Technical Validation Checklist
+- [ ] Task 2.1: Sync Component CLI tested
+- [ ] Task 2.2: Multi-Calendar Sync tested  
+- [ ] Task 2.3: PostgreSQL Data Persistence verified
+- [ ] Task 2.4: CLI Generation Speed measured (<5 seconds)
+- [ ] Task 2.5: End-to-End Workflow validated
+- [ ] Task 2.6: Incremental Sync tested
+- [ ] Task 2.7: Error Handling verified
+- [ ] Task 2.8: Friction Comparison documented
+
+*** Current Testing Status
+- **Ready to Start**: Task 2.1 (Test Sync Component CLI)
+- **Focus**: Validating each component individually before end-to-end testing
+
+*** Completion Criteria
+- [ ] All 8 atomic tasks completed successfully
+- [ ] Performance benchmarks meet targets (<5 second generation, reliable sync)
+- [ ] Friction reduction confirmed through comparison
+- [ ] Documentation updated with findings
+- [ ] Ready to proceed with structured user evaluation
+
+** TODO Phase 3: Structured User Evaluation
+Conduct systematic 7-day evaluation of the refactored architecture.
+
+*** Evaluation Criteria Definition
+Based on the core hypothesis, success will be measured across five dimensions:
+
+**** 1. Technical Reliability
+- **Sync Reliability**: Temporal scheduled sync runs without manual intervention
+- **Data Consistency**: PostgreSQL data matches Google Calendar state
+- **CLI Performance**: Org-mode generation completes in <5 seconds
+- **Error Recovery**: System handles API failures and network issues gracefully
+
+**** 2. AI Decision Quality  
+- **Accuracy**: Triage suggestions align with actual user decisions >70% of the time
+- **Usefulness**: Suggestions provide actionable insights, not just classifications
+- **Context Awareness**: Decisions consider meeting patterns, attendees, and timing
+- **Learning**: System improves suggestions based on implicit feedback
+
+**** 3. Workflow Integration
+- **GTD Enhancement**: Provides complete information for GTD prioritization
+- **Friction Reduction**: Reduces context switching between calendar and task systems
+- **Output Quality**: Org-mode format integrates seamlessly with existing workflow
+- **Information Completeness**: Captures all relevant calendar obligations and demands
+
+**** 4. Time Value Analysis
+- **Setup Time**: Initial configuration and learning curve
+- **Daily Usage Time**: Time required for sync, generation, and review
+- **Time Savings**: Reduced manual calendar review and decision-making time
+- **Net Benefit**: Total time saved minus time invested
+
+**** 5. Adoption Potential
+- **Daily Usage Likelihood**: Would choose to use this as part of morning routine
+- **Dependency Development**: System becomes integral to planning process
+- **Recommendation Likelihood**: Would recommend to others with similar needs
+- **Long-term Sustainability**: Can maintain usage without ongoing technical support
+
+*** Daily Feedback Collection Method
+**Approach**: Update this mvp.org file daily with structured feedback using the template below.
+
+*Daily Feedback Template (to be added each day):*
+```
+*** Day X Feedback - [Date]
+**** Value Delivered
+- [Specific value provided today]
+
+**** Friction Points  
+- [Issues, annoyances, or barriers encountered]
+
+**** AI Decision Quality
+- [Assessment of triage suggestions - accuracy, usefulness, context awareness]
+
+**** Workflow Integration
+- [How well it fit into GTD process - enhancement vs disruption]
+
+**** Time Analysis
+- Setup/usage time: [X minutes]
+- Time saved: [X minutes] 
+- Net benefit: [positive/negative/neutral]
+
+**** Usage Likelihood
+- [Would use again tomorrow? Why/why not?]
+
+**** Technical Notes
+- [Any technical issues, performance observations, or reliability concerns]
+```
+
+*** Completion Criteria
+- [ ] 7 consecutive days of usage with daily feedback documented
+- [ ] All five evaluation criteria systematically assessed
+- [ ] Quantitative metrics collected (time, accuracy, reliability)
+- [ ] Final synthesis and go/no-go recommendation completed
+- [ ] Enhancement priorities identified based on evaluation data
+
+** TODO Phase 4: Analysis and Synthesis
+Analyze findings and develop recommendations for the next steps.
+
+*** Key Analysis Questions
+- Does the refactored architecture validate our core hypothesis?
+- Which aspects provide the most value to users?
+- What are the critical barriers to adoption?
+- Should we continue, pivot, or enhance the current approach?
+- Did the architectural separation (sync vs generate) reduce friction as intended?
+
+*** Synthesis Framework
+**** Quantitative Analysis
+- Technical reliability metrics (uptime, error rates, performance)
+- Time value calculations (setup + daily usage vs time saved)
+- AI decision accuracy rates (suggestions vs actual user decisions)
+- Usage consistency (daily adoption rate over 7 days)
+
+**** Qualitative Analysis  
+- Workflow integration effectiveness
+- User experience friction points
+- Value proposition clarity
+- Long-term adoption potential
+
+**** Architecture Assessment
+- Did separation of sync/generate reduce complexity?
+- Are Temporal scheduled workflows reliable for background sync?
+- Is CLI-based generation sufficiently user-friendly?
+- Does PostgreSQL persistence provide the expected benefits?
+
+*** Final Deliverables
+- [ ] Clear go/no-go recommendation with supporting evidence
+- [ ] Prioritized enhancement opportunities based on evaluation data
+- [ ] Architectural lessons learned and recommendations
+- [ ] Roadmap for next development phase (if continuing)
+- [ ] Validated learning documentation (what we now know that we didn't before)
+
+*** Files to modify
+- memory-bank/mvp.org: Complete findings and recommendations sections
+- memory-bank/tasks.org: Update project roadmap based on evaluation results
+- memory-bank/systemPatterns.org: Update with architectural lessons learned
+
+** TODO Post-MVP: Fix Calendar Data Validation Issues
+Address the real-world calendar data quality problems discovered during MVP evaluation.
+
+* TODO Review Endpoint Parameter Passing Strategy (12-Factor App)
+** Description
+   The current practice of explicitly passing `endpoint` parameters to repository constructors (e.g., `MinioOrderRepository(endpoint=minio_endpoint)`) works but can lead to boilerplate and isn't ideal for a 12-factor app approach where configuration should be managed via environment variables and defaults. This task is to review and refactor this practice.
+
+**Architectural Rationale**
+A 12-factor app centralizes configuration, usually via environment variables, and services discover their dependencies without explicit parameter passing of endpoints. While current explicit passing is functional, it can increase boilerplate when many repositories require endpoints, and couples instantiation directly to configuration retrieval logic. Refactoring towards implicit discovery or a centralized configuration object can improve clarity and adherence to best practices.
+
+**Progress Notes**
+- Fixed `MinioPaymentRepository` instantiation in `sample/tests/e2e/test_repository_contracts.py` to explicitly pass `endpoint="localhost:9000"`. This addresses an immediate test failure but highlights the broader issue this task aims to resolve.
+
+**Files to review/refactor**
+- `sample/worker.py`: Review instantiation of Minio repositories.
+- `sample/api/dependencies.py`: Review how Minio endpoints are retrieved and passed.
+- `sample/repos/minio/order.py`: Review repository constructor.
+- `sample/repos/minio/payment.py`: Review repository constructor.
+- `sample/repos/minio/inventory.py`: Review repository constructor.
+- `sample/repos/minio/file_storage.py`: Review repository constructor.
+- `memory-bank/techContext.org`: Potentially update documentation on configuration management.
+
+**Completion Criteria**
+- [ ] Decision made on preferred endpoint passing strategy (e.g., direct env var usage in repo, centralized config object).
+- [ ] Refactoring applied to eliminate redundant endpoint parameter passing where appropriate.
+- [ ] All tests pass after refactoring.
+- [ ] Documentation updated to reflect the new configuration strategy.
+
+*** Root Cause Analysis
+During MVP evaluation, we discovered that real-world Google Calendar data contains:
+1. **Timezone-naive datetimes**: Many events lack timezone information, violating our domain model's requirement for timezone-aware datetimes
+2. **Invalid time ranges**: Some events have end times before or equal to start times
+3. **Legacy data inconsistencies**: Historical calendar events often have formatting issues
+
+*** Current Temporary Solution
+The MVP uses workarounds in `cal/domain.py`:
+- Converts naive datetimes to UTC (masks the real problem)
+- Adjusts invalid time ranges by adding 1 hour (creates false data)
+- Logs warnings but continues processing
+
+*** Proper Solution Design
+The correct approach should implement robust data validation at the Google Calendar integration layer:
+
+**** Option A: Enhanced Error Handling (Recommended)
+- Improve `cal/repos/google/calendar.py` to detect and handle data quality issues
+- Implement data cleaning heuristics (e.g., infer timezone from calendar settings)
+- Provide detailed logging for data quality issues
+- Create separate categories for "skipped due to data quality" vs "skipped due to business rules"
+
+**** Option B: Strict Validation with User Feedback
+- Maintain strict domain model validation
+- Provide user-friendly error reporting when calendar data has quality issues
+- Offer tools to help users clean their calendar data
+- Generate reports of problematic events for manual review
+
+*** Implementation Priority
+This should be addressed after MVP evaluation confirms the core value proposition. The temporary workarounds allow evaluation to proceed, but production use requires proper data quality handling.
+
+*** Files to modify
+- `cal/repos/google/calendar.py`: Enhanced data validation and cleaning
+- `cal/domain.py`: Remove temporary workarounds, restore strict validation
+- `cal/validation.py`: New module for calendar data quality utilities
+- Documentation: Add troubleshooting guide for calendar data quality issues
+
+*** Success Criteria
+- [ ] No temporary workarounds in domain model validation
+- [ ] Comprehensive data quality handling in Google Calendar integration
+- [ ] Clear user feedback when calendar data has quality issues
+- [ ] Detailed logging and reporting of data quality problems
+- [ ] Documentation for users on maintaining calendar data quality
+
+* Enhancement Opportunities
+
+** Quick Wins
+Improvements that could be implemented quickly with high impact:
+
+1. *Improved Triage Logic*:
+   - Enhance keyword detection with more patterns
+   - Add attendee analysis (e.g., seniority detection)
+   - Consider meeting frequency and patterns
+
+2. *User Feedback Loop*:
+   - Add ability to record user's actual decisions
+   - Compare AI suggestions with user choices
+   - Improve future suggestions based on patterns
+
+3. *Output Enhancements*:
+   - Add more context to org-mode output
+   - Include preparation suggestions
+   - Add links to relevant resources
+
+** Strategic Enhancements
+Larger improvements that could significantly increase value:
+
+1. *Email Integration*:
+   - Add email parsing for action items
+   - Connect email threads to calendar events
+   - Provide complete GTD information picture
+
+2. *Web Interface*:
+   - Create simple web UI for non-technical users
+   - Provide interactive decision interface
+   - Visualize calendar with decision overlays
+
+3. *Learning System*:
+   - Implement feedback loop for improving suggestions
+   - Learn from user's past decisions
+   - Personalize suggestions based on user preferences
+
+4. *Bidirectional Updates*:
+   - Allow updating calendar events from the system
+   - Implement meeting responses based on decisions
+   - Create new calendar events for rescheduling
+
+Implement a PostgreSQL-backed CalendarRepository following the three-layer repository pattern established in systemPatterns.org.
+
+*** Architectural Rationale
+This task creates the foundation for persistent calendar storage, replacing the current file-based local storage with a proper database backend. Following the exact pattern from `sample/repos/minio/`, we implement Pure Backend → Temporal Activity → Workflow Proxy layers.
+
+The PostgreSQL implementation enables:
+- Rich querying capabilities with SQL
+- Proper indexing for performance
+- ACID compliance for data integrity
+- Multi-calendar support with normalized schema
+- Efficient sync state management
+
+*** Files to create/modify
+- `cal/repos/postgresql/calendar.py`: Pure PostgreSQL implementation of CalendarRepository
+- `cal/repos/postgresql/__init__.py`: Package initialization
+- `cal/repos/postgresql/migrations/`: Database schema migrations
+- `cal/repos/temporal/postgresql_calendar.py`: Temporal activity wrapper
+- `cal/repos/temporal/proxies/postgresql_calendar.py`: Workflow proxy
+- `requirements.txt`: Add `asyncpg` and `alembic` dependencies
+- `docker-compose.yml`: Add PostgreSQL service for calendar data
+
+*** Completion Criteria
+- [X] PostgreSQL CalendarRepository implements all CalendarRepository protocol methods
+- [X] Database schema supports multiple calendars with proper indexing
+- [X] Sync state management with per-calendar tokens
+- [X] Rich querying capabilities (date range, calendar filter, event type, etc.)
+- [X] Three-layer repository pattern correctly implemented
+- [X] Database migrations for schema management
+- [X] Docker compose integration for development environment
+
+** DONE Task 2: Implement Calendar Sync Workflow
+Create a background Temporal workflow that syncs Google Calendar data to PostgreSQL on a schedule.
+
+*** Architectural Rationale
+This separates the Google API integration from the schedule generation workflow, following the Single Responsibility Principle. The sync workflow handles the complexity of Google API rate limits, OAuth token refresh, and incremental sync logic.
+
+Following the pattern from `sample/workflow.py`, this workflow orchestrates the sync process using repository proxies and handles compensation for partial failures.
+
+*** Files to create/modify
+- `cal/workflows.py`: Add `CalendarSyncWorkflow` class
+- `cal/usecase.py`: Enhance `CalendarSyncUseCase` for PostgreSQL backend
+- `cal/worker.py`: Register new workflow and activities
+- `cal/cli/sync_calendar.py`: CLI command to trigger sync workflow
+- `bin/sync-calendar`: Wrapper script for sync CLI
+
+*** Completion Criteria
+- [X] `CalendarSyncWorkflow` orchestrates Google → PostgreSQL sync
+- [X] Handles multiple calendars with separate sync states
+- [X] Implements proper error handling and compensation
+- [X] Supports both full sync and incremental sync modes
+- [X] CLI interface for manual sync triggering
+- [ ] Scheduled execution capability (cron-like) - deferred to Task 5
+- [X] Comprehensive logging for sync operations
+
+** DONE Task 3: Enhance Schedule Generation with Efficient Date Filtering
+Update the CreateScheduleUseCase to use PostgreSQL's efficient date-range querying instead of fetching all events and filtering in Python.
+
+*** Architectural Rationale
+The current implementation calls `get_all_events()` and filters by date range in Python, which is inefficient for large calendars. Moving the date filtering to SQL provides better performance while maintaining the Repository Pattern's abstraction.
+
+This follows YAGNI principles by implementing only the specific query method we actually need, rather than building a generic query interface. The repository abstraction remains clean with a focused, well-named method that expresses the exact business need.
+
+*** Files to create/modify
+- `cal/repositories.py`: Add `get_events_by_date_range()` method to CalendarRepository protocol
+- `cal/repos/postgresql/calendar.py`: Implement efficient SQL date-range query
+- `cal/usecase.py`: Update `CreateScheduleUseCase` to use new repository method
+- `cal/tests/test_usecase.py`: Update tests for new repository method
+
+*** Completion Criteria
+- [X] `get_events_by_date_range()` method added to CalendarRepository protocol
+- [X] PostgreSQL implementation uses efficient SQL WHERE clause for date filtering
+- [X] `CreateScheduleUseCase` uses new method instead of `get_all_events()` + Python filtering
+- [X] Use case tests updated to mock new repository method
+- [X] Performance improvement demonstrated (SQL filtering vs Python filtering)
+
+** NEXT Task 4: Implement Multi-Calendar Support
+Extend the system to handle multiple Google Calendars with unified querying.
+
+*** Architectural Rationale
+This addresses a key limitation of the current single-calendar approach. Many users have multiple calendars (work, personal, shared calendars) that need to be considered together for comprehensive schedule planning.
+
+The implementation maintains the existing architecture while extending it to handle calendar collections, following the Open/Closed Principle.
+
+*** Files to create/modify
+- `cal/domain.py`: Add `CalendarCollection` and `CalendarSource` models
+- `cal/repos/postgresql/calendar.py`: Multi-calendar query support
+- `cal/usecase.py`: Update to handle calendar collections
+- `cal/cli/sync_calendar.py`: Support for multiple calendar configuration
+- `cal/cli/google_calendar.py`: Multi-calendar demo support
+- `config/calendars.yaml`: Configuration file for calendar sources
+
+*** Completion Criteria
+- [ ] System can sync multiple Google Calendars independently
+- [ ] Unified querying across calendar collections
+- [ ] Configuration-driven calendar source management
+- [ ] CLI support for multi-calendar operations
+- [ ] Proper calendar isolation and conflict resolution
+- [ ] Performance optimization for multi-calendar queries
+
+** TODO Task 5: Add Background Sync Scheduling
+Implement automatic background sync using Temporal's scheduling capabilities.
+
+*** Architectural Rationale
+This completes the transformation from on-demand sync to a proper background service. Using Temporal's native scheduling ensures reliable, durable sync operations with proper error handling and retry logic.
+
+This follows the established pattern from the sample implementation for long-running, scheduled workflows.
+
+*** Files to create/modify
+- `cal/workflows.py`: Add scheduled sync workflow
+- `cal/worker.py`: Configure scheduled workflow execution
+- `cal/cli/sync_daemon.py`: Daemon management CLI
+- `bin/calendar-sync-daemon`: Service wrapper script
+- `docker-compose.yml`: Add calendar sync service
+- `config/sync-schedule.yaml`: Sync scheduling configuration
+
+*** Completion Criteria
+- [ ] Automatic sync scheduling with configurable intervals
+- [ ] Proper daemon lifecycle management (start/stop/status)
+- [ ] Error handling and retry logic for failed syncs
+- [ ] Monitoring and health check endpoints
+- [ ] Docker service integration
+- [ ] Configuration-driven sync scheduling
+
+** Implementation Priority and Dependencies
+
+*** Phase 1: Foundation (Tasks 1-2)
+- Task 1 (PostgreSQL Repository) must complete before Task 2
+- Task 2 (Sync Workflow) depends on Task 1 completion
+- These tasks establish the core two-step architecture
+
+*** Phase 2: Enhancement (Tasks 3-4)
+- Task 3 (Rich Querying) can proceed after Task 1
+- Task 4 (Multi-Calendar) can proceed after Tasks 1-2
+- These tasks add sophisticated functionality
+
+*** Phase 3: Production (Task 5)
+- Task 5 (Background Sync) requires Tasks 1-2
+- This task prepares for production deployment
+
+** Success Criteria for Refactor
+
+The refactor will be considered successful when:
+
+1. **Performance**: Schedule generation completes in <1 second for 1000+ events
+2. **Reliability**: Background sync operates for 7+ days without manual intervention
+3. **Functionality**: Multi-calendar support with rich querying capabilities
+4. **Architecture**: Clean separation between sync and generation workflows
+5. **User Experience**: CLI commands provide immediate feedback with offline capability
+
+* Risks and Issues
+
+** Technical Risks
+1. *Google Calendar API Limitations*:
+   - Rate limits may affect scalability
+   - OAuth flow requires user interaction, complicating automation
+   - API changes could break integration
+
+2. *Temporal Infrastructure Requirements*:
+   - Requires running Temporal server
+   - Adds operational complexity for personal use
+
+3. *Local Storage Limitations*:
+   - No synchronization between devices
+   - Potential data loss without backup strategy
+
+4. *Real-World Calendar Data Quality Issues*:
+   - Many calendar events have timezone-naive datetimes (violates domain model requirements)
+   - Some events have invalid time ranges (end time before start time)
+   - Legacy calendar data contains inconsistent formatting
+   - Current implementation uses temporary workarounds that mask data quality problems
+
+** Business Risks
+1. *Value Proposition Clarity*:
+   - Is calendar triage alone valuable enough?
+   - Does it solve a significant enough pain point?
+
+2. *Adoption Barriers*:
+   - Technical setup complexity may limit adoption
+   - Google Calendar OAuth requirements add friction
+   - Command-line interface may limit accessibility
+
+3. *Competitive Landscape*:
+   - Many calendar and productivity tools exist
+   - AI assistants are rapidly adding calendar features
+
+* Evaluation Timeline
+- **Phase 1**: Initial Setup and Configuration (COMPLETED)
+- **Phase 2**: Refactored Architecture Validation (IN PROGRESS)
+- **Phase 3**: 7-Day Structured User Evaluation (PENDING Phase 2 completion)
+- **Phase 4**: Analysis and Synthesis (PENDING Phase 3 completion)
+
+** Current Status
+- Google Calendar integration configured and tested
+- Initial monolithic approach identified high friction
+- Architecture refactored into separate sync (Temporal) and generate (CLI) components
+- Currently validating refactored architecture before proceeding to user evaluation
+- Daily feedback collection method established (updates to this mvp.org file)
+
+* Resources Required
+- Single Google Calendar account (primary calendar)
+- Current GTD workflow documentation
+- Daily feedback collection method (org-mode notes)
+- Access to existing calendar data for realistic testing
+- Time allocation: 15-30 minutes daily for evaluation activities

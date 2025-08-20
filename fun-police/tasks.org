@@ -1,0 +1,865 @@
+#+TITLE: Memory Bank Tasks
+#+TODO: TODO NEXT WIP BLOCKED | DONE CANCELLED ABANDONED
+#+STARTUP: overview
+
+* How to Use This File
+
+This org-mode file manages all project tasks using standard org-mode TODO workflows:
+
+- Mark immediate next actions with NEXT (these show up in org-agenda)
+- Use TODO for planned work that's not yet ready
+- Mark completed items as DONE (they get timestamps automatically)  
+- Use C-c C-x C-a to archive older DONE items to tasks.org_archive
+- Use C-c C-t to cycle through TODO states
+- Use C-c C-s to schedule items, C-c C-d for deadlines
+
+The file is organized by logical task hierarchy, not by status - let the TODO states handle status tracking.
+
+For detailed task management methodology, see memory-bank/methodology.md.
+
+* Current Focus
+
+Primary objective: Define minimal viable personal assistant functionality following Gall's Law ("A complex system that works is invariably found to have evolved from a simple system that worked").
+
+With POC validation complete, we're now defining the minimal useful features and planning implementation approach. The technical foundation is solid - all architectural patterns are proven and documented.
+
+Key decisions pending:
+- What constitutes the simplest useful personal assistant?
+- Which personal information types to handle initially?
+- How to implement co-evolutionary relationship in simplest form?
+
+* Technical Foundation Status
+
+** DONE POC Architecture Validation
+Complete reference implementation validates all architectural patterns:
+
+*** What Works ✅
+- Complete Clean Architecture implementation in sample/ directory
+- Proven Temporal workflow patterns with deterministic execution
+- Three-layer repository pattern (Pure Backend → Temporal Activity → Workflow Proxy)
+- Comprehensive error handling with Saga pattern compensation
+- Large payload handling via FileStorageRepository
+- Complete API layer with FastAPI and dependency injection
+- Docker-based service orchestration
+- Testing strategy with unit, integration, and E2E tests
+- Protocol-based dependency injection with @runtime_checkable
+- Pydantic v2 domain models with business rule validation
+- Structured logging with business context
+- Data serialization patterns for Temporal compatibility
+- Idempotent repository operations for retry safety
+
+*** Documentation Complete ✅
+- projectbrief.org: Core architecture principles and domain boundaries
+- productContext.org: Co-evolutionary symbiotic relationship model
+- systemPatterns.org: Complete architectural pattern catalog
+- techContext.org: Technology stack and development environment
+- methodology.org: Task management and development patterns
+- GUIDE.md: Comprehensive architecture and testing guide
+
+** Current Implementation Readiness
+Foundation complete, ready for personal assistant domain implementation.
+
+Technical foundation provides proven patterns for rapid development:
+- Reference implementation demonstrates all architectural patterns working together
+- AI pair programming with memory-bank pattern established
+- Clear architectural guidelines prevent decision paralysis
+- Comprehensive testing strategy defined with type safety validation
+- Complete data sovereignty with local processing capability
+
+Next immediate action: Define minimal feature set following Gall's Law principles.
+
+Key implementation decisions pending:
+1. Minimal Feature Set: What constitutes the simplest useful personal assistant?
+2. Domain Model Scope: Which personal information types to handle initially?
+3. AI Interaction Model: How to implement co-evolutionary relationship in simplest form?
+4. Deployment Strategy: Local-first development with production deployment path?
+
+Ready for implementation - all architectural patterns validated and documented.
+
+* Personal Assistant Implementation
+
+** DONE Define Minimal Feature Set
+Following Gall's Law, identified the simplest useful functionality: **GTD Information Consolidation Assistant**.
+
+*** Core Problem Identified
+User has fragmented personal information across three sources:
+1. **org-mode capture** (intray.org) - conscious thought capture during day and morning mind-sweep
+2. **Email** - external demands and requests that create obligations
+3. **Calendar** - meeting invitations that create time commitments, often without explicit acceptance
+
+Current GTD workflow operates on incomplete information because it only sees org-mode captures, missing email demands and calendar obligations.
+
+*** Minimal Viable Solution
+**GTD Information Consolidation Workflow**: AI assistant examines all three sources and produces a consolidated view for complete GTD prioritization.
+
+This provides immediate tangible benefit (complete information for existing GTD workflow) while establishing core patterns:
+- Multi-source personal information integration
+- AI-assisted information processing and consolidation
+- Workflow enhancement rather than replacement
+- Privacy-preserving local processing
+
+*** Implementation Scope
+**** In Scope for MVP
+- Email parsing for action items and demands
+- Calendar parsing for time commitments and obligations  
+- Org-mode file integration (intray.org reading)
+- Consolidated view generation for GTD workflow
+- Basic AI analysis of priorities and conflicts
+
+**** Out of Scope for MVP
+- Apparatus integration (safety-critical, complex)
+- Advanced AI learning (requires established relationship)
+- Complex workflow orchestration (can build incrementally)
+- Email/calendar modification (read-only integration initially)
+
+*** Next Steps
+Ready to move to domain model design and workflow specification.
+
+** WIP Calendar MVP Evaluation (7-Day Single-User Study)
+Conducting structured evaluation of the Calendar MVP over 7 days to validate business hypothesis and technical approach.
+
+*** Current Status
+- Calendar MVP implementation complete
+- Google Calendar integration working
+- AI triage system functional
+- Org-mode output generation ready
+- Single-user evaluation framework established
+
+*** Evaluation Approach
+- **Duration**: 7 days starting today
+- **Method**: Daily usage with structured feedback collection
+- **Focus**: Technical reliability, AI decision quality, workflow integration, time value
+- **Outcome**: Go/no-go recommendation for continued development
+
+*** Daily Activities
+1. Use calendar sync as part of morning planning routine
+2. Document value delivered and friction points
+3. Evaluate AI triage suggestions against actual decisions
+4. Assess integration with existing GTD workflow
+5. Record usage likelihood and enhancement ideas
+
+*** Success Criteria
+- [ ] Complete 7 days of structured usage
+- [ ] Document daily feedback systematically
+- [ ] Assess technical reliability and performance
+- [ ] Evaluate AI decision quality and usefulness
+- [ ] Make final recommendation on project direction
+
+*** Responding to Evaluation Feedback and Insights
+Based on initial evaluation usage, several architectural improvements have been identified and implemented to address discovered limitations:
+
+**** DONE Task 1: Design PostgreSQL Calendar Repository
+Implement a PostgreSQL-backed CalendarRepository following the three-layer repository pattern established in systemPatterns.org.
+
+**Architectural Rationale**
+This task creates the foundation for persistent calendar storage, replacing the current file-based local storage with a proper database backend. Following the exact pattern from `sample/repos/minio/`, we implement Pure Backend → Temporal Activity → Workflow Proxy layers.
+
+The PostgreSQL implementation enables:
+- Rich querying capabilities with SQL
+- Proper indexing for performance
+- ACID compliance for data integrity
+- Multi-calendar support with normalized schema
+- Efficient sync state management
+
+**Files to create/modify**
+- `cal/repos/postgresql/calendar.py`: Pure PostgreSQL implementation of CalendarRepository
+- `cal/repos/postgresql/__init__.py`: Package initialization
+- `cal/repos/postgresql/migrations/`: Database schema migrations
+- `cal/repos/temporal/postgresql_calendar.py`: Temporal activity wrapper
+- `cal/repos/temporal/proxies/postgresql_calendar.py`: Workflow proxy
+- `requirements.txt`: Add `asyncpg` and `alembic` dependencies
+- `docker-compose.yml`: Add PostgreSQL service for calendar data
+
+**Completion Criteria**
+- [X] PostgreSQL CalendarRepository implements all CalendarRepository protocol methods
+- [X] Database schema supports multiple calendars with proper indexing
+- [X] Sync state management with per-calendar tokens
+- [X] Rich querying capabilities (date range, calendar filter, event type, etc.)
+- [X] Three-layer repository pattern correctly implemented
+- [X] Database migrations for schema management
+- [X] Docker compose integration for development environment
+
+**** DONE Task 2: Implement Calendar Sync Workflow
+Create a background Temporal workflow that syncs Google Calendar data to PostgreSQL on a schedule.
+
+**Architectural Rationale**
+This separates the Google API integration from the schedule generation workflow, following the Single Responsibility Principle. The sync workflow handles the complexity of Google API rate limits, OAuth token refresh, and incremental sync logic.
+
+Following the pattern from `sample/workflow.py`, this workflow orchestrates the sync process using repository proxies and handles compensation for partial failures.
+
+**Files to create/modify**
+- `cal/workflows.py`: Add `CalendarSyncWorkflow` class
+- `cal/usecase.py`: Enhance `CalendarSyncUseCase` for PostgreSQL backend
+- `cal/worker.py`: Register new workflow and activities
+- `cal/cli/sync_calendar.py`: CLI command to trigger sync workflow
+- `bin/sync-calendar`: Wrapper script for sync CLI
+
+**Completion Criteria**
+- [X] `CalendarSyncWorkflow` orchestrates Google → PostgreSQL sync
+- [X] Handles multiple calendars with separate sync states
+- [X] Implements proper error handling and compensation
+- [X] Supports both full sync and incremental sync modes
+- [X] CLI interface for manual sync triggering
+- [ ] Scheduled execution capability (cron-like) - deferred to Task 5
+- [X] Comprehensive logging for sync operations
+
+**** DONE Task 3: Enhance Schedule Generation with Efficient Date Filtering
+Update the CreateScheduleUseCase to use PostgreSQL's efficient date-range querying instead of fetching all events and filtering in Python.
+
+**Architectural Rationale**
+The current implementation calls `get_all_events()` and filters by date range in Python, which is inefficient for large calendars. Moving the date filtering to SQL provides better performance while maintaining the Repository Pattern's abstraction.
+
+This follows YAGNI principles by implementing only the specific query method we actually need, rather than building a generic query interface. The repository abstraction remains clean with a focused, well-named method that expresses the exact business need.
+
+**Files to create/modify**
+- `cal/repositories.py`: Add `get_events_by_date_range()` method to CalendarRepository protocol
+- `cal/repos/postgresql/calendar.py`: Implement efficient SQL date-range query
+- `cal/usecase.py`: Update `CreateScheduleUseCase` to use new repository method
+- `cal/tests/test_usecase.py`: Update tests for new repository method
+
+**Completion Criteria**
+- [X] `get_events_by_date_range()` method added to CalendarRepository protocol
+- [X] PostgreSQL implementation uses efficient SQL WHERE clause for date filtering
+- [X] `CreateScheduleUseCase` uses new method instead of `get_all_events()` + Python filtering
+- [X] Use case tests updated to mock new repository method
+- [X] Performance improvement demonstrated (SQL filtering vs Python filtering)
+
+**** DONE Task 4: Implement Multi-Calendar Support
+Extend the system to handle multiple Google Calendars with unified querying.
+
+**Architectural Rationale**
+This addresses a key limitation of the current single-calendar approach. Many users have multiple calendars (work, personal, shared calendars) that need to be considered together for comprehensive schedule planning.
+
+The implementation maintains the existing architecture while extending it to handle calendar collections, following the Open/Closed Principle.
+
+**Files to create/modify**
+- `cal/domain.py`: Add `CalendarCollection` and `CalendarSource` models ✅
+- `cal/repos/postgresql/calendar.py`: Multi-calendar query support ✅
+- `cal/usecase.py`: Update to handle calendar collections ✅
+- `cal/cli/sync_calendar.py`: Support for multiple calendar configuration ✅
+- `cal/cli/google_calendar.py`: Multi-calendar demo support ✅
+- `config/calendars.yaml`: Configuration file for calendar sources ✅
+
+**Completion Criteria**
+- [X] System can sync multiple Google Calendars independently
+- [X] Unified querying across calendar collections
+- [X] Configuration-driven calendar source management
+- [X] CLI support for multi-calendar operations
+- [X] Proper calendar isolation and conflict resolution
+- [X] Performance optimization for multi-calendar queries
+
+**Implementation Notes**
+- Enhanced use case to properly handle calendar collections with priority-based sorting
+- Improved CLI tools with better user feedback and collection status display
+- Added calendar isolation through metadata tracking in time blocks
+- Performance optimized through priority-based calendar processing
+- Configuration-driven approach using existing calendars.yaml structure
+
+**** NEXT Task 5: Add Background Sync Scheduling
+Implement automatic background sync using Temporal's scheduling capabilities.
+
+**Architectural Rationale**
+This completes the transformation from on-demand sync to a proper background service. Using Temporal's native scheduling ensures reliable, durable sync operations with proper error handling and retry logic.
+
+This follows the established pattern from the sample implementation for long-running, scheduled workflows.
+
+**Files to create/modify**
+- `cal/workflows.py`: Add scheduled sync workflow
+- `cal/worker.py`: Configure scheduled workflow execution
+- `cal/cli/sync_daemon.py`: Daemon management CLI
+- `bin/calendar-sync-daemon`: Service wrapper script
+- `docker-compose.yml`: Add calendar sync service
+- `config/sync-schedule.yaml`: Sync scheduling configuration
+
+**Completion Criteria**
+- [ ] Automatic sync scheduling with configurable intervals
+- [ ] Proper daemon lifecycle management (start/stop/status)
+- [ ] Error handling and retry logic for failed syncs
+- [ ] Monitoring and health check endpoints
+- [ ] Docker service integration
+- [ ] Configuration-driven sync scheduling
+
+** Create Google Calendar → calendar.org MVP
+Minimal viable implementation: Basic calendar sync with simple org-mode output that integrates with existing GTD workflow.
+
+*** MVP Scope (Immediate Implementation)
+**** DONE Design Calendar Domain Models
+The domain model for the calendar package has been refactored to focus on time management and planning, separating it from the concerns of a future "meeting" domain.
+- **TimeBlock**: The core internal entity representing a scheduled block of time (e.g., meeting, focus work). It contains the executive decision workflow (accept, delegate, etc.).
+- **Schedule**: A collection of TimeBlocks for a given period (e.g., a day or week) representing a plan.
+- **CalendarEvent**: Represents raw event data from an external source, which can be transformed into a `TimeBlock`.
+
+**** DONE Stage 1: Define Calendar Sync Use Case and Protocols
+Define the business logic for calendar synchronization and the repository interfaces it depends on, following Clean Architecture principles. This involves orchestrating the fetching of events from a source calendar and storing them locally, including the logic for change detection.
+
+**Architectural Rationale**:
+This task establishes the core use case and its dependencies (repository protocols) *before* any concrete implementation, adhering to the principles in `systemPatterns.md`. The use case will define the business logic for change detection (diffing source events against locally stored ones) and will depend on abstractions for fetching and storing calendar data.
+
+**Files to create/modify**:
+- `cal/usecase.py`: Defines the `CalendarSyncUseCase` responsible for orchestrating the sync process.
+- `cal/repositories.py`: Defines the `CalendarRepository` protocol with methods to support fetching and storing calendar events.
+- `cal/__init__.py`: Export the new symbols.
+
+**Completion Criteria**:
+- [X] `CalendarSyncUseCase` is defined and contains the high-level logic for syncing events.
+- [X] `CalendarRepository` protocol is defined with the necessary methods to support the use case.
+- [X] The use case and repository protocol designs clearly support change detection (new, modified, deleted events).
+- [X] The design is pure business logic and does not contain any implementation details for Google Calendar or local storage.
+
+**** DONE Stage 1a: Unit Test Calendar Sync Use Case
+Write unit tests for the `CalendarSyncUseCase` to ensure its logic is correct. According to `methodology.md`, use case tests should use mocked repository dependencies to isolate the business logic.
+
+**Architectural Rationale**:
+This upholds the testing pyramid strategy defined in `systemPatterns.md` and `methodology.md`. By testing the use case in isolation with mocks, we validate the core business logic without relying on external systems or concrete repository implementations. This ensures the use case logic is robust and framework-agnostic.
+
+**Files to create/modify**:
+- `cal/tests/test_usecase.py`: Contains unit tests for `CalendarSyncUseCase` using mocked `CalendarRepository` dependencies.
+
+**Completion Criteria**:
+- [X] `CalendarSyncUseCase.execute` method is tested for all major scenarios (e.g., initial sync, incremental sync with creates/updates/deletes, no changes).
+- [X] `CalendarRepository` dependencies are mocked using `unittest.mock.AsyncMock` or similar.
+- [X] The tests validate that the correct methods are called on the sink repository based on the data from the source repository.
+
+**** DONE Stage 2: Implement Calendar Repositories
+Implement the `CalendarRepository` protocol for Google Calendar (source) and a local storage backend (e.g., file-based).
+
+**Files created**:
+- `cal/repos/google/calendar.py` - Google Calendar implementation of `CalendarRepository`.
+- `cal/repos/local/calendar.py` - Local storage implementation of `CalendarRepository`.
+- `requirements.txt` - Added `google-api-python-client` dependency.
+
+**** CANCELLED Stage 3: Calendar.org Generation
+*Architectural Review Finding*: This approach was found to be a fatal defect. It couples a use case directly to file I/O and a specific presentation format (`.org`), violating the Clean Architecture principles established in `systemPatterns.md`. The use case must operate on domain models and use repositories for side effects, remaining ignorant of external frameworks and formats. The following tasks rectify this.
+
+**** DONE Stage 3a: Refactor for Schedule-Centric Architecture
+Refactor the calendar domain to be centered around the `Schedule` entity for planning. This involved creating a repository for `Schedule` objects and adapting the org-mode formatter to work with this new abstraction.
+
+**Architectural Rationale**:
+This change aligns the implementation with the true business process: creating a candidate plan (`Schedule`) from calendar data. By introducing a `ScheduleRepository`, we treat schedule creation as a formal side effect, consistent with the system's patterns. Decoupling the org formatter from raw events and making it operate on a `Schedule` makes the presentation layer more robust and aligned with the domain model.
+
+**Files modified**:
+- `cal/repositories.py`: Added the `ScheduleRepository` protocol.
+- `cal/repos/local/calendar.py`: Implemented the `ScheduleRepository` for local file-based storage of schedules.
+- `cal/org.py`: Refactored `generate_org_content` to accept a `Schedule` object instead of a list of `CalendarEvent`s.
+- `cal/tests/test_org.py`: Updated tests to reflect the changes in `cal/org.py`.
+- `cal/__init__.py`: Exported the new `ScheduleRepository` symbol.
+
+**Completion Criteria**:
+- [X] `ScheduleRepository` protocol is defined and exported.
+- [X] `LocalCalendarRepository` implements the new protocol for storing/retrieving `Schedule` objects.
+- [X] `cal/org.py`'s functions now operate on the `Schedule` domain model.
+- [X] Tests for `cal/org.py` are updated and passing.
+
+**** DONE Stage 3b: Implement CreateScheduleUseCase
+Implement a new use case responsible for generating a `Schedule` from a calendar's events and persisting it.
+
+**Architectural Rationale**:
+This creates a pure, framework-agnostic use case that encapsulates the business logic of "creating a daily/weekly plan". It depends only on repository protocols (`CalendarRepository` to get events, `ScheduleRepository` to save the schedule), adhering to the Dependency Inversion Principle.
+
+**Files to create/modify**:
+- `cal/usecase.py`: Create `CreateScheduleUseCase`. Remove the old `GenerateOrgFileUseCase`.
+- `cal/tests/test_usecase.py`: Add unit tests for `CreateScheduleUseCase`. Remove tests for `GenerateOrgFileUseCase`.
+- `cal/__init__.py`: Update exports to include `CreateScheduleUseCase` and remove `GenerateOrgFileUseCase`.
+
+**Completion Criteria**:
+- [X] `CreateScheduleUseCase` is implemented and can convert `CalendarEvent`s into a `Schedule` object.
+- [X] The use case uses the `ScheduleRepository` to persist the created schedule.
+- [X] Unit tests for the new use case are written and passing, using mocked repositories.
+- [X] The old `GenerateOrgFileUseCase` and its tests are completely removed.
+
+**** DONE Stage 3c-1: Create Temporal Activity Layer
+Create the Temporal activity wrapper following the proven three-layer pattern from sample/.
+
+**Architectural Rationale**:
+Following the exact pattern from `sample/repos/temporal/minio_orders.py`, create an activity wrapper that delegates to the existing `LocalCalendarRepository`. This maintains the three-layer repository pattern: Pure Backend → Temporal Activity → Workflow Proxy.
+
+**CRITICAL LESSON LEARNED**: The current workflow uses "unsafe_mock_*" functions which violate Clean Architecture by mixing concerns and creating non-deterministic code. This task fixes that violation by implementing the proper three-layer pattern.
+
+**Files to create**:
+- `cal/repos/temporal/local_calendar.py`: Activity wrapper for `LocalCalendarRepository`
+- `cal/repos/temporal/__init__.py`: Package initialization
+
+**Completion Criteria**:
+- [X] `TemporalLocalCalendarRepository` wraps `LocalCalendarRepository`
+- [X] Only implements `ScheduleRepository` methods (`save_schedule`, `get_schedule`)
+- [X] Methods decorated with `@activity.defn` following exact pattern from `TemporalMinioOrderRepository`
+- [X] Constructor takes `LocalCalendarRepository` instance for dependency injection
+- [X] Follows exact logging pattern from sample implementation
+- [X] NO "unsafe_mock_*" functions - only proper repository delegation
+
+**** DONE Stage 3c-2: Create Workflow Proxy Layer
+
+**** DONE Stage 3c-2: Create Workflow Proxy Layer
+Create the workflow-safe proxy following the proven pattern from sample/.
+
+**Architectural Rationale**:
+Following the exact pattern from `sample/repos/temporal/proxies/order.py`, create a deterministic proxy that calls `workflow.execute_activity()`. This ensures workflow determinism while maintaining the repository protocol interface.
+
+**Files to create**:
+- `cal/repos/temporal/proxies/schedule.py`: Workflow proxy for schedule operations
+- `cal/repos/temporal/proxies/__init__.py`: Package initialization
+
+**Completion Criteria**:
+- [X] `WorkflowScheduleRepositoryProxy` implements `ScheduleRepository` protocol
+- [X] Methods call `workflow.execute_activity()` with proper activity names matching registered activities
+- [X] Handles Pydantic model validation on activity results like `WorkflowOrderRepositoryProxy`
+- [X] Uses same timeout pattern and logging as sample implementation
+- [X] No business logic - pure delegation to activities
+
+**** DONE Stage 3c-3: Fix Workflow Implementation
+Remove unsafe mocks and use proper repository proxies following the proven pattern.
+
+**Architectural Rationale**:
+The current workflow violates Clean Architecture by using `unsafe_mock_*` functions. These functions mix concerns, create non-deterministic code, and make testing impossible. Replace with proper repository proxies that delegate to real activities, following the exact pattern from `sample/workflow.py`. The workflow should instantiate proxies exactly like `OrderFulfillmentWorkflow` does.
+
+**ROOT CAUSE**: We violated the "never innovate on architecture" principle by creating mock functions instead of following the proven three-layer pattern. This created untestable, non-deterministic workflow code.
+
+**Files to modify**:
+- `cal/workflows.py`: Remove unsafe mocks, use `WorkflowScheduleRepositoryProxy`
+- `cal/worker.py`: Register activity instances properly following `sample/worker.py` pattern
+
+**Completion Criteria**:
+- [X] Remove all `unsafe_mock_*` functions from workflow
+- [X] Instantiate `WorkflowScheduleRepositoryProxy()` like `sample/workflow.py` does with order proxies
+- [X] Pass proxy to `CreateScheduleUseCase` constructor following exact dependency injection pattern
+- [X] Worker instantiates: `local_repo → temporal_activity_repo → register activities` chain
+- [X] Activity registration uses instance methods: `temporal_repo.save_schedule`, `temporal_repo.get_schedule`
+- [X] Workflow becomes deterministic and testable like `OrderFulfillmentWorkflow`
+
+**** DONE Stage 3c-4: Simplify Workflow Tests
+Fix tests to focus on orchestration only, not business logic.
+
+**Architectural Rationale**:
+Current tests violate the testing pyramid by testing business logic in workflow tests. They're trying to test integration instead of units, making them complex and brittle. Workflow tests should only verify orchestration - that the right activities are called in the right order.
+
+**TESTING VIOLATION**: The current tests mock repositories and test business logic, which should be done in use case tests. Workflow tests should only verify that activities are called correctly.
+
+**Files to modify**:
+- `cal/tests/test_workflows.py`: Simplify to test orchestration only
+
+**Completion Criteria**:
+- [X] Tests mock activities, not repositories
+- [X] Tests verify activity call sequence and arguments
+- [X] No business logic testing in workflow tests
+- [X] Fast, focused tests that validate orchestration only
+- [X] Follow the same testing pattern as sample/ workflow tests
+
+**** DONE Stage 4: Calendar Analysis and Decision Making
+Analyze calendar events to provide decision support and strategic context. This builds on the foundation of calendar sync by adding a layer of intelligence to transform raw event data into actionable insights for the executive.
+
+***** MVP: Implement Basic Event Triage
+The simplest useful analysis is to classify events and provide an initial recommendation. This establishes the pattern for more sophisticated analysis later.
+
+****** DONE Stage 4a: Enhance Domain Model for Event Triage
+Add fields to the `TimeBlock` model to store analysis results, and define the vocabulary for executive decisions.
+
+******* Files to create/modify
+- `cal/domain.py`: Add `ExecutiveDecision` enum and new fields to `TimeBlock` (e.g., `suggested_decision: ExecutiveDecision`, `decision_reason: str`).
+- `memory-bank/GLOSSARY.org`: Add definitions for `ExecutiveDecision` and `Event Triage`.
+
+******* Completion Criteria
+- [X] `TimeBlock` model is updated with new fields for analysis.
+- [X] New `ExecutiveDecision` enum is defined with values like `ATTEND`, `RESCHEDULE`, `DELEGATE`, `SKIP`.
+- [X] Glossary is updated with the new terms.
+
+****** DONE Stage 4b: Enhance Classifier for Event Triage
+Extend the classifier repository to perform the triage analysis.
+
+******* Files to create/modify
+- `cal/repositories.py`: Add a new method to `TimeBlockClassifierRepository` like `triage_event(event: CalendarEvent) -> Tuple[ExecutiveDecision, str]`.
+- `cal/repos/local/time_block_classifier.py`: Implement the new `triage_event` method with simple default logic (e.g., based on keywords in the event title).
+
+******* Completion Criteria
+- [X] The `TimeBlockClassifierRepository` protocol has a new method for event triage.
+- [X] The local classifier implements this method.
+
+****** DONE Stage 4c: Integrate Triage into Schedule Creation
+Update the `CreateScheduleUseCase` to use the new triage capability when converting `CalendarEvent`s to `TimeBlock`s.
+
+******* Files to create/modify
+- `cal/usecase.py`: Update `CreateScheduleUseCase` to call the new `triage_event` method on the classifier and populate the new fields in the `TimeBlock` object.
+
+******* Completion Criteria
+- [X] `CreateScheduleUseCase` correctly calls the classifier.
+- [X] The generated `TimeBlock`s contain the triage information (decision and reason).
+
+****** DONE Stage 4d: Unit Test Event Triage Logic
+Update the use case tests to verify the new triage logic.
+
+******* Files to create/modify
+- `cal/tests/test_usecase.py`: Add/modify tests for `CreateScheduleUseCase` to verify that the mock classifier is called and its results are correctly propagated to the `TimeBlock` objects within the created `Schedule`.
+
+******* Completion Criteria
+- [X] `TestCreateScheduleUseCase` includes tests for the event triage functionality.
+- [X] Tests verify the interaction with the mocked `TimeBlockClassifierRepository`.
+
+****** DONE Stage 5: Calendar.org Output Demo
+Create a simple demonstration that fetches calendar events, applies AI triage, and outputs an org-mode file showing events with triage decisions and reasoning.
+
+******* Files to create/modify
+- `cal/demo.py`: Simple script that demonstrates the complete flow
+- `cal/repos/mock/calendar.py`: Mock calendar repository with sample events
+- `requirements-demo.txt`: Any additional dependencies for demo
+
+******* Completion Criteria
+- [X] Demo script runs successfully and produces org-mode output
+- [X] Output shows calendar events with triage decisions and reasoning
+- [X] Demonstrates the complete CalendarEvent → TimeBlock → Schedule flow
+- [X] Validates triage logic with realistic calendar scenarios
+
+****** DONE Stage 6: Google Calendar Integration
+Implement real Google Calendar integration to replace the mock repository, enabling the system to work with actual calendar data.
+
+******* Files created/modified
+- `cal/repos/google/calendar.py`: Enhanced error handling for Google Calendar API
+- `cal/demo_google.py`: Complete demo script using real Google Calendar data
+- `credentials.json.example`: Example credentials file structure
+- `README-google-setup.md`: Comprehensive setup instructions for Google Calendar API
+- `requirements-demo.txt`: Added Google API dependencies
+
+******* Completion Criteria
+- [X] Google Calendar repository can fetch real calendar events
+- [X] Demo works with actual Google Calendar data  
+- [X] Setup documentation enables easy Google Calendar API configuration
+- [X] Triage analysis works with real-world calendar events
+
+******* Implementation Notes
+- Enhanced GoogleCalendarRepository with proper error handling
+- Created adapter pattern to bridge Google Calendar API with CreateScheduleUseCase
+- Comprehensive setup documentation with troubleshooting guide
+- Demo handles authentication flow and provides clear feedback
+- Added all necessary Google API dependencies to requirements-demo.txt
+
+****** DONE Stage 7: Refactor Org-Mode Output to Use Jinja Templates
+Refactored the org-mode output generation to use Jinja2 templates, separating presentation logic from business logic and improving maintainability. The demonstration scripts were also converted into architecturally sound CLI applications using `click`.
+
+******* Architectural Rationale
+The previous implementation in `cal/demo.py` and `cal/demo_google.py` embedded org-mode formatting directly in Python code. These scripts were prototypes for a first-class CLI entry point. Refactoring to use Jinja2 templates via `cal.org.generate_org_content` and `click` for the CLI structure separates presentation from application logic, aligning with Clean Architecture. This enables:
+
+- **Separation of Concerns**: Template logic separated from Python business logic
+- **Maintainability**: Non-programmers can modify org-mode output format
+- **Extensibility**: Easy to add multiple output formats (org, markdown, HTML) using different templates
+- **Testability**: Templates can be tested independently of business logic
+- **Consistency**: Follows proven patterns for CLIs and web development
+
+This refactor aligns with the Clean Architecture principle that presentation concerns should be isolated from domain logic.
+
+******* Files to create/modify
+- `cal/cli/mock_calendar.py`: New CLI using `click` and `generate_org_content`.
+- `cal/cli/google_calendar.py`: New CLI using `click` and `generate_org_content`.
+- `bin/run-mock-calendar-demo`: Wrapper script for the mock CLI.
+- `bin/run-google-calendar-demo`: Wrapper script for the Google CLI.
+- `cal/org.py`: Confirmed it uses Jinja2 template rendering.
+- `cal/demo.py`, `cal/demo_google.py`: Deleted and replaced by CLI applications.
+- `requirements.txt`: Added `click` and `Jinja2` dependencies.
+
+******* Completion Criteria
+- [X] Jinja2 template produces identical org-mode output to current implementation
+- [X] Template is easily readable and modifiable by non-programmers
+- [X] Python code no longer contains org-mode formatting strings
+- [X] Tests verify template rendering works correctly
+- [X] Demo script uses new template-based generation
+- [X] Template supports all current org-mode features (SCHEDULED properties, decision metadata)
+- [X] CLI applications are architecturally sound and use `click`.
+
+*** NEXT Future Enhancements (Vision Backlog)
+**** NEXT Analyze TODO State Preservation in Org-Mode Output
+**Vision**: Ensure that executive decisions (TODO states) are preserved appropriately during calendar updates.
+
+**Business Problem**:
+When a calendar is re-synced and org-mode output is regenerated, we need a clear strategy for handling items that already have TODO states assigned. These states represent executive decisions that have been made, and blindly overwriting them would lose this valuable information.
+
+**Key Considerations**:
+- For items with no TODO states: Updates should propagate freely as no decision has been made
+- For items with existing TODO states: A decision has already been made, so special handling is required
+- Changes to meeting details (time, location, attendees) might warrant re-evaluation of previous decisions
+- Substantive changes to meeting purpose might invalidate previous decisions
+
+**Potential Solutions**:
+- Preserve all TODO states regardless of changes (prioritize executive decisions)
+- Implement a "change detection" heuristic to identify significant changes that warrant re-evaluation
+- Add metadata to track decision history and provide context for new decisions
+- Implement a hybrid approach with clear visual indicators for items that may need re-evaluation
+
+**Files to create/modify**:
+- `cal/domain.py`: Potentially add fields to track decision history
+- `cal/usecase.py`: Enhance `CreateScheduleUseCase` to handle TODO state preservation
+- `cal/org.py`: Modify org output generation to implement the chosen strategy
+
+**Completion Criteria**:
+- [ ] Clear business rules defined for TODO state preservation
+- [ ] Implementation strategy documented with rationale
+- [ ] Technical approach specified with affected components
+- [ ] Consideration of AI heuristics for detecting significant changes
+
+**** TODO Stage 2: AI Context Research (Future Enhancement)
+**Vision**: Transform basic calendar sync into comprehensive meeting intelligence.
+
+- **Project/Area Mapping**: Infer relationships between meetings and projects/responsibilities
+- **Knowledge Synthesis**: RAG/GraphRAG queries over relevant knowledge bases
+- **Stakeholder Analysis**: Research meeting participants, roles, recent interactions
+- **Context Gathering**: Recent events, current project states, plans, achievements
+- **Relationship Mapping**: Who's present/absent, communication patterns, influence networks
+- **Comprehensive Brief**: Generate detailed background document for each meeting
+
+**** TODO Stage 3: Expert Executive Assistant Analysis (Future Enhancement)
+**Vision**: Provide strategic decision support for each meeting.
+
+- **Strategic Assessment**: Analyze meeting necessity, timing, and alternatives
+- **Decision Framework**: Evaluate attend/reschedule/delegate/decline options with reasoning
+- **Preparation Planning**: Identify required pre-work, materials, talking points
+- **Outcome Prediction**: Anticipate meeting results and follow-up needs
+- **Risk Assessment**: Identify potential issues, conflicts, or opportunities
+- **Recommendations**: Provide strategic advice on how to approach each meeting
+
+**** TODO Stage 3: Executive Summary Enhancement (Future Enhancement)
+**Vision**: Rich decision support and strategic context for calendar decisions.
+
+- **Decision Support**: Clear options with pros/cons for each choice
+- **Action Planning**: Specific preparation tasks with priorities and deadlines
+- **Strategic Context**: Key points to remember, objectives to achieve
+- **Executive Briefing**: Concise summary for executive decision-making
+- **Knowledge Integration**: Connect meetings to broader project and relationship context
+
+*** Implementation Notes
+**MVP Philosophy**: Start with working calendar sync that provides immediate value to GTD workflow. Prove the basic architecture and workflow patterns before adding AI sophistication.
+
+**Evolution Path**: Each future enhancement builds on the MVP foundation, gradually transforming simple calendar sync into comprehensive executive assistant capabilities.
+
+**Knowledge Base Requirements** (Future): Project documentation, contact databases, communication history, organizational context, domain-specific knowledge for work areas.
+
+** TODO Design Meeting Domain and Use Cases (Future)
+This will be a new domain package, `meeting/`, responsible for the lifecycle of a meeting, from agenda to minutes and follow-up actions. It is distinct from the `cal/` package, which only deals with scheduling time blocks.
+
+*** Domain Models (Meeting Package)
+**** TODO Define Meeting Model
+Represents the abstract concept of a meeting.
+- `meeting_id`
+- `title`, `description`, `organizer`, `attendees`
+- `status` (e.g., `REQUESTED`, `SCHEDULED`, `CANCELLED`)
+- `executive_decision` (e.g., `WILL_ATTEND`, `DELEGATE`)
+- `associated_event_ids`: Link to `CalendarEvent` scheduling attempts in the `cal` domain.
+
+**** TODO Define Meeting Artifacts
+- **AgendaItem**: `topic`, `presenter`, `time_allocated`, `status`.
+- **MeetingDecision**: Formal decisions made.
+- **ActionItem**: `description`, `assigned_to`, `due_date`.
+- **MeetingMinutes**: `summary`, `attendees_present`, `apologies`, `decisions`, `action_items`.
+
+** TODO Build Calendar MVP Infrastructure
+*** TODO Implement Calendar Repository Layer
+Create repository protocols and implementations for Google Calendar access following the three-layer pattern established in the POC (Pure Backend → Temporal Activity → Workflow Proxy).
+
+Repository protocols needed:
+- **CalendarRepository**: Read/write access to calendar data (Google Calendar, local database, etc.)
+- **CalendarManagementRepository**: Executive analysis and decision support for calendar appointments
+
+Files to create:
+- `calendar/domain.py` - CalendarEvent and related Pydantic models
+- `calendar/repositories.py` - Repository protocols (CalendarRepository, CalendarManagementRepository)
+- `calendar/repos/google/calendar.py` - Pure Google Calendar API implementation
+- `calendar/repos/local/calendar.py` - Local calendar database implementation
+- `calendar/repos/local/calendar_management.py` - Executive analysis and decision support
+- `calendar/repos/temporal/google_calendar.py` - Temporal activity wrapper for Google Calendar
+- `calendar/repos/temporal/local_calendar.py` - Temporal activity wrapper for local calendar
+- `calendar/repos/temporal/calendar_management.py` - Temporal activity wrapper for calendar management
+- `calendar/repos/temporal/proxies/calendar.py` - Workflow proxy for calendar operations
+
+*** TODO Build Calendar MVP API Endpoints
+Create essential API endpoints for triggering calendar sync using FastAPI, following the patterns established in the POC implementation.
+
+Core endpoints:
+- `POST /calendar/sync` - Trigger calendar polling and calendar.org generation
+- `GET /calendar/status` - Check calendar sync status and last update time
+- `GET /calendar/events` - Retrieve processed calendar events (for debugging)
+
+*** TODO Set Up Development Environment for Calendar Integration
+Prepare local development and testing infrastructure with Google Calendar API access following the patterns established in the POC.
+
+Setup requirements:
+- Google Calendar API credentials and OAuth setup
+- Mock Google Calendar API for testing
+- Local file system access for calendar.org generation
+- Docker compose integration for calendar worker service
+
+*** Future Infrastructure (Backlog)
+**** TODO Email Repository Layer (Future)
+- EmailRepository for thread-based action item extraction
+- Email.org generation with thread hierarchy and sub-items
+
+**** TODO Knowledge Base Integration (Future)
+- RAG/GraphRAG repository protocols for context research
+- Project and relationship database access
+- AI analysis service integration
+
+** TODO Deployment and Operations
+*** TODO Establish CI/CD Pipeline
+Basic automated testing and deployment pipeline.
+
+*** TODO Create Simple Workflows
+Basic task orchestration without complex saga patterns.
+
+*** TODO Deploy to Production
+Get minimal system running in production environment.
+
+*** TODO Establish Monitoring
+Basic logging and health checks.
+
+* Memory Bank and Methodology Enhancements
+
+** TODO Introduce ideas.org for creative and exploratory work
+   Create a new memory bank file, `ideas.org`, to manage the "fuzzy front-end" of the creative process, separating it from the execution-focused `tasks.org`.
+
+   **Core Responsibilities**:
+   - Capture raw observations, sparks of ideas, and research notes.
+   - Formalize a creative workflow with its own state machine (e.g., `IDEA -> RESEARCH -> PROPOSAL -> VETTED | REJECTED`).
+   - Offload conceptual, speculative, and long-term vision items from `tasks.org`, sharpening its focus on executable tasks.
+
+   **Files to create/modify**:
+   - `memory-bank/ideas.org`: Create the new file with an initial structure and state machine definition.
+   - `memory-bank/methodology.org`: Update to explain the role of `ideas.org` and how it feeds into `tasks.org`.
+   - `memory-bank/instructions.org`: Update to reflect the new file in the memory bank structure.
+   - `memory-bank/tasks.org`: Prune any visionary/non-actionable items that should be moved to `ideas.org`.
+
+   **Completion Criteria**:
+   - [ ] `ideas.org` exists and is documented.
+   - [ ] `methodology.md` clearly defines the boundary and workflow between `ideas.org` and `tasks.org`.
+   - [ ] `tasks.org` is leaner and more focused on execution.
+
+** TODO Codify Org-mode vs. Markdown Philosophy
+   The project operates on a core philosophy regarding the roles of Org-mode and Markdown. This philosophy, inspired by Stuart Brand's "How Buildings Learn," must be formally documented to guide all future documentation and methodological decisions.
+   - *Org-mode*: The "sanctum." Loved, permanent, continuously refined. The source of truth where learning is collected.
+   - *Markdown*: An "ephemeral" output. Useful for consumption by the masses but ultimately disposable and generated from the Org-mode sanctum.
+
+   **Files to modify**:
+   - `memory-bank/methodology.md`: Add a new section detailing this philosophy.
+   - `memory-bank/GUIDE.md`: Potentially add a note clarifying the role of different document formats.
+
+   **Completion Criteria**:
+   - [ ] The philosophy is clearly articulated in the methodology.
+   - [ ] The distinction guides how new documentation is created.
+
+** TODO Design an Org-Mode System for Architectural Decision Records
+   Formalize the process of capturing architectural decisions. The current `ideas/` directory is a good start, but a more structured, org-mode native system is required. This system should be elegant for all three audiences: the Emacs user, the AI coder, and the casual observer browsing the documentation.
+
+   **Exploration Points**:
+   - Research and design a creative process statechart within org-mode (e.g., `OBSERVATION -> IDEA -> THOUGHT | DECISION`).
+   - Define a methodology for capturing thoughts, processing them, and graduating them to formal ADRs.
+   - The output should be a new `adr.org` file or similar, which becomes the canonical source for architectural decisions.
+
+   **Files to modify**:
+   - `memory-bank/methodology.md`: Document the new ADR workflow.
+   - `memory-bank/adr.org`: Create the new file to house the decisions. (Or whatever the final design is).
+
+   **Completion Criteria**:
+   - [ ] A clear, documented process for managing ideas and decisions exists.
+   - [ ] The new org-mode states are defined and integrated into the workflow.
+   - [ ] The system is ready to capture its first formal ADR.
+
+** TODO Integrate C4 Model Diagrams using PlantUML and Org-Babel
+   Elevate the quality of architectural documentation by embedding rich visualizations directly into the org-mode "sanctum." The standard will be the C4 model for software architecture, rendered using PlantUML.
+
+   **Technical Approach**:
+   - Use `org-babel` to execute PlantUML blocks within `.org` files, embedding the generated diagrams directly.
+   - This promotes a literate programming style where diagrams live alongside the text that explains them.
+
+   **Files to modify**:
+   - `memory-bank/systemPatterns.md`: Add C4/PlantUML diagrams for key patterns (e.g., three-layer repository).
+   - `memory-bank/GUIDE.md`: Add a top-level C4 context diagram for the whole system.
+
+   **Completion Criteria**:
+   - [ ] At least one C4 diagram is successfully embedded and rendered in `systemPatterns.org`.
+   - [ ] The tooling and process are documented in `techContext.org`.
+
+** TODO Enhance Core Documents with "Evolution and Trade-offs" Sections
+   Elevate documentation from descriptive to prescriptive by including sections on "Evolution and Trade-offs." This demonstrates foresight and a deeper understanding of architectural decisions.
+
+   **Files to modify**:
+   - `memory-bank/systemPatterns.org`: For each major pattern, add a section discussing its limitations, when *not* to use it, and how it might evolve.
+   - `memory-bank/techContext.org`: Add a "Future Considerations" section for the technology stack.
+
+   **Completion Criteria**:
+   - [ ] The "Three-Layer Repository Pattern" section in `systemPatterns.md` has a new "Evolution and Trade-offs" subsection.
+   - [ ] `techContext.md` has a new "Future Considerations" section.
+
+** TODO Refine README.md as a Comprehensive Onboarding Guide
+   Following the convention that `README.md` is the main entry point, it must be refined to serve as a sufficient onboarding guide for new developers. A separate `ONBOARDING.md` is to be avoided in favor of a rich, discoverable `README.md`.
+
+   **Files to modify**:
+   - `README.md`: To be created or enhanced. It should provide the "golden path" for a new contributor: setup, test execution, and a tutorial for adding a simple feature.
+
+   **Completion Criteria**:
+   - [ ] `README.md` contains clear, step-by-step instructions for setting up the dev environment.
+   - [ ] `README.md` explains how to run the test suite to verify the setup.
+   - [ ] `README.md` provides a high-level overview of the architecture with links to the memory bank for deeper dives.
+
+** DONE Create a Project Glossary
+   Create a central glossary to define the key nouns and verbs of the system. This prevents ambiguity and ensures consistent terminology.
+
+   **Files to create**:
+   - `memory-bank/GLOSSARY.org`: New file to contain the glossary terms and their definitions.
+
+   **Completion Criteria**:
+   - [X] `GLOSSARY.org` is created.
+   - [X] It is populated with initial key terms like "Pure Backend Repository", "Workflow Proxy", and "Co-Evolutionary Symbiotic Relationship".
+
+** TODO Design an AI-Powered Pull Request Review Workflow
+   Explore and design a workflow where an AI assistant reviews GitHub pull requests. This meta-task aims to automate and enhance the code review process, aligning with the project's co-evolutionary principles.
+
+   **Concept**:
+   - *Trigger*: A new pull request is opened.
+   - *Process*: An AI assistant workflow convenes a "pantheon of perspectives" (e.g., "The Architect," "The Security Analyst," "The Maintainer"). Each perspective reviews the PR against its specific concerns.
+   - *Outcome*: Based on the collected feedback, the workflow can:
+     - Propose and push code changes directly to the PR.
+     - Create new implementation tasks in `tasks.org`.
+     - Generate meta-tasks to evolve the memory bank or methodology.
+
+   **Initial Exploration Points**:
+   - Define the initial set of "pantheon" perspectives and their review criteria.
+   - Design the workflow logic for synthesizing feedback and deciding on actions.
+   - Investigate technical feasibility (GitHub webhooks, Temporal integration, AI model capabilities).
+   - This task is a design and exploration task. The first deliverable would likely be a new document in `sample/ideas/` or a dedicated `adr.org` entry.
+
+* Project Foundation
+
+** DONE POC Technical Validation
+Validate the technical architecture approach using Clean Architecture with Temporal workflows for a personal AI assistant system. Prove that the architectural patterns can handle complex, multi-domain workflows while maintaining framework independence and testability.
+
+Comprehensive POC validation completed with all architectural patterns proven to work together. Reference implementation demonstrates Clean Architecture with Temporal workflows, protocol-based dependency injection with runtime validation, saga pattern with defensive compensation programming, large payload handling via FileStorageRepository, complete testing strategy with mocking patterns, structured logging and error handling, Docker-based service orchestration.
+
+Key insights discovered: Repository proxy pattern successfully isolates business logic from Temporal concerns, data converter strategy handles Decimal serialization automatically, defensive error handling in compensation actions is critical, testing boundaries at repository level provide right balance, workflow determinism maintained by delegating non-deterministic operations to activities.
+
+All validation results successful: Architecture patterns maintained, framework independence proven, testability with comprehensive testing pyramid, error handling with saga pattern compensation, performance with sub-second response times, reliability with end-to-end workflow completion, documentation with architecture patterns fully documented.
+
+** DONE Memory Bank Conversion to Org-Mode
+Converted memory bank from markdown-based task management to org-mode for superior task management and native Emacs integration.
+
+- Eliminated redundant activeContext.md file
+- Consolidated all task management into tasks.org
+- Established proper org-mode TODO workflows
+- Maintained AI pair programming compatibility
+- Preserved all project context and documentation
+
+** DONE Complete Documentation Suite
+Established comprehensive project documentation covering all aspects of the system:
+
+- projectbrief.org: Core architecture principles, domain boundaries, and success criteria
+- productContext.org: Co-evolutionary symbiotic relationship model and ethical framework  
+- systemPatterns.org: Complete architectural pattern catalog with detailed examples
+- techContext.org: Comprehensive technology stack and development environment guide
+- progress.md: Current status tracking with what works vs. what needs building
+- GUIDE.md: Comprehensive architecture and testing guide with Clean Architecture patterns
+
+* Technical Decisions Made
+
+The following architectural decisions have been validated through POC implementation:
+
+- Architecture Pattern: Clean Architecture with Temporal workflows validated in POC
+- Data Serialization: Pydantic v2 with JSON-mode proven to work with Temporal
+- Repository Pattern: Three-layer protocol-based pattern (Pure Backend → Activity → Proxy) validated
+- Error Handling: Saga pattern with defensive compensation programming implemented
+- Testing Strategy: Testing pyramid with comprehensive mocking strategies proven
+- Large Payload Handling: FileStorageRepository pattern successfully handles Temporal limits
+- **Refactoring to `util/` Module**: Non-trivial, repetitive code should only be refactored into the `util/` module if it is used by three or more distinct business domains (Rule of Three). The aim is to enhance readability without creating obtuse or magical indirection. Base class inheritance should be approached cautiously, ensuring clear benefits in code clarity. For complex common patterns, particularly in areas like workflow proxies, new tasks should prioritize "analysis and design" phases over immediate "build" to ensure a truly cleaner and more readable solution.
+
+All patterns are documented and ready for application to personal assistant domain.
