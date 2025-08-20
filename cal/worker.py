@@ -69,7 +69,6 @@ def setup_logging() -> None:
         "Logging configured",
         extra={"log_level": log_level, "numeric_level": numeric_level},
     )
-    return None
 
 
 async def get_temporal_client_with_retries(
