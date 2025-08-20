@@ -86,8 +86,7 @@ class TemporalOrderRepository(OrderRepository):
 
             handle = await self.client.start_workflow(
                 CancelOrderWorkflow.run,
-                order_id,
-                reason,
+                {"order_id": order_id, "reason": reason},
                 id=workflow_id,
                 task_queue="order-fulfillment-queue",
             )

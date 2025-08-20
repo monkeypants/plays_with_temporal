@@ -36,7 +36,7 @@ from util.repos.temporal.minio_file_storage import (
 logger = logging.getLogger(__name__)
 
 
-def setup_logging():
+def setup_logging() -> None:
     """Configure logging based on environment variables"""
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
     log_format = os.environ.get(
@@ -118,7 +118,7 @@ async def get_temporal_client_with_retries(
     raise RuntimeError("Failed to connect to Temporal after all attempts")
 
 
-async def run_worker():
+async def run_worker() -> None:
     """Run the Temporal worker"""
     # Setup logging first
     setup_logging()

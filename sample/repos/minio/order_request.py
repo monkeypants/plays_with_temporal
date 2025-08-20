@@ -37,7 +37,7 @@ class MinioOrderRequestRepository(OrderRequestRepository):
         self.bucket_name = "request-mappings"
         self._ensure_bucket_exists()
 
-    def _ensure_bucket_exists(self):
+    def _ensure_bucket_exists(self) -> None:
         try:
             if not self.client.bucket_exists(self.bucket_name):
                 logger.info(

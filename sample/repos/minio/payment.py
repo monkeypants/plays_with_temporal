@@ -42,7 +42,7 @@ class MinioPaymentRepository(PaymentRepository):
         self.bucket_name = "payments"
         self._ensure_bucket_exists()
 
-    def _ensure_bucket_exists(self):
+    def _ensure_bucket_exists(self) -> None:
         try:
             if not self.client.bucket_exists(self.bucket_name):
                 logger.info(
@@ -73,7 +73,7 @@ class MinioPaymentRepository(PaymentRepository):
             },
         )
 
-        payment_status = "completed"
+        payment_status: Literal["completed", "failed", "pending", "cancelled", "refunded"] = "completed"
         payment_reason = None
 
         # Create the payment object with the determined status
@@ -254,8 +254,9 @@ class MinioPaymentRepository(PaymentRepository):
             )
             raise
 
+        outcome_status: Literal["completed", "failed", "refunded"] = "completed" if payment_status == "completed" else "failed"
         return PaymentOutcome(
-            status=payment_status,
+            status=outcome_status,
             payment=payment if payment_status == "completed" else None,
             reason=payment_reason,
         )

@@ -33,13 +33,13 @@ from sample.usecase import (
 
 @workflow.defn
 class OrderFulfillmentWorkflow:
-    def __init__(self):
+    def __init__(self) -> None:
         self.current_step = "initialized"
 
     @workflow.query
     def get_current_step(self) -> str:
         """Query method to get the current workflow step"""
-        return self.current_step
+        return str(self.current_step)
 
     @workflow.run
     async def run(self, request_dict: dict) -> OrderStatusResponse:
@@ -275,13 +275,13 @@ class OrderFulfillmentWorkflow:
 
 @workflow.defn
 class CancelOrderWorkflow:
-    def __init__(self):
+    def __init__(self) -> None:
         self.current_step = "initialized"
 
     @workflow.query
     def get_current_step(self) -> str:
         """Query method to get the current workflow step for cancellation"""
-        return self.current_step
+        return str(self.current_step)
 
     @workflow.run
     async def run(self, args_dict: dict) -> OrderStatusResponse:

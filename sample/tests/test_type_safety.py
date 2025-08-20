@@ -3,7 +3,7 @@ from decimal import Decimal
 from sample.domain import Payment, Order, OrderItem
 
 
-def test_payment_domain_model_guarantees():
+def test_payment_domain_model_guarantees() -> None:
     """Verify Payment model enforces required attributes"""
     payment = Payment(
         payment_id="pay123",
@@ -19,7 +19,7 @@ def test_payment_domain_model_guarantees():
     # No defensive hasattr() checks needed
 
 
-def test_payment_model_has_all_required_fields():
+def test_payment_model_has_all_required_fields() -> None:
     """Verify Payment model has all expected fields accessible"""
     payment = Payment(
         payment_id="pay456",
@@ -37,7 +37,7 @@ def test_payment_model_has_all_required_fields():
     assert payment.transaction_id == "tx789"
 
 
-def test_order_domain_model_guarantees():
+def test_order_domain_model_guarantees() -> None:
     """Verify Order model enforces required attributes"""
     order = Order(
         order_id="ord123",
@@ -56,7 +56,7 @@ def test_order_domain_model_guarantees():
     # No defensive hasattr() checks needed
 
 
-def test_order_item_domain_model_guarantees():
+def test_order_item_domain_model_guarantees() -> None:
     """Verify OrderItem model enforces required attributes"""
     item = OrderItem(product_id="prod1", quantity=5, price=Decimal("25.99"))
 
@@ -67,7 +67,7 @@ def test_order_item_domain_model_guarantees():
     # No defensive hasattr() checks needed
 
 
-def test_payment_with_optional_transaction_id():
+def test_payment_with_optional_transaction_id() -> None:
     """Verify Payment model handles optional transaction_id correctly"""
     # Without transaction_id
     payment1 = Payment(

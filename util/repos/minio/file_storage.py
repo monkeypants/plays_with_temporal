@@ -123,7 +123,7 @@ class MinioFileStorageRepository(FileStorageRepository):
         )
         try:
             response = client.get_object(self._bucket_name, file_id)
-            file_data = response.read()
+            file_data: bytes = response.read()
             response.close()
             response.release_conn()
             logger.info(
@@ -160,12 +160,13 @@ class MinioFileStorageRepository(FileStorageRepository):
                     "content_type": stat.content_type,
                 },
             )
+            uploaded_at_str: Optional[str] = stat.last_modified.isoformat() if stat.last_modified else None
             return FileMetadata(
                 file_id=file_id,
                 filename=stat.user_metadata.get("X-Amz-Meta-Filename"),  # Minio prepends X-Amz-Meta-
                 content_type=stat.content_type,
                 size_bytes=stat.size,
-                uploaded_at=stat.last_modified.isoformat() if stat.last_modified else None,
+                uploaded_at=uploaded_at_str,
                 metadata={k.replace("X-Amz-Meta-", ""): v for k,v in stat.user_metadata.items()} if stat.user_metadata else {}
             )
         except S3Error as e:

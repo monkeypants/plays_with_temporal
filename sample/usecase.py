@@ -813,7 +813,8 @@ class GetOrderUseCase:
         Get an order by its ID.
         """
         logger.debug("Getting order", extra={"order_id": order_id})
-        return await self.order_repo.get_order(order_id)
+        order = await self.order_repo.get_order(order_id)
+        return order
 
 
 class CancelOrderUseCase:

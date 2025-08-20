@@ -36,7 +36,7 @@ class MinioInventoryRepository(InventoryRepository):
         self.bucket_name = "inventory"
         self._ensure_bucket_exists()
 
-    def _ensure_bucket_exists(self):
+    def _ensure_bucket_exists(self) -> None:
         try:
             if not self.client.bucket_exists(self.bucket_name):
                 logger.info(
