@@ -1,245 +1,72 @@
 Temporal.io Architecture Bootstrap
 ==================================
 
-A production-ready architecture template for building distributed applications
-with Temporal.io workflows. This repository provides a complete foundation with
-Clean Architecture patterns, comprehensive testing, and two reference applications
-to demonstrate best practices.
+An opinionated starting point for Temporal.io applications with Clean Architecture patterns and comprehensive testing. Two reference applications demonstrate the approach in practice.
 
-The long-term vision includes building toward a benevolent sentient assistant,
-but the immediate goal is providing a solid architectural foundation for any
-Temporal-based application.
+**Vision**: Benevolent sentient assistant (long-term) | **Reality**: Solid architectural foundation (now)
 
-Quick Start
------------
+## Quick Start
 
-1. Install dependencies:
-   pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
+make e2e-test-setup
+make quality-fast
+make help  # See all commands
+```
 
-2. Start development services:
-   make e2e-test-setup
+## Architecture Roadmap
 
-3. Run quality checks:
-   make quality-fast
+**Core Principle**: Dependencies point inward. Always.
 
-4. See all available commands:
-   make help
+```
+Domain (Pure) → Use Cases (Orchestrate) → Adapters (Translate) → Frameworks (Contain)
+```
 
-The Makefile provides a comprehensive build system with quality gates,
-testing infrastructure, and development workflows. Start with `make help`
-to see all available targets.
+**Three-Layer Repository Pattern** (mandatory for all data access):
+1. Pure Backend → 2. Temporal Activity → 3. Workflow Proxy
 
-Architecture Overview
---------------------
+**Workflow Determinism**: Activities for I/O, workflows for logic. No exceptions.
 
-This system implements Clean Architecture principles with strict dependency
-management optimized for Temporal.io workflows. The architecture ensures
-maintainability, testability, and deterministic workflow execution.
+## Reference Applications
 
-CORE PRINCIPLE: Dependencies point inward, always. This enables clean separation
-of concerns and makes the system resilient to framework changes.
+**`sample/`** - Order fulfillment system  
+Complete saga pattern with payments, inventory, cancellation. Your architectural north star.
 
-The architecture has four layers:
+**`cal/`** - Calendar intelligence system  
+AI-powered calendar analysis with Google integration. Domain-specific patterns.
 
-1. DOMAIN (The Sacred Center)
-   - Pure business logic with zero external dependencies
-   - Pydantic models with business rule validation
-   - If it imports anything other than standard library, you're doing it wrong
+## Navigation Guide
 
-2. USE CASES (The Orchestrators) 
-   - Business logic coordination
-   - Depends only on domain models and repository protocols
-   - Framework-agnostic (can run in any context)
-   - Completely isolated from infrastructure concerns
+**Start Here**:
+- `make help` - Build system overview
+- `sample/` - Reference implementation patterns
+- `fun-police/systemPatterns.org` - Implementation rules
 
-3. INTERFACE ADAPTERS (The Translators)
-   - Repository implementations (the famous three-layer pattern)
-   - API controllers and request/response models
-   - Workflow definitions and activity wrappers
-   - This is where frameworks live and die
+**Deep Dive**:
+- `fun-police/projectbrief.org` - Requirements and boundaries  
+- `fun-police/techContext.org` - Technology stack decisions
+- `fun-police/methodology.org` - Development workflow
+- `fun-police/tasks.org` - Current work (org-mode TODOs)
 
-4. FRAMEWORKS & DRIVERS (The Necessary Evils)
-   - FastAPI, Temporal, Docker, databases
-   - Configuration and dependency injection
-   - The outer ring where chaos is contained
+**Quality Gates**:
+- `make quality-fast` - Pre-commit checks
+- `make quality-full` - Complete validation  
+- `make test-e2e` - End-to-end with Docker
 
-THE THREE-LAYER REPOSITORY PATTERN
-----------------------------------
+## Testing Strategy
 
-Every repository follows this pattern to ensure proper separation between
-business logic, Temporal activities, and workflow determinism:
+```
+Many unit tests (mocked repositories)
+Some integration tests (real dependencies)  
+Few E2E tests (complete workflows)
+```
 
-Layer 1: Pure Backend Repository
-- Direct interaction with storage technology (Minio, PostgreSQL, etc.)
-- Zero Temporal dependencies
-- Contains actual business logic for data persistence
-- Example: MinioOrderRepository
+## Development Rules
 
-Layer 2: Temporal Activity Implementation  
-- Wraps pure backend repository
-- Methods decorated with @activity.defn
-- Simple delegation pattern
-- Example: TemporalMinioOrderRepository
+1. Follow `fun-police/tasks.org` NEXT items
+2. Copy patterns from `sample/` exactly
+3. Three-layer repositories, no shortcuts
+4. Workflow determinism is non-negotiable
+5. Memory bank in `fun-police/` maintains institutional knowledge
 
-Layer 3: Workflow Proxy
-- Used inside workflows for determinism
-- Calls workflow.execute_activity()
-- No business logic, pure delegation
-- Example: WorkflowOrderRepositoryProxy
-
-This three-layer approach ensures clean separation of concerns while maintaining
-Temporal workflow determinism and enabling comprehensive testing at each level.
-
-WORKFLOW DETERMINISM
--------------------
-
-Temporal workflows must be deterministic for replay. This is a core requirement
-of the Temporal platform:
-
-✅ ALLOWED in workflows:
-- Pure business logic
-- Calling workflow.execute_activity()
-- Deterministic computations
-- Repository proxy method calls
-
-❌ FORBIDDEN in workflows:
-- Direct database calls
-- HTTP requests  
-- Random number generation
-- Current time access (use activities)
-- File I/O operations
-- Anything that might return different results on replay
-
-Violating workflow determinism will cause replay failures and unpredictable
-behavior in production environments.
-
-The Two Applications
-====================
-
-This repository contains two complete applications that demonstrate the
-Fun-Police Framework in action:
-
-SAMPLE: Order Fulfillment System
---------------------------------
-
-Location: sample/
-Purpose: Reference implementation and architectural validation
-
-The sample application is a complete order fulfillment system that demonstrates
-every architectural pattern in the bootstrap. It's a fully functional system with:
-
-- Order processing with saga pattern compensation
-- Payment processing with retry logic
-- Inventory management with reservation/release
-- File attachment handling for large payloads
-- Order cancellation with refund workflows
-- Complete API with FastAPI
-- Comprehensive testing (unit, integration, E2E)
-- Docker-based deployment
-
-Key Features:
-- POST /orders - Create orders (starts Temporal workflow)
-- GET /orders/{id} - Check order status
-- POST /orders/{id}/cancel - Cancel orders with compensation
-- File upload/download for order attachments
-- Background processing with Temporal workflows
-
-The sample app serves as the reference implementation - when implementing new
-features, follow the established patterns demonstrated in sample/ for consistency
-and maintainability.
-
-CAL: Calendar Intelligence System  
----------------------------------
-
-Location: cal/
-Purpose: AI-powered calendar analysis and decision support
-
-The calendar application transforms raw calendar data into executive decision
-support. It's designed for busy professionals who need AI assistance to manage
-their time effectively:
-
-- Google Calendar integration with OAuth
-- AI-powered event triage (attend/delegate/reschedule/skip)
-- Multi-calendar support with priority-based processing
-- PostgreSQL persistence for efficient querying
-- Org-mode output for GTD workflow integration
-- Background sync with Temporal scheduling
-- CLI tools for manual operations
-
-Key Features:
-- Sync calendars: bin/sync-calendar --calendar-collection work
-- Generate analysis: bin/run-google-calendar-demo --output-path schedule.org
-- Background daemon: bin/calendar-sync-daemon start
-- Multi-calendar collections via config/calendars.yaml
-
-The cal app demonstrates how to build domain-specific applications using
-this Temporal architecture while maintaining clean separation of concerns.
-
-Development Workflow
-====================
-
-This repository follows a disciplined development workflow:
-
-1. Work on tasks marked NEXT in fun-police/tasks.org
-2. Follow the three-layer repository pattern consistently
-3. Use established patterns from sample/ for new implementations
-4. Write tests following the testing pyramid
-5. Avoid "unsafe_mock_*" functions in production code
-
-Quality Gates (Enforced by Makefile):
-- make quality-fast: Pre-commit checks (black, ruff, quick tests)
-- make quality-full: Complete quality suite (types, security, all tests)
-- make test-e2e: End-to-end validation with Docker services
-
-Following these patterns consistently results in higher development velocity,
-fewer bugs, and more maintainable code.
-
-Testing Philosophy
-==================
-
-Testing follows the pyramid strategy:
-
-MANY unit tests (use cases with mocked repositories)
-- Fast feedback during development
-- Test business logic in isolation
-- Mock at repository boundaries
-
-SOME integration tests (repositories with real dependencies)
-- Validate repository contracts
-- Test against real databases/APIs
-- Focused on data access patterns
-
-FEW end-to-end tests (complete workflows with Docker)
-- Critical user journeys only
-- Full system validation
-- Expensive but comprehensive
-
-Each level of the testing pyramid serves a specific purpose. Skipping levels
-leads to gaps in test coverage and makes debugging more difficult.
-
-Memory Bank System
-==================
-
-This repository includes a comprehensive memory bank system in fun-police/
-that maintains project knowledge and architectural decisions:
-
-- projectbrief.org: Core requirements and domain boundaries
-- systemPatterns.org: Architectural patterns and implementation rules
-- techContext.org: Technology stack and development environment
-- methodology.org: Development workflow and task management
-- tasks.org: Current work focus and active tasks (org-mode TODO states)
-
-The memory bank ensures consistent architectural decisions and maintains
-institutional knowledge across development sessions.
-
-Getting Help
-============
-
-1. Start with `make help` for build system options
-2. Check fun-police/systemPatterns.org for implementation patterns
-3. Look at sample/ for reference implementations
-4. Follow the established three-layer pattern consistently
-
-This architecture bootstrap provides the foundation for building robust,
-maintainable Temporal applications. The established patterns and constraints
-enable faster development while ensuring architectural consistency.
+**When in doubt**: Look at `sample/`, follow the patterns, trust the constraints.
