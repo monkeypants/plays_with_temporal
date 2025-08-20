@@ -125,6 +125,9 @@ async def get_temporal_client_with_retries(
                 )
                 raise
             await asyncio.sleep(delay)
+    
+    # This should never be reached, but mypy needs explicit handling
+    raise RuntimeError("Unexpected exit from retry loop")
 
 
 async def run_worker(
