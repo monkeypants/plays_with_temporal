@@ -1,6 +1,7 @@
 aider-chat
 pytest>=8.0.0
 pytest-asyncio>=1.0.0
+pytest-cov>=4.1.0
 mypy>=1.0.0
 fastapi>=0.100.0
 pydantic>=2.0.0
