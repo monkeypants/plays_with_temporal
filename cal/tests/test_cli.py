@@ -76,7 +76,9 @@ class TestMockCalendarCLI:
             # Verify CLI used org generator correctly
             mock_generate.assert_called_once()
 
-    def test_successful_execution_custom_output_path(self, tmp_path: Any) -> None:
+    def test_successful_execution_custom_output_path(
+        self, tmp_path: Any
+    ) -> None:
         """Test CLI argument parsing with custom output path."""
         runner = CliRunner()
 

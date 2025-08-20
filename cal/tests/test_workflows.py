@@ -97,7 +97,9 @@ class TestPublishScheduleWorkflow:
                     )
 
     @pytest.mark.asyncio
-    async def test_workflow_handles_different_calendar_parameters(self) -> None:
+    async def test_workflow_handles_different_calendar_parameters(
+        self,
+    ) -> None:
         """Test that the workflow passes through different parameter
         combinations and uses the correct calendar source type."""
 

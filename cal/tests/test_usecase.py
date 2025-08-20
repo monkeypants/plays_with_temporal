@@ -177,7 +177,9 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
             saved_schedule.time_blocks[0].title, "Event In Range"
         )
 
-    async def test_execute_converts_events_to_time_blocks_correctly(self) -> None:
+    async def test_execute_converts_events_to_time_blocks_correctly(
+        self,
+    ) -> None:
         """
         Tests that calendar events are correctly converted to time blocks.
         """
@@ -288,7 +290,9 @@ class TestCreateScheduleUseCase(unittest.IsolatedAsyncioTestCase):
             time_block.metadata.get("calendar_id"), event.calendar_id
         )
 
-    async def test_execute_uses_classifier_for_responsibility_area(self) -> None:
+    async def test_execute_uses_classifier_for_responsibility_area(
+        self,
+    ) -> None:
         """
         Tests that the use case calls the classifier repository for
         responsibility area and includes it if provided.

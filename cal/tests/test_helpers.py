@@ -258,7 +258,9 @@ def create_mock_repositories_for_use_case(
 
 
 def setup_use_case_with_mocks(
-    use_case_class: Any, events: Optional[List[CalendarEvent]] = None, **kwargs: Any
+    use_case_class: Any,
+    events: Optional[List[CalendarEvent]] = None,
+    **kwargs: Any,
 ) -> tuple[Any, Dict[str, Any]]:
     """
     Set up a use case with standard mock repositories.

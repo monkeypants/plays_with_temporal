@@ -61,7 +61,9 @@ class CalendarCollection(BaseModel):
 
     @field_validator("calendar_sources")
     @classmethod
-    def collection_must_have_calendars(cls, v: List[CalendarSource]) -> List[CalendarSource]:
+    def collection_must_have_calendars(
+        cls, v: List[CalendarSource]
+    ) -> List[CalendarSource]:
         if not v:
             raise ValueError(
                 "Calendar collection must contain at least one calendar"

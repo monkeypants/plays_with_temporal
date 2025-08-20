@@ -175,7 +175,9 @@ class TestCreateScheduleUseCaseSecurity:
         )  # Disabled calendar excluded
 
     @pytest.mark.asyncio
-    async def test_execute_for_collection_handles_missing_collection(self) -> None:
+    async def test_execute_for_collection_handles_missing_collection(
+        self,
+    ) -> None:
         """Test proper error handling for non-existent calendar
         collections."""
         # Arrange: Collection doesn't exist
@@ -261,7 +263,9 @@ class TestCreateScheduleUseCaseSecurity:
             await self.use_case.execute()
 
     @pytest.mark.asyncio
-    async def test_execute_handles_repository_failures_gracefully(self) -> None:
+    async def test_execute_handles_repository_failures_gracefully(
+        self,
+    ) -> None:
         """Test that repository failures are handled gracefully."""
         # Arrange: Calendar repository fails
         self.mock_calendar_repo.get_events_by_date_range.side_effect = (

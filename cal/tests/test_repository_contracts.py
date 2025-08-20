@@ -83,7 +83,9 @@ class CalendarRepositoryContractTestMixin(ABC):
             assert isinstance(event, CalendarEvent)
 
     @pytest.mark.asyncio
-    async def test_get_events_by_date_range_multi_calendar_returns_list(self) -> None:
+    async def test_get_events_by_date_range_multi_calendar_returns_list(
+        self,
+    ) -> None:
         """Contract: get_events_by_date_range_multi_calendar must return a
         list."""
         repo = await self.create_repository()
@@ -99,7 +101,9 @@ class CalendarRepositoryContractTestMixin(ABC):
             assert isinstance(event, CalendarEvent)
 
     @pytest.mark.asyncio
-    async def test_get_events_by_date_range_multi_calendar_empty_list(self) -> None:
+    async def test_get_events_by_date_range_multi_calendar_empty_list(
+        self,
+    ) -> None:
         """Contract: multi-calendar method with empty list returns empty
         list."""
         repo = await self.create_repository()
@@ -209,7 +213,9 @@ class TimeBlockClassifierRepositoryContractTestMixin(ABC):
         assert isinstance(result, TimeBlockType)
 
     @pytest.mark.asyncio
-    async def test_classify_responsibility_area_returns_optional_string(self) -> None:
+    async def test_classify_responsibility_area_returns_optional_string(
+        self,
+    ) -> None:
         """Contract: classify_responsibility_area returns Optional[str]."""
         repo = await self.create_repository()
         event = minimal_calendar_event()
