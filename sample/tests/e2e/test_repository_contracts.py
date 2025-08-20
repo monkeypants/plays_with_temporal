@@ -50,6 +50,7 @@ class TestMinioPaymentRepositoryContract:
         """Test retrieving an existing payment."""
         # First process a payment
         outcome = await payment_repo.process_payment(sample_order)
+        assert outcome.payment is not None
         payment_id = outcome.payment.payment_id
 
         # Then retrieve it

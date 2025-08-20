@@ -8,7 +8,7 @@ from pydantic import (
     Field,
     field_validator,
 )
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Any
 from decimal import Decimal
 from datetime import datetime
 
@@ -133,7 +133,7 @@ class PaymentOutcome(BaseModel):
 
     @field_validator("payment")
     @classmethod
-    def payment_must_be_present_if_completed(cls, v: Optional[Payment], info: any) -> Optional[Payment]:
+    def payment_must_be_present_if_completed(cls, v: Optional[Payment], info: Any) -> Optional[Payment]:
         if info.data.get("status") == "completed" and v is None:
             raise ValueError(
                 "Payment object must be present if status is completed"
@@ -166,7 +166,7 @@ class RefundPaymentOutcome(BaseModel):
 
     @field_validator("refund_id")
     @classmethod
-    def refund_id_must_be_present_if_refunded(cls, v: Optional[str], info: any) -> Optional[str]:
+    def refund_id_must_be_present_if_refunded(cls, v: Optional[str], info: Any) -> Optional[str]:
         if info.data.get("status") == "refunded" and v is None:
             raise ValueError(
                 "Refund ID must be present if status is 'refunded'"
@@ -203,7 +203,7 @@ class InventoryReservationOutcome(BaseModel):
 
     @field_validator("reserved_items")
     @classmethod
-    def reserved_items_must_be_present_if_reserved(cls, v: Optional[List[InventoryItem]], info: any) -> Optional[List[InventoryItem]]:
+    def reserved_items_must_be_present_if_reserved(cls, v: Optional[List[InventoryItem]], info: Any) -> Optional[List[InventoryItem]]:
         if info.data.get("status") == "reserved" and (v is None or not v):
             raise ValueError(
                 "Reserved items must be present if status is reserved"

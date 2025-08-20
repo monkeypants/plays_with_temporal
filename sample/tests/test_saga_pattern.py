@@ -442,14 +442,14 @@ async def test_saga_step_ordering_is_correct() -> None:
     call_order = []
 
     # Track call order
-    async def track_reserve(*args: any, **kwargs: any) -> InventoryReservationOutcome:
+    async def track_reserve(*args: Any, **kwargs: Any) -> InventoryReservationOutcome:
         call_order.append("reserve_inventory")
         return InventoryReservationOutcome(
             status="reserved",
             reserved_items=[InventoryItem(product_id="prod1", quantity=1)],
         )
 
-    async def track_payment(*args: any, **kwargs: any) -> PaymentOutcome:
+    async def track_payment(*args: Any, **kwargs: Any) -> PaymentOutcome:
         call_order.append("process_payment")
         return PaymentOutcome(
             status="completed",

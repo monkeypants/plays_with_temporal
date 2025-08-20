@@ -68,7 +68,7 @@ def test_payment_status_validation() -> None:
             payment_id="pay123",
             order_id="ord123",
             amount=Decimal("100.00"),
-            status=status,
+            status=status,  # type: ignore[arg-type]
         )
         assert payment.status == status
 
@@ -78,7 +78,7 @@ def test_payment_status_validation() -> None:
             payment_id="pay123",
             order_id="ord123",
             amount=Decimal("100.00"),
-            status="invalid_status",
+            status="invalid_status",  # type: ignore[arg-type]
         )
 
 
@@ -111,12 +111,12 @@ def test_refund_payment_outcome_status_validation() -> None:
     # Valid statuses should work
     valid_statuses = ["refunded", "failed"]
     for status in valid_statuses:
-        outcome = RefundPaymentOutcome(status=status)
+        outcome = RefundPaymentOutcome(status=status)  # type: ignore[arg-type]
         assert outcome.status == status
 
     # Invalid status should fail
     with pytest.raises(ValidationError):
-        RefundPaymentOutcome(status="in_progress")
+        RefundPaymentOutcome(status="in_progress")  # type: ignore[arg-type]
 
 
 def test_refund_payment_outcome_refund_id_present_if_refunded() -> None:
@@ -158,7 +158,7 @@ def test_order_status_validation() -> None:
                 )
             ],
             total_amount=Decimal("10.00"),
-            status=status,
+            status=status,  # type: ignore[arg-type]
         )
         assert order.status == status
 
@@ -172,7 +172,7 @@ def test_order_status_validation() -> None:
                 )
             ],
             total_amount=Decimal("10.00"),
-            status="invalid_order_status",
+            status="invalid_order_status",  # type: ignore[arg-type]
         )
 
 
@@ -196,7 +196,7 @@ def test_order_refund_status_validation() -> None:
                 )
             ],
             total_amount=Decimal("10.00"),
-            refund_status=status,
+            refund_status=status,  # type: ignore[arg-type]
         )
         assert order.refund_status == status
 
@@ -210,7 +210,7 @@ def test_order_refund_status_validation() -> None:
                 )
             ],
             total_amount=Decimal("10.00"),
-            refund_status="invalid_refund_status",
+            refund_status="invalid_refund_status",  # type: ignore[arg-type]
         )
 
 

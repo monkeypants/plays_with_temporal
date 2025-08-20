@@ -52,9 +52,9 @@ class DependencyContainer:
     """
 
     def __init__(self) -> None:
-        self._instances: dict[str, any] = {}
+        self._instances: Dict[str, Any] = {}
 
-    async def get_or_create(self, key: str, factory: any) -> any:
+    async def get_or_create(self, key: str, factory: Any) -> Any:
         """Get or create a singleton instance."""
         if key not in self._instances:
             self._instances[key] = await factory()
