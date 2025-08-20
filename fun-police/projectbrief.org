@@ -1,0 +1,85 @@
+#+TITLE: Project Brief
+#+STARTUP: overview
+
+* Project Overview
+
+This system is a fully self-hosted AI personal assistant that provides comprehensive technical and research support capabilities integrated with executive and administrative functions. The system manages complex, multi-domain workflows across personal, professional, and research activities through reliable, long-running task orchestration.
+
+Core technical capabilities include:
+- Personal information management integrated with operational workflows
+- Multi-domain workflow orchestration (personal, business, research operations)
+- Agentic assistance with productivity and wellbeing optimization
+- Secure apparatus and machinery integration with comprehensive safety protocols
+- Adaptive learning and capability expansion through modular architecture
+- Ethical AI framework implementation and validation
+- Complete self-hosting with air-gapped operation capabilities
+
+* Architecture Principles
+
+- *Clean Architecture & Dependency Inversion*: Business logic remains framework-agnostic through protocol-based dependency injection. Use cases depend only on repository abstractions, never concrete implementations.
+
+- *Workflow Determinism*: All non-deterministic operations (ID generation, external API calls, database writes) are delegated to Temporal Activities. Workflows orchestrate deterministic business logic while Activities handle I/O and state changes.
+
+- *Saga Pattern*: Multi-step operations implement forward/compensation pairs. Every state change must have a corresponding undo operation that is idempotent and defensively programmed.
+
+- *Separation of Concerns*: Clear boundaries between domain logic (pure business rules), use cases (orchestration), adapters (external system integration), and frameworks (HTTP, workflows, persistence).
+
+- *Fail Fast Validation*: Errors are caught at validation boundaries before business logic executes. Expected business failures return outcome objects; unexpected system errors raise exceptions.
+
+- *Co-evolutionary Ethics*: Multi-aspect ethical evaluation systems operate in parallel, assessing every decision through multiple ethical dimensions simultaneously. The framework recognizes that AI-human interaction is bidirectional and mutually adaptive, requiring continuous evaluation of symbiotic relationship health and direction.
+
+Implementation details and patterns are documented in systemPatterns.md.
+
+* Domain Boundaries
+
+- *Core Domain*: Personal information management, AI-assisted task orchestration, apparatus control, knowledge management, and multi-domain workflow automation that enhances personal productivity and wellbeing across personal, business, and research contexts.
+
+- *Key Entities*: PersonalInfo, Task, Workflow, Agent, Apparatus, Knowledge, Context, Capability, SafetyProtocol, EthicalAspect, SymbioticState, ProductivityMetric, WellbeingIndicator with comprehensive validation rules and co-evolutionary ethical constraints.
+
+- *Workflow Scope*: Personal Information Integration (capture → organize → contextualize), Task Planning (analyze → decompose → schedule), Apparatus Control (validate → execute → monitor), Knowledge Management (capture → process → integrate), Productivity Enhancement (assess → optimize → adapt), Wellbeing Monitoring (track → analyze → recommend), Capability Evolution (learn → adapt → expand), and Symbiotic Assessment (evaluate → guide → co-evolve) operations.
+
+- *External Integrations*: Personal information systems (calendars, contacts, documents), laboratory equipment APIs, workshop machinery controllers, home automation systems, research databases, productivity tools, health monitoring devices, and secure communication channels.
+
+- *Out of Scope*: Cloud-dependent services, third-party AI model dependencies, unsecured external integrations, and operations requiring human-in-the-loop for safety-critical decisions.
+
+* Technical Constraints
+
+- *Required Stack*: Python 3.11+, Temporal workflows, FastAPI, Pydantic v2, Minio object storage, Docker containerization.
+
+- *Data Serialization*: Pydantic models with JSON-mode serialization for Temporal compatibility. Custom DataConverter handles Decimal/string conversion automatically.
+
+- *Payload Limits*: Temporal 2MB payload limit addressed via FileStorageRepository pattern for large attachments and documents.
+
+- *Idempotency*: All repository operations must handle retries safely. Activities use unique identifiers and state checking to prevent duplicate operations.
+
+- *Error Handling*: Structured logging with business context, defensive compensation programming, and graceful degradation when compensations fail.
+
+* Quality Standards
+
+- *Testing Strategy*: Testing pyramid with extensive use case unit tests (mocked repositories), focused API integration tests, and minimal end-to-end tests for critical paths.
+
+- *Type Safety*: Full static typing with mypy validation. Runtime protocol validation using @runtime_checkable for critical boundaries.
+
+- *Code Organization*: Repository pattern with clear separation between pure backend implementations, Temporal activity wrappers, and workflow proxies.
+
+- *Documentation*: Business rules documented through descriptive test names and docstrings. Architecture decisions captured in comprehensive guide documentation.
+
+- *Validation*: Pydantic domain models with field validators. Repository protocol compliance enforced at dependency injection points.
+
+* Success Criteria
+
+- *Reliability*: Zero data loss during task execution. All apparatus control compensations execute successfully or escalate to manual intervention with safety protocols.
+
+- *Performance*: Sub-second response times for task initiation. Workflow completion within defined SLA boundaries for each task category.
+
+- *Maintainability*: AI capability changes require no modifications to framework code. New personal information sources and apparatus integrations can be added without touching core orchestration logic.
+
+- *Operational Excellence*: Comprehensive structured logging enables rapid debugging. End-to-end tests validate critical AI workflows and safety protocols in under 10 minutes.
+
+- *Developer Experience*: New contributors can understand the architecture through the guide and contribute meaningfully within one week.
+
+- *Security & Privacy*: Complete data sovereignty with air-gapped operation capability. All AI processing occurs locally with encrypted data at rest and in transit.
+
+- *Ethical AI Compliance*: All AI decisions are evaluated through multiple parallel ethical aspects, ensuring co-evolutionary symbiotic development that enhances human wellbeing, personal growth, productivity optimization, and environmental harmony. The system integrates personal information management with operational assistance to create a unified experience that supports both immediate productivity and long-term flourishing. Human override capabilities are always preserved, and the system actively guides the symbiotic relationship toward genuine human flourishing.
+
+- *Safety Assurance*: All apparatus control operations include fail-safe mechanisms. Safety-critical workflows require explicit human authorization before execution.
