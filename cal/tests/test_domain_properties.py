@@ -8,9 +8,9 @@ and discovering edge cases.
 """
 
 from datetime import datetime, timezone, timedelta
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 from hypothesis import given, strategies as st, example
-from hypothesis.strategies import composite
+from hypothesis.strategies import composite, DrawFn
 
 from cal.domain import (
     CalendarEvent,
@@ -30,7 +30,7 @@ from cal.domain import (
 
 
 @composite
-def timezone_aware_datetime(draw: Any) -> datetime:
+def timezone_aware_datetime(draw: DrawFn) -> datetime:
     """Generate timezone-aware datetime objects."""
     # Generate a datetime in UTC
     dt = draw(
@@ -44,7 +44,7 @@ def timezone_aware_datetime(draw: Any) -> datetime:
 
 
 @composite
-def valid_time_range(draw: Any) -> tuple[datetime, datetime]:
+def valid_time_range(draw: DrawFn) -> Tuple[datetime, datetime]:
     """Generate valid start/end time pairs where end > start."""
     start_time = draw(timezone_aware_datetime())
     # Ensure end time is after start time (minimum 1 minute)
@@ -54,7 +54,7 @@ def valid_time_range(draw: Any) -> tuple[datetime, datetime]:
 
 
 @composite
-def attendee_strategy(draw: Any) -> Attendee:
+def attendee_strategy(draw: DrawFn) -> Attendee:
     """Generate valid Attendee objects."""
     email = draw(st.emails())
     display_name = draw(
@@ -70,7 +70,7 @@ def attendee_strategy(draw: Any) -> Attendee:
 
 
 @composite
-def calendar_event_strategy(draw: Any) -> CalendarEvent:
+def calendar_event_strategy(draw: DrawFn) -> CalendarEvent:
     """Generate valid CalendarEvent objects."""
     event_id = draw(st.text(min_size=1, max_size=100))
     calendar_id = draw(st.text(min_size=1, max_size=100))
@@ -109,7 +109,7 @@ def calendar_event_strategy(draw: Any) -> CalendarEvent:
 
 
 @composite
-def time_block_strategy(draw: Any) -> TimeBlock:
+def time_block_strategy(draw: DrawFn) -> TimeBlock:
     """Generate valid TimeBlock objects."""
     time_block_id = draw(st.text(min_size=1, max_size=100))
     title = draw(st.text(min_size=1, max_size=200))

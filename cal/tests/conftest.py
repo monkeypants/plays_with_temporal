@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Generator, AsyncGenerator
 from temporalio.testing import WorkflowEnvironment
 from unittest.mock import patch, AsyncMock
 
@@ -14,7 +14,7 @@ def event_loop() -> asyncio.AbstractEventLoop:
 
 
 @pytest.fixture
-async def temporal_env() -> WorkflowEnvironment:
+async def temporal_env() -> AsyncGenerator[WorkflowEnvironment, None]:
     """Provide a Temporal test environment for integration tests."""
     async with await WorkflowEnvironment.start_time_skipping() as env:
         yield env
