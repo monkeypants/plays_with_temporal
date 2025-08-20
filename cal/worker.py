@@ -69,7 +69,6 @@ def setup_logging() -> None:
         "Logging configured",
         extra={"log_level": log_level, "numeric_level": numeric_level},
     )
-    return None
 
 
 async def get_temporal_client_with_retries(
@@ -355,9 +354,10 @@ async def run_worker(
 
             # Create schedule for periodic sync using dedicated scheduled
             # workflow
-            await client.create_schedule(
-                schedule_id,
-                ScheduleActionStartWorkflow(
+            from temporalio.client import Schedule
+            
+            schedule = Schedule(
+                action=ScheduleActionStartWorkflow(
                     "CalendarSyncWorkflow",
                     args=["primary", "postgresql", False],
                     id=f"sync-{sync_collection_id}-{{.ScheduledTime.Unix}}",
@@ -370,6 +370,11 @@ async def run_worker(
                         )
                     ]
                 ),
+            )
+            
+            await client.create_schedule(
+                schedule_id,
+                schedule,
             )
             logger.info(f"Created periodic sync schedule: {schedule_id}")
 
@@ -391,6 +396,8 @@ async def run_worker(
     )
 
     # Create worker with all workflows following sample/worker.py pattern
+    from typing import cast, Sequence, Callable, Any
+    
     worker = Worker(
         client,
         task_queue=task_queue,
@@ -398,7 +405,7 @@ async def run_worker(
             PublishScheduleWorkflow,
             CalendarSyncWorkflow,
         ],
-        activities=activities,
+        activities=cast(Sequence[Callable[..., Any]], activities),
     )
 
     logger.info("Starting consolidated worker execution")
