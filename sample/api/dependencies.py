@@ -137,8 +137,10 @@ async def get_minio_order_request_repository() -> OrderRequestRepository:
 async def get_temporal_file_storage_repository() -> FileStorageRepository:
     """FastAPI dependency for FileStorageRepository."""
     from util.repos.minio.file_storage import MinioFileStorageRepository
-    from util.repos.temporal.minio_file_storage import TemporalMinioFileStorageRepository
-    
+    from util.repos.temporal.minio_file_storage import (
+        TemporalMinioFileStorageRepository,
+    )
+
     minio_repo = MinioFileStorageRepository()
     return TemporalMinioFileStorageRepository(minio_repo)
 
