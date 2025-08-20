@@ -255,7 +255,10 @@ class MinioPaymentRepository(PaymentRepository):
             )
             raise
 
-        outcome_status: Literal["completed", "failed", "refunded"] = "completed" if payment_status == "completed" else "failed"
+        if payment_status == "completed":
+            outcome_status: Literal["completed", "failed", "refunded"] = "completed"
+        else:
+            outcome_status = "failed"
         return PaymentOutcome(
             status=outcome_status,
             payment=payment if outcome_status == "completed" else None,

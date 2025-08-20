@@ -47,7 +47,7 @@ class TemporalFileStorageRepository(FileStorageRepository):
         )
         
         result = await handle.result()
-        return result  # type: ignore[return-value]
+        return result  # type: ignore[no-any-return]
 
     async def get_file_metadata(self, file_id: str) -> Optional[FileMetadata]:
         """Retrieve file metadata via Temporal activity."""
