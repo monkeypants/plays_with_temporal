@@ -56,7 +56,7 @@ def setup_logging() -> None:
         numeric_level = logging.INFO
     else:
         pass
-    
+
     log_format = os.environ.get(
         "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
@@ -125,7 +125,7 @@ async def get_temporal_client_with_retries(
                 )
                 raise
             await asyncio.sleep(delay)
-    
+
     # This should never be reached, but mypy needs explicit handling
     raise RuntimeError("Unexpected exit from retry loop")
 
