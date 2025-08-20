@@ -65,11 +65,14 @@ def setup_logging() -> None:
         force=True,  # Override any existing configuration
     )
 
-    logger.info(
-        "Logging configured",
-        extra={"log_level": log_level, "numeric_level": numeric_level},
-    )
-    return
+    try:
+        logger.info(
+            "Logging configured",
+            extra={"log_level": log_level, "numeric_level": numeric_level},
+        )
+    except Exception:
+        # If logging fails, continue silently
+        pass
 
 
 async def get_temporal_client_with_retries(
