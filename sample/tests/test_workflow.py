@@ -20,7 +20,9 @@ class TestOrderFulfillmentWorkflow:
     """
 
     @pytest.mark.asyncio
-    async def test_workflow_orchestrates_order_fulfillment_activities(self) -> None:
+    async def test_workflow_orchestrates_order_fulfillment_activities(
+        self,
+    ) -> None:
         """Test that the workflow calls the expected activities in the right
         order."""
 
@@ -84,7 +86,9 @@ class TestCancelOrderWorkflow:
     """
 
     @pytest.mark.asyncio
-    async def test_workflow_orchestrates_order_cancellation_activities(self) -> None:
+    async def test_workflow_orchestrates_order_cancellation_activities(
+        self,
+    ) -> None:
         """Test that the workflow calls the expected activities in the right
         order."""
 

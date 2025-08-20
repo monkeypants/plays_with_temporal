@@ -30,7 +30,9 @@ async def temporal_client(temporal_env: Any) -> Any:
 def mock_workflow_activities() -> Dict[str, Any]:
     """Provide utilities for mocking workflow activities in unit tests."""
 
-    def create_activity_mock(activity_name: str, return_value: Any = None) -> Any:
+    def create_activity_mock(
+        activity_name: str, return_value: Any = None
+    ) -> Any:
         """Create a mock for a specific activity."""
         mock = AsyncMock(return_value=return_value)
         mock._activity_name = activity_name

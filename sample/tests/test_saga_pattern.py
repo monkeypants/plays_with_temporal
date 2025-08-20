@@ -443,7 +443,9 @@ async def test_saga_step_ordering_is_correct() -> None:
     call_order = []
 
     # Track call order
-    async def track_reserve(*args: Any, **kwargs: Any) -> InventoryReservationOutcome:
+    async def track_reserve(
+        *args: Any, **kwargs: Any
+    ) -> InventoryReservationOutcome:
         call_order.append("reserve_inventory")
         return InventoryReservationOutcome(
             status="reserved",

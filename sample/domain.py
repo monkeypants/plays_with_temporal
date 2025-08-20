@@ -63,7 +63,9 @@ class CreateOrderRequest(BaseModel):
 
     @field_validator("items")
     @classmethod
-    def items_must_not_be_empty(cls, v: List[OrderItemRequest]) -> List[OrderItemRequest]:
+    def items_must_not_be_empty(
+        cls, v: List[OrderItemRequest]
+    ) -> List[OrderItemRequest]:
         if not v:
             raise ValueError("Order must contain at least one item")
         return v
@@ -71,7 +73,9 @@ class CreateOrderRequest(BaseModel):
     @property
     def total_amount(self) -> Decimal:
         """Calculate total amount from items."""
-        return sum(item.price * item.quantity for item in self.items) or Decimal("0")
+        return sum(
+            item.price * item.quantity for item in self.items
+        ) or Decimal("0")
 
 
 class Order(BaseModel):
@@ -133,7 +137,9 @@ class PaymentOutcome(BaseModel):
 
     @field_validator("payment")
     @classmethod
-    def payment_must_be_present_if_completed(cls, v: Optional[Payment], info: Any) -> Optional[Payment]:
+    def payment_must_be_present_if_completed(
+        cls, v: Optional[Payment], info: Any
+    ) -> Optional[Payment]:
         if info.data.get("status") == "completed" and v is None:
             raise ValueError(
                 "Payment object must be present if status is completed"
@@ -166,7 +172,9 @@ class RefundPaymentOutcome(BaseModel):
 
     @field_validator("refund_id")
     @classmethod
-    def refund_id_must_be_present_if_refunded(cls, v: Optional[str], info: Any) -> Optional[str]:
+    def refund_id_must_be_present_if_refunded(
+        cls, v: Optional[str], info: Any
+    ) -> Optional[str]:
         if info.data.get("status") == "refunded" and v is None:
             raise ValueError(
                 "Refund ID must be present if status is 'refunded'"
@@ -203,7 +211,9 @@ class InventoryReservationOutcome(BaseModel):
 
     @field_validator("reserved_items")
     @classmethod
-    def reserved_items_must_be_present_if_reserved(cls, v: Optional[List[InventoryItem]], info: Any) -> Optional[List[InventoryItem]]:
+    def reserved_items_must_be_present_if_reserved(
+        cls, v: Optional[List[InventoryItem]], info: Any
+    ) -> Optional[List[InventoryItem]]:
         if info.data.get("status") == "reserved" and (v is None or not v):
             raise ValueError(
                 "Reserved items must be present if status is reserved"
