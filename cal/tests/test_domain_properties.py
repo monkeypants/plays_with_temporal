@@ -165,7 +165,9 @@ class TestCalendarEventProperties:
     """Property-based tests for CalendarEvent validation rules."""
 
     @given(calendar_event_strategy())
-    def test_calendar_event_creation_with_valid_data(self, event: CalendarEvent) -> None:
+    def test_calendar_event_creation_with_valid_data(
+        self, event: CalendarEvent
+    ) -> None:
         """Property: Valid CalendarEvent data should always create valid
         objects."""
         # If we can create the event, it should have all required fields
@@ -186,7 +188,12 @@ class TestCalendarEventProperties:
         timezone_aware_datetime(),  # end_time (will be invalid)
     )
     def test_calendar_event_rejects_invalid_time_ranges(
-        self, event_id: str, calendar_id: str, title: str, start_time: datetime, raw_end_time: datetime
+        self,
+        event_id: str,
+        calendar_id: str,
+        title: str,
+        start_time: datetime,
+        raw_end_time: datetime,
     ) -> None:
         """Property: CalendarEvent should handle invalid time ranges
         gracefully."""
@@ -225,7 +232,11 @@ class TestCalendarEventProperties:
         timezone_aware_datetime(),  # start_time
     )
     def test_calendar_event_strips_title_whitespace(
-        self, event_id: str, calendar_id: str, title: str, start_time: datetime
+        self,
+        event_id: str,
+        calendar_id: str,
+        title: str,
+        start_time: datetime,
     ) -> None:
         """Property: CalendarEvent should strip whitespace from titles."""
         end_time = start_time + timedelta(hours=1)
@@ -250,7 +261,9 @@ class TestCalendarEventProperties:
         assert event.title == title.strip()
 
     @given(st.lists(attendee_strategy(), max_size=50))
-    def test_calendar_event_attendee_list_handling(self, attendees: List[Attendee]) -> None:
+    def test_calendar_event_attendee_list_handling(
+        self, attendees: List[Attendee]
+    ) -> None:
         """Property: CalendarEvent should handle any valid list of
         attendees."""
         start_time = datetime.now(timezone.utc)
@@ -285,7 +298,9 @@ class TestTimeBlockProperties:
     """Property-based tests for TimeBlock validation rules."""
 
     @given(time_block_strategy())
-    def test_time_block_creation_with_valid_data(self, time_block: TimeBlock) -> None:
+    def test_time_block_creation_with_valid_data(
+        self, time_block: TimeBlock
+    ) -> None:
         """Property: Valid TimeBlock data should always create valid
         objects."""
         assert time_block.time_block_id
@@ -304,7 +319,11 @@ class TestTimeBlockProperties:
         st.sampled_from(TimeBlockType),  # type
     )
     def test_time_block_metadata_is_always_dict(
-        self, time_block_id: str, title: str, start_time: datetime, block_type: TimeBlockType
+        self,
+        time_block_id: str,
+        title: str,
+        start_time: datetime,
+        block_type: TimeBlockType,
     ) -> None:
         """Property: TimeBlock metadata should always be a dictionary."""
         end_time = start_time + timedelta(hours=1)
@@ -387,7 +406,12 @@ class TestScheduleProperties:
         st.sampled_from(ScheduleStatus),  # status
     )
     def test_schedule_creation_with_valid_data(
-        self, schedule_id: str, start_date: datetime, raw_end_date: datetime, time_blocks: List[TimeBlock], status: ScheduleStatus
+        self,
+        schedule_id: str,
+        start_date: datetime,
+        raw_end_date: datetime,
+        time_blocks: List[TimeBlock],
+        status: ScheduleStatus,
     ) -> None:
         """Property: Valid Schedule data should always create valid
         objects."""
@@ -416,7 +440,9 @@ class TestScheduleProperties:
         st.text(min_size=1, max_size=100),  # schedule_id
         timezone_aware_datetime(),  # start_date
     )
-    def test_schedule_with_empty_time_blocks(self, schedule_id: str, start_date: datetime) -> None:
+    def test_schedule_with_empty_time_blocks(
+        self, schedule_id: str, start_date: datetime
+    ) -> None:
         """Property: Schedule should handle empty time block lists."""
         end_date = start_date + timedelta(days=1)
 
@@ -471,7 +497,10 @@ class TestDomainModelIntegration:
         st.sampled_from(TimeBlockType),
     )
     def test_calendar_event_to_time_block_conversion(
-        self, calendar_event: CalendarEvent, time_block_id: str, block_type: TimeBlockType
+        self,
+        calendar_event: CalendarEvent,
+        time_block_id: str,
+        block_type: TimeBlockType,
     ) -> None:
         """Property: CalendarEvent should convert to TimeBlock
         consistently."""
@@ -513,7 +542,9 @@ class TestDomainModelIntegration:
         st.lists(time_block_strategy(), min_size=1, max_size=10),
         st.text(min_size=1, max_size=100),  # schedule_id
     )
-    def test_schedule_time_block_aggregation(self, time_blocks: List[TimeBlock], schedule_id: str) -> None:
+    def test_schedule_time_block_aggregation(
+        self, time_blocks: List[TimeBlock], schedule_id: str
+    ) -> None:
         """Property: Schedule should correctly aggregate TimeBlock
         properties."""
         # Find the overall date range from time blocks
@@ -571,7 +602,11 @@ class TestEdgeCaseDiscovery:
         datetime(2024, 1, 1, 11, 0, tzinfo=timezone.utc),
     )
     def test_calendar_event_title_edge_cases(
-        self, event_id: str, calendar_id: str, title: str, start_time: datetime
+        self,
+        event_id: str,
+        calendar_id: str,
+        title: str,
+        start_time: datetime,
     ) -> None:
         """Property: CalendarEvent should handle edge cases in title
         formatting."""
@@ -603,7 +638,9 @@ class TestEdgeCaseDiscovery:
             min_value=-1440, max_value=1440
         ),  # Minutes offset (can be negative)
     )
-    def test_time_range_boundary_conditions(self, start_time: datetime, minutes_offset: int) -> None:
+    def test_time_range_boundary_conditions(
+        self, start_time: datetime, minutes_offset: int
+    ) -> None:
         """Property: Time range validation should handle boundary
         conditions."""
         end_time = start_time + timedelta(minutes=minutes_offset)

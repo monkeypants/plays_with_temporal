@@ -355,7 +355,7 @@ async def run_worker(
             # Create schedule for periodic sync using dedicated scheduled
             # workflow
             from temporalio.client import Schedule
-            
+
             schedule = Schedule(
                 action=ScheduleActionStartWorkflow(
                     "CalendarSyncWorkflow",
@@ -371,7 +371,7 @@ async def run_worker(
                     ]
                 ),
             )
-            
+
             await client.create_schedule(
                 schedule_id,
                 schedule,
@@ -397,7 +397,7 @@ async def run_worker(
 
     # Create worker with all workflows following sample/worker.py pattern
     from typing import cast, Sequence, Callable, Any
-    
+
     worker = Worker(
         client,
         task_queue=task_queue,
