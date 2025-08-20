@@ -7,6 +7,7 @@ the testing pyramid principles from systemPatterns.org.
 """
 
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import AsyncMock, patch, mock_open
 
 from click.testing import CliRunner
@@ -20,7 +21,7 @@ from cal.domain import ExecutiveDecision
 class TestMockCalendarCLI:
     """Tests for the mock calendar CLI program."""
 
-    def test_successful_execution_default_output(self):
+    def test_successful_execution_default_output(self) -> None:
         """Test CLI argument parsing, output formatting, and file
         operations."""
         runner = CliRunner()
@@ -75,7 +76,7 @@ class TestMockCalendarCLI:
             # Verify CLI used org generator correctly
             mock_generate.assert_called_once()
 
-    def test_successful_execution_custom_output_path(self, tmp_path):
+    def test_successful_execution_custom_output_path(self, tmp_path: Any) -> None:
         """Test CLI argument parsing with custom output path."""
         runner = CliRunner()
 
@@ -101,7 +102,7 @@ class TestMockCalendarCLI:
                     # Verify CLI parsed custom path argument correctly
                     mock_file.assert_called_once_with(custom_path, "w")
 
-    def test_empty_schedule_display(self):
+    def test_empty_schedule_display(self) -> None:
         """Test CLI output formatting for empty schedule."""
         runner = CliRunner()
 
@@ -125,7 +126,7 @@ class TestMockCalendarCLI:
                         "Created schedule with 0 time blocks" in result.output
                     )
 
-    def test_use_case_exception_handling(self):
+    def test_use_case_exception_handling(self) -> None:
         """Test CLI error handling when use case fails."""
         runner = CliRunner()
 
@@ -146,7 +147,7 @@ class TestMockCalendarCLI:
 class TestGoogleCalendarCLI:
     """Tests for the Google Calendar CLI program."""
 
-    def test_missing_credentials_error(self):
+    def test_missing_credentials_error(self) -> None:
         """Test CLI error handling for missing credentials file."""
         runner = CliRunner()
 
@@ -158,7 +159,7 @@ class TestGoogleCalendarCLI:
             assert "Error: credentials.json not found!" in result.output
             assert "Please follow the setup instructions" in result.output
 
-    def test_successful_execution_default_params(self):
+    def test_successful_execution_default_params(self) -> None:
         """Test CLI argument parsing and output with default parameters."""
         runner = CliRunner()
 
@@ -222,7 +223,7 @@ class TestGoogleCalendarCLI:
                             "google_demo_output.org", "w"
                         )
 
-    def test_successful_execution_custom_params(self, tmp_path):
+    def test_successful_execution_custom_params(self, tmp_path: Any) -> None:
         """Test CLI argument parsing with custom parameters."""
         runner = CliRunner()
 
@@ -290,7 +291,7 @@ class TestGoogleCalendarCLI:
                         # Verify CLI wrote to correct file
                         mock_file.assert_called_once_with(custom_output, "w")
 
-    def test_no_events_found_message(self):
+    def test_no_events_found_message(self) -> None:
         """Test CLI output formatting when no events are found."""
         runner = CliRunner()
 
@@ -324,7 +325,7 @@ class TestGoogleCalendarCLI:
                             "Calendar" in result.output
                         )
 
-    def test_google_api_exception_handling(self):
+    def test_google_api_exception_handling(self) -> None:
         """Test CLI error handling for Google API failures."""
         runner = CliRunner()
 
@@ -346,7 +347,7 @@ class TestGoogleCalendarCLI:
                     "- Missing or invalid credentials.json" in result.output
                 )
 
-    def test_use_case_exception_in_google_cli(self):
+    def test_use_case_exception_in_google_cli(self) -> None:
         """Test CLI error handling when use case fails."""
         runner = CliRunner()
 
@@ -367,7 +368,7 @@ class TestGoogleCalendarCLI:
                 assert result.exit_code == 1
                 assert "Demo failed: Use case failed" in result.output
 
-    def test_triage_results_display(self):
+    def test_triage_results_display(self) -> None:
         """Test CLI output formatting for triage analysis results."""
         runner = CliRunner()
 
