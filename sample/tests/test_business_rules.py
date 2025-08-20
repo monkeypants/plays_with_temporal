@@ -19,7 +19,7 @@ from sample.domain import (
 
 
 @pytest.mark.asyncio
-async def test_order_with_insufficient_payment_is_rejected():
+async def test_order_with_insufficient_payment_is_rejected() -> None:
     """
     Business Rule: Orders with insufficient payment should be rejected
 
@@ -96,7 +96,7 @@ async def test_order_with_insufficient_payment_is_rejected():
 
 
 @pytest.mark.asyncio
-async def test_payment_service_unavailable_triggers_compensation():
+async def test_payment_service_unavailable_triggers_compensation() -> None:
     """
     Business Rule: PaymentServiceUnavailable should trigger compensation
     and return PAYMENT_FAILED.
@@ -172,7 +172,7 @@ async def test_payment_service_unavailable_triggers_compensation():
 
 
 @pytest.mark.asyncio
-async def test_insufficient_inventory_prevents_payment():
+async def test_insufficient_inventory_prevents_payment() -> None:
     """
     Business Rule: InsufficientInventory should prevent payment and return
     INVENTORY_FAILED.

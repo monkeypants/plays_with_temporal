@@ -22,7 +22,7 @@ class WorkflowPostgreSQLScheduleRepositoryProxy(ScheduleRepository):
     activities.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.activity_timeout = workflow.timedelta(seconds=30)
         logger.debug("Initialized WorkflowPostgreSQLScheduleRepositoryProxy")
 

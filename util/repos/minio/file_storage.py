@@ -2,8 +2,8 @@ import logging
 import os
 from typing import Optional, Dict
 
-from minio import Minio
-from minio.error import S3Error
+from minio import Minio  # type: ignore[import-untyped]
+from minio.error import S3Error  # type: ignore[import-untyped]
 
 from util.domain import FileMetadata, FileUploadArgs
 from util.repositories import FileStorageRepository
@@ -123,7 +123,7 @@ class MinioFileStorageRepository(FileStorageRepository):
         )
         try:
             response = client.get_object(self._bucket_name, file_id)
-            file_data = response.read()
+            file_data: bytes = response.read()
             response.close()
             response.release_conn()
             logger.info(
@@ -160,12 +160,13 @@ class MinioFileStorageRepository(FileStorageRepository):
                     "content_type": stat.content_type,
                 },
             )
+            uploaded_at_str: Optional[str] = stat.last_modified.isoformat() if stat.last_modified else None
             return FileMetadata(
                 file_id=file_id,
                 filename=stat.user_metadata.get("X-Amz-Meta-Filename"),  # Minio prepends X-Amz-Meta-
                 content_type=stat.content_type,
                 size_bytes=stat.size,
-                uploaded_at=stat.last_modified.isoformat() if stat.last_modified else None,
+                uploaded_at=uploaded_at_str or "",  # Provide empty string if None
                 metadata={k.replace("X-Amz-Meta-", ""): v for k,v in stat.user_metadata.items()} if stat.user_metadata else {}
             )
         except S3Error as e:

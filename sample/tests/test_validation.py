@@ -27,7 +27,7 @@ from sample.repos.temporal.minio_inventory import (
 from sample.domain import Order, Payment, OrderItem
 
 
-def test_runtime_checkable_validation_success():
+def test_runtime_checkable_validation_success() -> None:
     """Test that @runtime_checkable validation works correctly"""
     # Test with the Temporal Activity implementation using mocked dependencies
     mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
@@ -42,11 +42,11 @@ def test_runtime_checkable_validation_success():
     assert isinstance(repo, PaymentRepository)
 
 
-def test_runtime_checkable_validation_failure():
+def test_runtime_checkable_validation_failure() -> None:
     """Test that invalid implementations are caught"""
 
     class InvalidRepo:
-        def some_other_method(self):
+        def some_other_method(self) -> None:
             pass
 
     invalid_repo = InvalidRepo()
@@ -62,7 +62,7 @@ def test_runtime_checkable_validation_failure():
             )
 
 
-def test_ensure_repository_provides_type_safety():
+def test_ensure_repository_provides_type_safety() -> None:
     """Test that ensure_* functions provide proper typing"""
     mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
     repo = TemporalMinioPaymentRepository(
@@ -77,7 +77,7 @@ def test_ensure_repository_provides_type_safety():
     assert hasattr(validated_repo, "get_payment")
 
 
-def test_isinstance_works_with_all_protocols():
+def test_isinstance_works_with_all_protocols() -> None:
     """Test isinstance works with all repository protocols"""
     mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
     payment_repo = TemporalMinioPaymentRepository(
@@ -97,7 +97,7 @@ def test_isinstance_works_with_all_protocols():
     assert not isinstance(inventory_repo, PaymentRepository)
 
 
-def test_validate_repository_protocol_success():
+def test_validate_repository_protocol_success() -> None:
     """Test successful repository protocol validation"""
     mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
     repo = TemporalMinioPaymentRepository(
@@ -108,7 +108,7 @@ def test_validate_repository_protocol_success():
     assert isinstance(repo, PaymentRepository)
 
 
-def test_validate_repository_protocol_missing_method():
+def test_validate_repository_protocol_missing_method() -> None:
     """Test repository protocol validation with missing method"""
     # Create a mock that's missing the get_payment method
     incomplete_repo = MagicMock()
@@ -124,7 +124,7 @@ def test_validate_repository_protocol_missing_method():
             raise RepositoryValidationError("Missing or incorrect methods")
 
 
-def test_validate_repository_protocol_non_callable_attribute():
+def test_validate_repository_protocol_non_callable_attribute() -> None:
     """Test repository protocol validation with non-callable attribute
 
     Note: @runtime_checkable only checks attribute existence, not callability.
@@ -146,7 +146,7 @@ def test_validate_repository_protocol_non_callable_attribute():
     # In practice, this would fail at runtime when the method is called
 
 
-def test_validate_domain_model_success():
+def test_validate_domain_model_success() -> None:
     """Test successful domain model validation"""
     data = {
         "order_id": "ord123",
@@ -163,7 +163,7 @@ def test_validate_domain_model_success():
     assert len(order.items) == 1
 
 
-def test_validate_domain_model_validation_error():
+def test_validate_domain_model_validation_error() -> None:
     """Test domain model validation with invalid data"""
     data = {
         "order_id": "ord123",
@@ -178,7 +178,7 @@ def test_validate_domain_model_validation_error():
         validate_domain_model(data, Order)
 
 
-def test_validate_domain_model_missing_required_field():
+def test_validate_domain_model_missing_required_field() -> None:
     """Test domain model validation with missing required field"""
     data = {
         "order_id": "ord123",
@@ -191,7 +191,7 @@ def test_validate_domain_model_missing_required_field():
         validate_domain_model(data, Order)
 
 
-def test_validate_pydantic_response_success():
+def test_validate_pydantic_response_success() -> None:
     """Test successful Pydantic response validation"""
     payment = Payment(
         payment_id="pay123",
@@ -206,7 +206,7 @@ def test_validate_pydantic_response_success():
     assert isinstance(validated, Payment)
 
 
-def test_validate_pydantic_response_wrong_type():
+def test_validate_pydantic_response_wrong_type() -> None:
     """Test Pydantic response validation with wrong type"""
     wrong_object = "not_a_payment"
 
@@ -216,7 +216,7 @@ def test_validate_pydantic_response_wrong_type():
         validate_pydantic_response(wrong_object, Payment)
 
 
-def test_validate_pydantic_response_invalid_state():
+def test_validate_pydantic_response_invalid_state() -> None:
     """Test Pydantic response validation with invalid model state"""
     # Create a payment with valid initial data
     payment = Payment(
@@ -238,7 +238,7 @@ def test_validate_pydantic_response_invalid_state():
             validate_pydantic_response(payment, Payment)
 
 
-def test_create_validated_repository_factory_success():
+def test_create_validated_repository_factory_success() -> None:
     """Test creating a validated repository factory"""
     mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
 
@@ -252,12 +252,12 @@ def test_create_validated_repository_factory_success():
     assert isinstance(repo, TemporalMinioPaymentRepository)
 
 
-def test_create_validated_repository_factory_invalid_implementation():
+def test_create_validated_repository_factory_invalid_implementation() -> None:
     """Test validated repository factory with invalid implementation"""
 
     # Create a mock class that doesn't satisfy the protocol
     class InvalidRepo:
-        def some_other_method(self):
+        def some_other_method(self) -> None:
             pass
 
     invalid_repo = InvalidRepo()
@@ -270,7 +270,7 @@ def test_create_validated_repository_factory_invalid_implementation():
             )
 
 
-def test_ensure_payment_repository_success():
+def test_ensure_payment_repository_success() -> None:
     """Test convenience function for payment repository validation"""
     mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
     repo = TemporalMinioPaymentRepository(
@@ -281,7 +281,7 @@ def test_ensure_payment_repository_success():
     ensure_payment_repository(repo)
 
 
-def test_ensure_payment_repository_failure():
+def test_ensure_payment_repository_failure() -> None:
     """Test convenience function with invalid payment repository"""
     # Create a mock that's definitely missing required methods
     invalid_repo = MagicMock()
@@ -294,7 +294,7 @@ def test_ensure_payment_repository_failure():
         ensure_payment_repository(invalid_repo)
 
 
-def test_inventory_repository_validation():
+def test_inventory_repository_validation() -> None:
     """Test that inventory repository validation works"""
     mock_minio_repo = MagicMock(spec=MinioInventoryRepository)
     repo = TemporalMinioInventoryRepository(mock_minio_repo)
@@ -303,7 +303,7 @@ def test_inventory_repository_validation():
     assert isinstance(repo, InventoryRepository)
 
 
-def test_factory_function_metadata():
+def test_factory_function_metadata() -> None:
     """Test that factory function has proper metadata"""
     factory = create_validated_repository_factory(
         PaymentRepository, TemporalMinioPaymentRepository  # type: ignore[type-abstract]
@@ -321,7 +321,7 @@ def test_factory_function_metadata():
     )
 
 
-def test_validation_with_complex_domain_model():
+def test_validation_with_complex_domain_model() -> None:
     """Test validation with complex nested domain model"""
     data = {
         "order_id": "ord123",
@@ -342,7 +342,7 @@ def test_validation_with_complex_domain_model():
     assert order.items[1].price == Decimal("10.00")
 
 
-def test_validation_preserves_pydantic_validation_errors():
+def test_validation_preserves_pydantic_validation_errors() -> None:
     """Test that validation preserves detailed Pydantic validation errors"""
     data = {
         "order_id": "ord123",
@@ -360,7 +360,7 @@ def test_validation_preserves_pydantic_validation_errors():
     assert "Quantity must be positive" in str(exc_info.value)
 
 
-def test_temporal_activity_method_validation():
+def test_temporal_activity_method_validation() -> None:
     """Test that Temporal activity-decorated methods are handled properly"""
     mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
     repo = TemporalMinioPaymentRepository(
@@ -379,7 +379,7 @@ def test_temporal_activity_method_validation():
     assert callable(repo.get_payment)
 
 
-def test_isinstance_works_with_runtime_checkable():
+def test_isinstance_works_with_runtime_checkable() -> None:
     """Test that isinstance() works directly with @runtime_checkable
     protocols"""
     mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
@@ -394,7 +394,7 @@ def test_isinstance_works_with_runtime_checkable():
     assert not isinstance(repo, InventoryRepository)
 
 
-def test_runtime_checkable_limitation_with_non_callable():
+def test_runtime_checkable_limitation_with_non_callable() -> None:
     """Test documenting the limitation of @runtime_checkable with
     non-callable attributes"""
 

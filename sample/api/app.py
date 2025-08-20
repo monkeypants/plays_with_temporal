@@ -5,7 +5,7 @@ FastAPI application for order processing.
 import logging
 import os
 import uuid  # New import for file_id generation
-from typing import Optional
+from typing import Optional, Any
 import json  # New import for JSON parsing
 
 from fastapi import (
@@ -51,7 +51,7 @@ from sample.api.dependencies import (
 )
 
 
-def setup_logging():
+def setup_logging() -> None:
     """Configure logging based on environment variables"""
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
     log_format = os.environ.get(
@@ -79,14 +79,14 @@ app = FastAPI(title="Order Fulfillment API")
 
 
 @app.get("/health", response_model=HealthCheckResponse)
-async def health_check():
+async def health_check() -> HealthCheckResponse:
     """Health check endpoint"""
     logger.debug("Health check requested")
     return HealthCheckResponse(status="ok", version="1.0.0")
 
 
 @app.post("/orders", response_model=OrderRequestResponse)
-async def create_order(request: CreateOrderRequest):
+async def create_order(request: CreateOrderRequest) -> OrderRequestResponse:
     """
     Create a new order request and start the fulfillment workflow
     asynchronously. Returns immediately with a request_id for tracking.
@@ -153,13 +153,13 @@ async def create_order(request: CreateOrderRequest):
         )
 
 
-@app.get("/order-requests/{request_id}")
+@app.get("/order-requests/{request_id}", response_model=None)
 async def get_request_status(
     request_id: str,
-    request_repo=Depends(
+    request_repo: Any = Depends(
         get_minio_order_request_repository
     ),  # Changed to use direct Minio repo
-):
+) -> Any:
     """
     Get the status of an order request.
     If the request has progressed to order creation, redirect to the order
@@ -211,7 +211,7 @@ async def get_request_status(
 async def get_order_status(
     order_id: str,
     use_case: GetOrderUseCase = Depends(get_get_order_use_case),
-):
+) -> OrderStatusResponse:
     """
     Get the status of an order by querying the use case directly.
     """
@@ -262,7 +262,7 @@ async def upload_order_attachment(
     use_case: OrderFulfillmentUseCase = Depends(
         get_order_fulfillment_use_case
     ),
-):
+) -> FileUploadResponse:
     """
     Uploads an attachment for a specific order.
     The file content is passed directly, and additional metadata can be
@@ -394,7 +394,7 @@ async def download_order_attachment(
     use_case: OrderFulfillmentUseCase = Depends(
         get_order_fulfillment_use_case
     ),
-):
+) -> Response:
     """
     Downloads an attachment for a specific order.
     Returns the file content directly.
@@ -494,7 +494,7 @@ async def get_order_attachment_metadata(
     use_case: OrderFulfillmentUseCase = Depends(
         get_order_fulfillment_use_case
     ),
-):
+) -> FileDownloadResponse:
     """
     Retrieves metadata for an attachment for a specific order.
     Does not return the file content.
@@ -570,7 +570,7 @@ async def cancel_order(
     order_id: str,
     request: CancelOrderRequest,
     client: Client = Depends(get_temporal_client),
-):
+) -> CancelOrderResponse:
     """
     Initiate the cancellation of an order by starting the CancelOrderWorkflow
     asynchronously. Returns immediately with a request_id for tracking.

@@ -13,8 +13,8 @@ from temporalio import activity
 from cal.domain import CalendarEvent
 from cal.repositories import CalendarRepository, CalendarChanges, SyncState
 from cal.repos.google.calendar import GoogleCalendarRepository
-from sample.repositories import FileStorageRepository
-from sample.domain import FileUploadArgs
+from util.repositories import FileStorageRepository
+from util.domain import FileUploadArgs
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ from pydantic import (
     Field,
     field_validator,
 )
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Any
 from decimal import Decimal
 from datetime import datetime
 
@@ -20,14 +20,14 @@ class OrderItem(BaseModel):
 
     @field_validator("quantity")
     @classmethod
-    def quantity_must_be_positive(cls, v):
+    def quantity_must_be_positive(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("Quantity must be positive")
         return v
 
     @field_validator("price")
     @classmethod
-    def price_must_be_positive(cls, v):
+    def price_must_be_positive(cls, v: Decimal) -> Decimal:
         if v <= 0:
             raise ValueError("Price must be positive")
         return v
@@ -42,14 +42,14 @@ class OrderItemRequest(BaseModel):
 
     @field_validator("quantity")
     @classmethod
-    def quantity_must_be_positive(cls, v):
+    def quantity_must_be_positive(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("Quantity must be positive")
         return v
 
     @field_validator("price")
     @classmethod
-    def price_must_be_positive(cls, v):
+    def price_must_be_positive(cls, v: Decimal) -> Decimal:
         if v <= 0:
             raise ValueError("Price must be positive")
         return v
@@ -63,7 +63,9 @@ class CreateOrderRequest(BaseModel):
 
     @field_validator("items")
     @classmethod
-    def items_must_not_be_empty(cls, v):
+    def items_must_not_be_empty(
+        cls, v: List[OrderItemRequest]
+    ) -> List[OrderItemRequest]:
         if not v:
             raise ValueError("Order must contain at least one item")
         return v
@@ -71,7 +73,9 @@ class CreateOrderRequest(BaseModel):
     @property
     def total_amount(self) -> Decimal:
         """Calculate total amount from items."""
-        return sum(item.price * item.quantity for item in self.items)
+        return sum(
+            item.price * item.quantity for item in self.items
+        ) or Decimal("0")
 
 
 class Order(BaseModel):
@@ -96,14 +100,14 @@ class Order(BaseModel):
 
     @field_validator("items")
     @classmethod
-    def items_must_not_be_empty(cls, v):
+    def items_must_not_be_empty(cls, v: List[OrderItem]) -> List[OrderItem]:
         if not v:
             raise ValueError("Order must contain at least one item")
         return v
 
     @field_validator("total_amount")
     @classmethod
-    def total_amount_must_be_positive(cls, v):
+    def total_amount_must_be_positive(cls, v: Decimal) -> Decimal:
         if v <= 0:
             raise ValueError("Total amount must be positive")
         return v
@@ -118,7 +122,7 @@ class Payment(BaseModel):
 
     @field_validator("amount")
     @classmethod
-    def amount_must_be_positive(cls, v):
+    def amount_must_be_positive(cls, v: Decimal) -> Decimal:
         if v <= 0:
             raise ValueError("Amount must be positive")
         return v
@@ -133,7 +137,9 @@ class PaymentOutcome(BaseModel):
 
     @field_validator("payment")
     @classmethod
-    def payment_must_be_present_if_completed(cls, v, info):
+    def payment_must_be_present_if_completed(
+        cls, v: Optional[Payment], info: Any
+    ) -> Optional[Payment]:
         if info.data.get("status") == "completed" and v is None:
             raise ValueError(
                 "Payment object must be present if status is completed"
@@ -151,7 +157,7 @@ class RefundPaymentArgs(BaseModel):
 
     @field_validator("amount")
     @classmethod
-    def amount_must_be_positive(cls, v):
+    def amount_must_be_positive(cls, v: Decimal) -> Decimal:
         if v <= 0:
             raise ValueError("Amount must be positive")
         return v
@@ -166,7 +172,9 @@ class RefundPaymentOutcome(BaseModel):
 
     @field_validator("refund_id")
     @classmethod
-    def refund_id_must_be_present_if_refunded(cls, v, info):
+    def refund_id_must_be_present_if_refunded(
+        cls, v: Optional[str], info: Any
+    ) -> Optional[str]:
         if info.data.get("status") == "refunded" and v is None:
             raise ValueError(
                 "Refund ID must be present if status is 'refunded'"
@@ -181,14 +189,14 @@ class InventoryItem(BaseModel):
 
     @field_validator("quantity")
     @classmethod
-    def quantity_must_be_non_negative(cls, v):
+    def quantity_must_be_non_negative(cls, v: int) -> int:
         if v < 0:
             raise ValueError("Quantity must be non-negative")
         return v
 
     @field_validator("reserved")
     @classmethod
-    def reserved_must_be_non_negative(cls, v):
+    def reserved_must_be_non_negative(cls, v: int) -> int:
         if v < 0:
             raise ValueError("Reserved quantity must be non-negative")
         return v
@@ -203,7 +211,9 @@ class InventoryReservationOutcome(BaseModel):
 
     @field_validator("reserved_items")
     @classmethod
-    def reserved_items_must_be_present_if_reserved(cls, v, info):
+    def reserved_items_must_be_present_if_reserved(
+        cls, v: Optional[List[InventoryItem]], info: Any
+    ) -> Optional[List[InventoryItem]]:
         if info.data.get("status") == "reserved" and (v is None or not v):
             raise ValueError(
                 "Reserved items must be present if status is reserved"

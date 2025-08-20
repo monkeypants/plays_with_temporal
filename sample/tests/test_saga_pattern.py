@@ -1,4 +1,5 @@
 import pytest
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from decimal import Decimal
 
@@ -20,7 +21,7 @@ from sample.domain import (
 
 
 @pytest.mark.asyncio
-async def test_payment_failure_releases_inventory():
+async def test_payment_failure_releases_inventory() -> None:
     """Verify saga compensation: payment failure releases reserved
     inventory"""
     mock_payment_repo = MagicMock(spec=PaymentRepository)
@@ -87,7 +88,7 @@ async def test_payment_failure_releases_inventory():
 
 
 @pytest.mark.asyncio
-async def test_inventory_failure_does_not_process_payment():
+async def test_inventory_failure_does_not_process_payment() -> None:
     """Verify saga pattern: inventory failure prevents payment processing"""
     mock_payment_repo = MagicMock(spec=PaymentRepository)
     mock_inventory_repo = MagicMock(spec=InventoryRepository)
@@ -145,7 +146,7 @@ async def test_inventory_failure_does_not_process_payment():
 
 
 @pytest.mark.asyncio
-async def test_successful_saga_completes_all_steps():
+async def test_successful_saga_completes_all_steps() -> None:
     """Verify successful saga executes all forward actions without
     compensation"""
     mock_payment_repo = MagicMock(spec=PaymentRepository)
@@ -215,7 +216,7 @@ async def test_successful_saga_completes_all_steps():
 
 
 @pytest.mark.asyncio
-async def test_exception_during_payment_triggers_compensation():
+async def test_exception_during_payment_triggers_compensation() -> None:
     """Verify saga compensation: unexpected exception during payment
     releases inventory"""
     mock_payment_repo = MagicMock(spec=PaymentRepository)
@@ -283,7 +284,7 @@ async def test_exception_during_payment_triggers_compensation():
 
 
 @pytest.mark.asyncio
-async def test_compensation_failure_is_logged_but_not_propagated():
+async def test_compensation_failure_is_logged_but_not_propagated() -> None:
     """Verify saga compensation: compensation failures are logged but don't
     prevent error response"""
     mock_payment_repo = MagicMock(spec=PaymentRepository)
@@ -357,7 +358,7 @@ async def test_compensation_failure_is_logged_but_not_propagated():
 
 
 @pytest.mark.asyncio
-async def test_idempotent_compensation_safe_for_multiple_calls():
+async def test_idempotent_compensation_safe_for_multiple_calls() -> None:
     """Verify saga compensation: release_items is safe to call multiple
     times"""
     mock_payment_repo = MagicMock(spec=PaymentRepository)
@@ -429,7 +430,7 @@ async def test_idempotent_compensation_safe_for_multiple_calls():
 
 
 @pytest.mark.asyncio
-async def test_saga_step_ordering_is_correct():
+async def test_saga_step_ordering_is_correct() -> None:
     """Verify saga pattern: steps execute in correct order (inventory
     first, then payment)"""
     mock_payment_repo = MagicMock(spec=PaymentRepository)
@@ -442,14 +443,16 @@ async def test_saga_step_ordering_is_correct():
     call_order = []
 
     # Track call order
-    async def track_reserve(*args, **kwargs):
+    async def track_reserve(
+        *args: Any, **kwargs: Any
+    ) -> InventoryReservationOutcome:
         call_order.append("reserve_inventory")
         return InventoryReservationOutcome(
             status="reserved",
             reserved_items=[InventoryItem(product_id="prod1", quantity=1)],
         )
 
-    async def track_payment(*args, **kwargs):
+    async def track_payment(*args: Any, **kwargs: Any) -> PaymentOutcome:
         call_order.append("process_payment")
         return PaymentOutcome(
             status="completed",

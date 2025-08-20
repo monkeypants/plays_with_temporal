@@ -47,7 +47,7 @@ class CalendarRepositoryContractTestMixin(ABC):
         pass
 
     @pytest.mark.asyncio
-    async def test_get_events_by_ids_returns_list(self):
+    async def test_get_events_by_ids_returns_list(self) -> None:
         """Contract: get_events_by_ids must return a list of CalendarEvent."""
         repo = await self.create_repository()
 
@@ -58,7 +58,7 @@ class CalendarRepositoryContractTestMixin(ABC):
             assert isinstance(event, CalendarEvent)
 
     @pytest.mark.asyncio
-    async def test_get_events_by_ids_empty_list_returns_empty(self):
+    async def test_get_events_by_ids_empty_list_returns_empty(self) -> None:
         """Contract: get_events_by_ids with empty list returns empty list."""
         repo = await self.create_repository()
 
@@ -67,7 +67,7 @@ class CalendarRepositoryContractTestMixin(ABC):
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_get_events_by_date_range_returns_list(self):
+    async def test_get_events_by_date_range_returns_list(self) -> None:
         """Contract: get_events_by_date_range must return a list of
         CalendarEvent."""
         repo = await self.create_repository()
@@ -83,7 +83,9 @@ class CalendarRepositoryContractTestMixin(ABC):
             assert isinstance(event, CalendarEvent)
 
     @pytest.mark.asyncio
-    async def test_get_events_by_date_range_multi_calendar_returns_list(self):
+    async def test_get_events_by_date_range_multi_calendar_returns_list(
+        self,
+    ) -> None:
         """Contract: get_events_by_date_range_multi_calendar must return a
         list."""
         repo = await self.create_repository()
@@ -99,7 +101,9 @@ class CalendarRepositoryContractTestMixin(ABC):
             assert isinstance(event, CalendarEvent)
 
     @pytest.mark.asyncio
-    async def test_get_events_by_date_range_multi_calendar_empty_list(self):
+    async def test_get_events_by_date_range_multi_calendar_empty_list(
+        self,
+    ) -> None:
         """Contract: multi-calendar method with empty list returns empty
         list."""
         repo = await self.create_repository()
@@ -113,7 +117,7 @@ class CalendarRepositoryContractTestMixin(ABC):
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_apply_changes_accepts_empty_lists(self):
+    async def test_apply_changes_accepts_empty_lists(self) -> None:
         """Contract: apply_changes must handle empty lists without error."""
         repo = await self.create_repository()
 
@@ -121,7 +125,7 @@ class CalendarRepositoryContractTestMixin(ABC):
         await repo.apply_changes("test-calendar", [], [], [])
 
     @pytest.mark.asyncio
-    async def test_get_sync_state_returns_optional_sync_state(self):
+    async def test_get_sync_state_returns_optional_sync_state(self) -> None:
         """Contract: get_sync_state returns Optional[SyncState]."""
         repo = await self.create_repository()
 
@@ -130,7 +134,7 @@ class CalendarRepositoryContractTestMixin(ABC):
         assert result is None or isinstance(result, SyncState)
 
     @pytest.mark.asyncio
-    async def test_store_sync_state_accepts_sync_state(self):
+    async def test_store_sync_state_accepts_sync_state(self) -> None:
         """Contract: store_sync_state must accept SyncState without error."""
         repo = await self.create_repository()
         sync_state = SyncState(sync_token="test-token")
@@ -150,7 +154,7 @@ class ScheduleRepositoryContractTestMixin(ABC):
         pass
 
     @pytest.mark.asyncio
-    async def test_generate_schedule_id_returns_string(self):
+    async def test_generate_schedule_id_returns_string(self) -> None:
         """Contract: generate_schedule_id must return a non-empty string."""
         repo = await self.create_repository()
 
@@ -160,7 +164,7 @@ class ScheduleRepositoryContractTestMixin(ABC):
         assert len(result) > 0
 
     @pytest.mark.asyncio
-    async def test_generate_schedule_id_returns_unique_ids(self):
+    async def test_generate_schedule_id_returns_unique_ids(self) -> None:
         """Contract: generate_schedule_id should return unique IDs."""
         repo = await self.create_repository()
 
@@ -170,7 +174,7 @@ class ScheduleRepositoryContractTestMixin(ABC):
         assert id1 != id2
 
     @pytest.mark.asyncio
-    async def test_save_schedule_accepts_schedule(self):
+    async def test_save_schedule_accepts_schedule(self) -> None:
         """Contract: save_schedule must accept Schedule without error."""
         repo = await self.create_repository()
         schedule = minimal_schedule()
@@ -179,7 +183,7 @@ class ScheduleRepositoryContractTestMixin(ABC):
         await repo.save_schedule(schedule)
 
     @pytest.mark.asyncio
-    async def test_get_schedule_returns_optional_schedule(self):
+    async def test_get_schedule_returns_optional_schedule(self) -> None:
         """Contract: get_schedule returns Optional[Schedule]."""
         repo = await self.create_repository()
 
@@ -199,7 +203,7 @@ class TimeBlockClassifierRepositoryContractTestMixin(ABC):
         pass
 
     @pytest.mark.asyncio
-    async def test_classify_block_type_returns_time_block_type(self):
+    async def test_classify_block_type_returns_time_block_type(self) -> None:
         """Contract: classify_block_type must return TimeBlockType."""
         repo = await self.create_repository()
         event = minimal_calendar_event()
@@ -209,7 +213,9 @@ class TimeBlockClassifierRepositoryContractTestMixin(ABC):
         assert isinstance(result, TimeBlockType)
 
     @pytest.mark.asyncio
-    async def test_classify_responsibility_area_returns_optional_string(self):
+    async def test_classify_responsibility_area_returns_optional_string(
+        self,
+    ) -> None:
         """Contract: classify_responsibility_area returns Optional[str]."""
         repo = await self.create_repository()
         event = minimal_calendar_event()
@@ -219,7 +225,7 @@ class TimeBlockClassifierRepositoryContractTestMixin(ABC):
         assert result is None or isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_triage_event_returns_tuple(self):
+    async def test_triage_event_returns_tuple(self) -> None:
         """Contract: triage_event returns tuple[ExecutiveDecision, str]."""
         repo = await self.create_repository()
         event = minimal_calendar_event()
@@ -244,7 +250,7 @@ class CalendarConfigurationRepositoryContractTestMixin(ABC):
         pass
 
     @pytest.mark.asyncio
-    async def test_get_collection_returns_optional_collection(self):
+    async def test_get_collection_returns_optional_collection(self) -> None:
         """Contract: get_collection returns Optional[CalendarCollection]."""
         repo = await self.create_repository()
 
@@ -253,7 +259,7 @@ class CalendarConfigurationRepositoryContractTestMixin(ABC):
         assert result is None or isinstance(result, CalendarCollection)
 
     @pytest.mark.asyncio
-    async def test_list_collections_returns_list(self):
+    async def test_list_collections_returns_list(self) -> None:
         """Contract: list_collections returns List[CalendarCollection]."""
         repo = await self.create_repository()
 
@@ -346,7 +352,7 @@ class TestRepositoryErrorHandling:
     """Test error handling behavior across repository implementations."""
 
     @pytest.mark.asyncio
-    async def test_calendar_repo_handles_invalid_calendar_id(self):
+    async def test_calendar_repo_handles_invalid_calendar_id(self) -> None:
         """Test that repositories handle invalid calendar IDs gracefully."""
         from cal.repos.mock.calendar import MockCalendarRepository
 
@@ -357,7 +363,7 @@ class TestRepositoryErrorHandling:
         assert isinstance(result, list)
 
     @pytest.mark.asyncio
-    async def test_schedule_repo_handles_invalid_schedule_id(self):
+    async def test_schedule_repo_handles_invalid_schedule_id(self) -> None:
         """Test that schedule repositories handle invalid IDs gracefully."""
         from cal.repos.local.calendar import LocalCalendarRepository
 
@@ -368,7 +374,7 @@ class TestRepositoryErrorHandling:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_classifier_repo_handles_minimal_event_data(self):
+    async def test_classifier_repo_handles_minimal_event_data(self) -> None:
         """Test that classifiers handle events with minimal data."""
         from cal.repos.local.time_block_classifier import (
             LocalTimeBlockClassifierRepository,
@@ -406,7 +412,7 @@ class TestRepositoryIdempotency:
     """Test that repository operations are idempotent where required."""
 
     @pytest.mark.asyncio
-    async def test_save_schedule_is_idempotent(self):
+    async def test_save_schedule_is_idempotent(self) -> None:
         """Test that saving the same schedule multiple times is safe."""
         from cal.repos.local.calendar import LocalCalendarRepository
 
@@ -424,7 +430,7 @@ class TestRepositoryIdempotency:
         assert retrieved.schedule_id == "idempotent-test"
 
     @pytest.mark.asyncio
-    async def test_store_sync_state_is_idempotent(self):
+    async def test_store_sync_state_is_idempotent(self) -> None:
         """Test that storing sync state multiple times is safe."""
         from cal.repos.local.calendar import LocalCalendarRepository
 

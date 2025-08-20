@@ -50,6 +50,7 @@ class TemporalCalendarRepository(CalendarRepository):
             # CalendarSyncWorkflow
             return CalendarChanges(
                 upserted_events=[],
+                upserted_events_file_id=None,
                 deleted_event_ids=[],
                 new_sync_state=SyncState(sync_token="mock-sync-token"),
             )

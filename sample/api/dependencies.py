@@ -4,6 +4,7 @@ Dependency injection for FastAPI endpoints.
 
 import os
 import logging
+from typing import Any, Dict
 
 from fastapi import Depends
 from temporalio.client import Client
@@ -22,16 +23,12 @@ from sample.repos.temporal.client_proxies.payment import (
 from sample.repos.temporal.client_proxies.inventory import (
     TemporalInventoryRepository,
 )
-from sample.repos.temporal.client_proxies.order import TemporalOrderRepository
 from sample.repos.temporal.client_proxies.order_request import (
     TemporalOrderRequestRepository,
 )
 from sample.repos.minio.order_request import MinioOrderRequestRepository
 from sample.repos.minio.order import MinioOrderRepository
 from sample.repos.minio.payment import MinioPaymentRepository
-from util.repos.temporal.minio_file_storage import (
-    TemporalMinioFileStorageRepository,
-)
 from sample.usecase import (
     OrderFulfillmentUseCase,
     GetOrderUseCase,
@@ -51,10 +48,10 @@ class DependencyContainer:
     Always creates real clients; mocks are provided by test overrides.
     """
 
-    def __init__(self):
-        self._instances = {}
+    def __init__(self) -> None:
+        self._instances: Dict[str, Any] = {}
 
-    async def get_or_create(self, key: str, factory):
+    async def get_or_create(self, key: str, factory: Any) -> Any:
         """Get or create a singleton instance."""
         if key not in self._instances:
             self._instances[key] = await factory()
@@ -62,9 +59,10 @@ class DependencyContainer:
 
     async def get_temporal_client(self) -> Client:
         """Get or create Temporal client."""
-        return await self.get_or_create(
+        client = await self.get_or_create(
             "temporal_client", self._create_temporal_client
         )
+        return client  # type: ignore[no-any-return]
 
     async def _create_temporal_client(self) -> Client:
         """Create Temporal client with proper configuration."""
@@ -115,8 +113,9 @@ async def get_temporal_inventory_repository() -> InventoryRepository:
 
 async def get_temporal_order_repository() -> OrderRepository:
     """FastAPI dependency for OrderRepository."""
-    client = await get_temporal_client()
-    return TemporalOrderRepository(client)
+    # Note: TemporalOrderRepository is abstract, this would need a concrete
+    # implementation. For now, we'll use the Minio implementation directly
+    return await get_minio_order_repository()
 
 
 async def get_temporal_order_request_repository() -> OrderRequestRepository:
@@ -132,8 +131,13 @@ async def get_minio_order_request_repository() -> OrderRequestRepository:
 
 async def get_temporal_file_storage_repository() -> FileStorageRepository:
     """FastAPI dependency for FileStorageRepository."""
-    client = await get_temporal_client()
-    return TemporalMinioFileStorageRepository(client)
+    from util.repos.minio.file_storage import MinioFileStorageRepository
+    from util.repos.temporal.minio_file_storage import (
+        TemporalMinioFileStorageRepository,
+    )
+
+    minio_repo = MinioFileStorageRepository()
+    return TemporalMinioFileStorageRepository(minio_repo)
 
 
 def _get_minio_endpoint() -> str:
@@ -189,8 +193,10 @@ async def get_cancel_order_use_case() -> CancelOrderUseCase:
     """FastAPI dependency for CancelOrderUseCase."""
     order_repo = await get_temporal_order_repository()
     payment_repo = await get_temporal_payment_repository()
+    inventory_repo = await get_temporal_inventory_repository()
 
     return CancelOrderUseCase(
         order_repo=order_repo,
         payment_repo=payment_repo,
+        inventory_repo=inventory_repo,
     )

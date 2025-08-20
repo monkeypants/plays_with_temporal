@@ -35,7 +35,7 @@ from util.domain import FileMetadata
 class TestOrderFulfillmentUseCaseSecurity:
     """Security-focused tests for OrderFulfillmentUseCase."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up mocks and use case for each test."""
         self.mock_payment_repo = AsyncMock(spec=PaymentRepository)
         self.mock_inventory_repo = AsyncMock(spec=InventoryRepository)
@@ -84,7 +84,7 @@ class TestOrderFulfillmentUseCaseSecurity:
     @pytest.mark.asyncio
     async def test_fulfill_order_inventory_compensation_on_payment_failure(
         self,
-    ):
+    ) -> None:
         """Test that inventory is released when payment fails after
         reservation."""
         # Arrange: Inventory succeeds, payment fails
@@ -118,7 +118,7 @@ class TestOrderFulfillmentUseCaseSecurity:
     @pytest.mark.asyncio
     async def test_fulfill_order_compensation_failure_is_logged_not_raised(
         self,
-    ):
+    ) -> None:
         """Test that compensation failures are logged but don't prevent error
         response."""
         # Arrange: Payment fails, then compensation fails
@@ -145,7 +145,7 @@ class TestOrderFulfillmentUseCaseSecurity:
     @pytest.mark.asyncio
     async def test_fulfill_order_unexpected_exception_triggers_compensation(
         self,
-    ):
+    ) -> None:
         """Test that unexpected exceptions trigger inventory compensation."""
         # Arrange: Inventory reserved, then unexpected error
         self.mock_inventory_repo.reserve_items.return_value = (
@@ -177,7 +177,7 @@ class TestOrderFulfillmentUseCaseSecurity:
         )
 
     @pytest.mark.asyncio
-    async def test_fulfill_order_double_failure_scenario(self):
+    async def test_fulfill_order_double_failure_scenario(self) -> None:
         """Test behavior when both operation and compensation fail."""
         # Arrange: Payment fails, compensation also fails
         self.mock_payment_repo.process_payment.side_effect = Exception(
@@ -201,7 +201,7 @@ class TestOrderFulfillmentUseCaseSecurity:
         self.mock_inventory_repo.release_items.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_fulfill_order_persists_state_at_each_step(self):
+    async def test_fulfill_order_persists_state_at_each_step(self) -> None:
         """Test that order state is persisted at each critical step."""
         # Arrange: All operations succeed
         self.mock_inventory_repo.reserve_items.return_value = (
@@ -236,7 +236,9 @@ class TestOrderFulfillmentUseCaseSecurity:
         assert final_order.order_id == "ord-123"
 
     @pytest.mark.asyncio
-    async def test_fulfill_order_validates_domain_model_creation(self):
+    async def test_fulfill_order_validates_domain_model_creation(
+        self,
+    ) -> None:
         """Test that invalid order data is caught during domain model
         creation."""
         # Arrange: Create a valid request but mock the order creation to fail
@@ -276,7 +278,9 @@ class TestOrderFulfillmentUseCaseSecurity:
             self.mock_payment_repo.process_payment.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_upload_order_attachment_validates_order_ownership(self):
+    async def test_upload_order_attachment_validates_order_ownership(
+        self,
+    ) -> None:
         """Test that file uploads are properly associated with orders."""
         # Arrange
         expected_metadata = FileMetadata(
@@ -308,7 +312,7 @@ class TestOrderFulfillmentUseCaseSecurity:
     @pytest.mark.asyncio
     async def test_get_order_attachment_metadata_prevents_cross_order_access(
         self,
-    ):
+    ) -> None:
         """Test that users can't access files from other orders."""
         # Arrange: File exists but belongs to different order
         self.mock_file_storage_repo.get_file_metadata.return_value = (
@@ -331,7 +335,7 @@ class TestOrderFulfillmentUseCaseSecurity:
     @pytest.mark.asyncio
     async def test_get_order_attachment_metadata_allows_correct_order_access(
         self,
-    ):
+    ) -> None:
         """Test that users can access files from their own orders."""
         # Arrange: File exists and belongs to correct order
         expected_metadata = FileMetadata(
@@ -353,7 +357,9 @@ class TestOrderFulfillmentUseCaseSecurity:
         assert result == expected_metadata
 
     @pytest.mark.asyncio
-    async def test_file_operations_fail_gracefully_without_storage_repo(self):
+    async def test_file_operations_fail_gracefully_without_storage_repo(
+        self,
+    ) -> None:
         """Test that file operations fail gracefully when storage repo not
         configured."""
         # Arrange: Use case without file storage repo
@@ -388,7 +394,9 @@ class TestOrderFulfillmentUseCaseSecurity:
             )
 
     @pytest.mark.asyncio
-    async def test_upload_order_attachment_repo_raises_exception(self):
+    async def test_upload_order_attachment_repo_raises_exception(
+        self,
+    ) -> None:
         """Test that upload_order_attachment handles exceptions from repo."""
         # Arrange
         self.mock_file_storage_repo.upload_file.side_effect = RuntimeError(
@@ -407,7 +415,9 @@ class TestOrderFulfillmentUseCaseSecurity:
         self.mock_file_storage_repo.upload_file.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_download_order_attachment_repo_raises_exception(self):
+    async def test_download_order_attachment_repo_raises_exception(
+        self,
+    ) -> None:
         """Test that download_order_attachment handles exceptions from
         repo.
         """
@@ -436,7 +446,9 @@ class TestOrderFulfillmentUseCaseSecurity:
         self.mock_file_storage_repo.download_file.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_order_attachment_metadata_repo_raises_exception(self):
+    async def test_get_order_attachment_metadata_repo_raises_exception(
+        self,
+    ) -> None:
         """Test that get_order_attachment_metadata handles exceptions from
         repo.
         """
@@ -457,7 +469,7 @@ class TestOrderFulfillmentUseCaseSecurity:
 class TestCancelOrderUseCaseSecurity:
     """Security-focused tests for CancelOrderUseCase."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up mocks and use case for each test."""
         self.mock_order_repo = AsyncMock(spec=OrderRepository)
         self.mock_payment_repo = AsyncMock(spec=PaymentRepository)
@@ -470,7 +482,7 @@ class TestCancelOrderUseCaseSecurity:
         )
 
     @pytest.mark.asyncio
-    async def test_cancel_order_refund_status_tracking(self):
+    async def test_cancel_order_refund_status_tracking(self) -> None:
         """Test that refund status is correctly tracked on order object."""
         # Arrange: Order with completed payment
         existing_order = Order(
@@ -513,7 +525,9 @@ class TestCancelOrderUseCaseSecurity:
         assert result.refund_id == "ref-123"
 
     @pytest.mark.asyncio
-    async def test_cancel_order_handles_refund_failure_gracefully(self):
+    async def test_cancel_order_handles_refund_failure_gracefully(
+        self,
+    ) -> None:
         """Test that refund failures don't prevent order cancellation."""
         # Arrange: Order with completed payment, but refund fails
         existing_order = Order(
@@ -558,7 +572,7 @@ class TestCancelOrderUseCaseSecurity:
         assert saved_order.status == "CANCELLED"
 
     @pytest.mark.asyncio
-    async def test_cancel_order_handles_no_payment_scenarios(self):
+    async def test_cancel_order_handles_no_payment_scenarios(self) -> None:
         """Test cancellation when no payment exists or payment failed."""
         # Arrange: Order exists but no payment
         existing_order = Order(
@@ -588,7 +602,7 @@ class TestCancelOrderUseCaseSecurity:
         assert saved_order.refund_id is None
 
     @pytest.mark.asyncio
-    async def test_cancel_order_unexpected_exception_handling(self):
+    async def test_cancel_order_unexpected_exception_handling(self) -> None:
         """Test that unexpected exceptions during cancellation are handled
         properly."""
         # Arrange: Order exists
@@ -632,7 +646,7 @@ class TestCancelOrderUseCaseSecurity:
         assert saved_order.status == "FAILED_CANCELLATION"
 
     @pytest.mark.asyncio
-    async def test_cancel_order_prevents_double_cancellation(self):
+    async def test_cancel_order_prevents_double_cancellation(self) -> None:
         """Test that already cancelled orders return current status."""
         # Arrange: Order already cancelled
         cancelled_order = Order(

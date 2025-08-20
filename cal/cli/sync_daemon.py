@@ -154,7 +154,7 @@ async def _list_schedules(temporal_address: str) -> None:
 
 
 @click.group()
-def cli():
+def cli() -> None:
     """Manage calendar sync scheduling via Temporal."""
     pass
 

@@ -27,7 +27,7 @@ class WorkflowTimeBlockClassifierRepositoryProxy(
     maintaining workflow determinism.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # The default activity timeout.
         self._start_to_close_timeout = timedelta(seconds=10)
 

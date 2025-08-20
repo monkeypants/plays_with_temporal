@@ -24,7 +24,7 @@ class WorkflowInventoryRepositoryProxy(InventoryRepository):
     performed via Temporal activities, maintaining workflow determinism.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.activity_timeout = workflow.timedelta(seconds=10)
         self.activity_fail_fast_retry_policy = RetryPolicy(
             initial_interval=workflow.timedelta(seconds=1),

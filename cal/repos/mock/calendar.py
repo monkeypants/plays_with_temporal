@@ -23,7 +23,7 @@ class MockCalendarRepository(CalendarRepository):
     for demonstration purposes.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._sample_events = self._create_sample_events()
 
     def _create_sample_events(self) -> List[CalendarEvent]:

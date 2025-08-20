@@ -46,29 +46,31 @@ from util.repos.temporal.minio_file_storage import (
 logger = logging.getLogger(__name__)
 
 
-def setup_logging():
+def setup_logging() -> None:
     """Configure logging based on environment variables"""
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-    log_format = os.environ.get(
-        "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
     # Validate log level
     numeric_level = getattr(logging, log_level, None)
     if not isinstance(numeric_level, int):
         print(f"Invalid log level: {log_level}, defaulting to INFO")
         numeric_level = logging.INFO
+    else:
+        pass
 
+    log_format = os.environ.get(
+        "LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     logging.basicConfig(
         level=numeric_level,
         format=log_format,
         force=True,  # Override any existing configuration
     )
-
     logger.info(
         "Logging configured",
         extra={"log_level": log_level, "numeric_level": numeric_level},
     )
+
+    return None
 
 
 async def get_temporal_client_with_retries(
@@ -124,11 +126,14 @@ async def get_temporal_client_with_retries(
                 raise
             await asyncio.sleep(delay)
 
+    # This should never be reached, but mypy needs explicit handling
+    raise RuntimeError("Unexpected exit from retry loop")
+
 
 async def run_worker(
     temporal_address: Optional[str] = None,
     task_queue: str = "calendar-task-queue",
-):
+) -> None:
     """
     Run the Temporal worker for calendar operations.
 
@@ -354,23 +359,27 @@ async def run_worker(
 
             # Create schedule for periodic sync using dedicated scheduled
             # workflow
-            await client.create_schedule(
-                schedule_id,
-                ScheduleActionStartWorkflow(
-                    CalendarSyncWorkflow.run,
-                    "primary",  # source_calendar_id
-                    "postgresql",  # sink_calendar_id
-                    False,  # full_sync
+            from temporalio.client import Schedule
+
+            schedule = Schedule(
+                action=ScheduleActionStartWorkflow(
+                    "CalendarSyncWorkflow",
+                    args=["primary", "postgresql", False],
                     id=f"sync-{sync_collection_id}-{{.ScheduledTime.Unix}}",
                     task_queue=task_queue,
                 ),
-                ScheduleSpec(
+                spec=ScheduleSpec(
                     intervals=[
                         ScheduleIntervalSpec(
                             every=timedelta(minutes=sync_interval_minutes)
                         )
                     ]
                 ),
+            )
+
+            await client.create_schedule(
+                schedule_id,
+                schedule,
             )
             logger.info(f"Created periodic sync schedule: {schedule_id}")
 
@@ -392,6 +401,8 @@ async def run_worker(
     )
 
     # Create worker with all workflows following sample/worker.py pattern
+    from typing import cast, Sequence, Callable, Any
+
     worker = Worker(
         client,
         task_queue=task_queue,
@@ -399,14 +410,14 @@ async def run_worker(
             PublishScheduleWorkflow,
             CalendarSyncWorkflow,
         ],
-        activities=activities,
+        activities=cast(Sequence[Callable[..., Any]], activities),
     )
 
     logger.info("Starting consolidated worker execution")
     await worker.run()
 
 
-def main():
+def main() -> None:
     """Entry point for the consolidated calendar worker."""
     asyncio.run(run_worker())
 

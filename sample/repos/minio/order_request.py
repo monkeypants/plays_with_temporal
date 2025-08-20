@@ -6,8 +6,8 @@ import os
 import io
 import logging
 from typing import Optional
-from minio import Minio
-from minio.error import S3Error
+from minio import Minio  # type: ignore[import-untyped]
+from minio.error import S3Error  # type: ignore[import-untyped]
 
 from sample.domain import RequestOrderMapping
 from sample.repositories import OrderRequestRepository
@@ -21,7 +21,7 @@ class MinioOrderRequestRepository(OrderRequestRepository):
     persistence. Uses dual S3 objects for O(1) bidirectional lookups.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         minio_endpoint = os.environ.get("MINIO_ENDPOINT", "minio:9000")
         logger.debug(
             "Initializing MinioOrderRequestRepository",
@@ -37,7 +37,7 @@ class MinioOrderRequestRepository(OrderRequestRepository):
         self.bucket_name = "request-mappings"
         self._ensure_bucket_exists()
 
-    def _ensure_bucket_exists(self):
+    def _ensure_bucket_exists(self) -> None:
         try:
             if not self.client.bucket_exists(self.bucket_name):
                 logger.info(

@@ -52,7 +52,7 @@ class CalendarSyncUseCase:
         source_calendar_id: str,
         sink_calendar_id: str,
         full_sync: bool = False,
-    ):
+    ) -> None:
         """
         Executes the calendar synchronization process.
 

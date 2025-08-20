@@ -24,7 +24,7 @@ class WorkflowMockCalendarRepositoryProxy(CalendarRepository):
     are performed via Temporal activities, maintaining workflow determinism.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.activity_timeout = workflow.timedelta(seconds=10)
         logger.debug("Initialized WorkflowMockCalendarRepositoryProxy")
 

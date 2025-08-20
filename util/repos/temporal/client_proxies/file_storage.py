@@ -32,7 +32,8 @@ class TemporalFileStorageRepository(FileStorageRepository):
             task_queue="order-fulfillment-queue",
         )
         
-        return await handle.result()
+        result = await handle.result()
+        return result  # type: ignore[no-any-return]
 
     async def download_file(self, file_id: str) -> Optional[bytes]:
         """Download a file via Temporal activity."""
@@ -45,7 +46,8 @@ class TemporalFileStorageRepository(FileStorageRepository):
             task_queue="order-fulfillment-queue",
         )
         
-        return await handle.result()
+        result = await handle.result()
+        return result  # type: ignore[no-any-return]
 
     async def get_file_metadata(self, file_id: str) -> Optional[FileMetadata]:
         """Retrieve file metadata via Temporal activity."""
@@ -58,4 +60,5 @@ class TemporalFileStorageRepository(FileStorageRepository):
             task_queue="order-fulfillment-queue",
         )
         
-        return await handle.result()
+        result = await handle.result()
+        return result  # type: ignore[no-any-return]

@@ -28,7 +28,7 @@ from cal.tests.factories import minimal_calendar_event
 class TestCreateScheduleUseCaseSecurity:
     """Security-focused tests for CreateScheduleUseCase."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up mocks and use case for each test."""
         self.mock_calendar_repo = AsyncMock(spec=CalendarRepository)
         self.mock_schedule_repo = AsyncMock(spec=ScheduleRepository)
@@ -68,7 +68,7 @@ class TestCreateScheduleUseCaseSecurity:
         )
 
     @pytest.mark.asyncio
-    async def test_execute_handles_invalid_date_ranges(self):
+    async def test_execute_handles_invalid_date_ranges(self) -> None:
         """Test that invalid date ranges are handled gracefully."""
         # Arrange: End date before start date
         start_date = datetime(2024, 1, 10, tzinfo=timezone.utc)
@@ -90,7 +90,7 @@ class TestCreateScheduleUseCaseSecurity:
         )
 
     @pytest.mark.asyncio
-    async def test_execute_prevents_excessive_date_ranges(self):
+    async def test_execute_prevents_excessive_date_ranges(self) -> None:
         """Test that extremely large date ranges are handled appropriately."""
         # Arrange: 10-year date range (potential performance issue)
         start_date = datetime(2020, 1, 1, tzinfo=timezone.utc)
@@ -128,7 +128,7 @@ class TestCreateScheduleUseCaseSecurity:
         assert result.end_date == end_date
 
     @pytest.mark.asyncio
-    async def test_execute_validates_calendar_collection_access(self):
+    async def test_execute_validates_calendar_collection_access(self) -> None:
         """Test that only enabled calendars in collection are queried."""
         # Arrange: Collection with mixed enabled/disabled calendars
         collection = CalendarCollection(
@@ -175,7 +175,9 @@ class TestCreateScheduleUseCaseSecurity:
         )  # Disabled calendar excluded
 
     @pytest.mark.asyncio
-    async def test_execute_for_collection_handles_missing_collection(self):
+    async def test_execute_for_collection_handles_missing_collection(
+        self,
+    ) -> None:
         """Test proper error handling for non-existent calendar
         collections."""
         # Arrange: Collection doesn't exist
@@ -193,7 +195,7 @@ class TestCreateScheduleUseCaseSecurity:
         self.mock_calendar_repo.get_events_by_date_range_multi_calendar.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_execute_handles_empty_calendar_collection(self):
+    async def test_execute_handles_empty_calendar_collection(self) -> None:
         """Test handling of calendar collection with no enabled calendars."""
         # Arrange: Collection with no enabled calendars
         collection = CalendarCollection(
@@ -226,7 +228,7 @@ class TestCreateScheduleUseCaseSecurity:
         assert called_calendar_ids == []  # Empty list
 
     @pytest.mark.asyncio
-    async def test_execute_validates_argument_combinations(self):
+    async def test_execute_validates_argument_combinations(self) -> None:
         """Test that invalid argument combinations are rejected."""
         # Test: Both calendar_id and calendar_collection provided
         collection = CalendarCollection(
@@ -261,7 +263,9 @@ class TestCreateScheduleUseCaseSecurity:
             await self.use_case.execute()
 
     @pytest.mark.asyncio
-    async def test_execute_handles_repository_failures_gracefully(self):
+    async def test_execute_handles_repository_failures_gracefully(
+        self,
+    ) -> None:
         """Test that repository failures are handled gracefully."""
         # Arrange: Calendar repository fails
         self.mock_calendar_repo.get_events_by_date_range.side_effect = (
@@ -276,7 +280,7 @@ class TestCreateScheduleUseCaseSecurity:
         self.mock_schedule_repo.save_schedule.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_execute_handles_schedule_save_failures(self):
+    async def test_execute_handles_schedule_save_failures(self) -> None:
         """Test that schedule save failures are handled appropriately."""
         # Arrange: Calendar succeeds, schedule save fails
         sample_events = [
@@ -297,7 +301,7 @@ class TestCreateScheduleUseCaseSecurity:
         self.mock_schedule_repo.save_schedule.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_execute_preserves_timezone_information(self):
+    async def test_execute_preserves_timezone_information(self) -> None:
         """Test that timezone information is preserved throughout the
         process."""
         # Arrange: Events with specific timezone

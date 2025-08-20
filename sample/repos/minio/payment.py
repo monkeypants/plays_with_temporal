@@ -6,9 +6,10 @@ import io
 import logging
 from datetime import datetime
 from typing import Optional
-from minio import Minio
-from minio.error import S3Error
+from minio import Minio  # type: ignore[import-untyped]
+from minio.error import S3Error  # type: ignore[import-untyped]
 
+from typing import Literal
 from sample.domain import (
     Order,
     Payment,
@@ -42,7 +43,7 @@ class MinioPaymentRepository(PaymentRepository):
         self.bucket_name = "payments"
         self._ensure_bucket_exists()
 
-    def _ensure_bucket_exists(self):
+    def _ensure_bucket_exists(self) -> None:
         try:
             if not self.client.bucket_exists(self.bucket_name):
                 logger.info(
@@ -73,7 +74,7 @@ class MinioPaymentRepository(PaymentRepository):
             },
         )
 
-        payment_status = "completed"
+        payment_status: Literal["completed", "failed"] = "completed"
         payment_reason = None
 
         # Create the payment object with the determined status
@@ -254,11 +255,24 @@ class MinioPaymentRepository(PaymentRepository):
             )
             raise
 
-        return PaymentOutcome(
-            status=payment_status,
-            payment=payment if payment_status == "completed" else None,
-            reason=payment_reason,
-        )
+        if payment_status == "completed":
+            outcome_status: Literal["completed", "failed", "refunded"] = (
+                "completed"
+            )
+            return PaymentOutcome(
+                status=outcome_status,
+                payment=payment,
+                reason=payment_reason,
+            )
+        else:
+            failed_outcome_status: Literal[
+                "completed", "failed", "refunded"
+            ] = "failed"
+            return PaymentOutcome(
+                status=failed_outcome_status,
+                payment=None,
+                reason=payment_reason,
+            )
 
     async def get_payment(self, payment_id: str) -> Optional[Payment]:
         """Get payment by ID from Minio."""
