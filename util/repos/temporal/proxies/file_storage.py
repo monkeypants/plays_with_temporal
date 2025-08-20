@@ -45,7 +45,7 @@ class WorkflowFileStorageRepositoryProxy(FileStorageRepository):
             file_id,
             start_to_close_timeout=self.activity_timeout,
         )
-        return result  # type: ignore[return-value]
+        return result  # type: ignore[no-any-return]
 
     async def get_file_metadata(self, file_id: str) -> Optional[FileMetadata]:
         """Retrieve file metadata via Temporal activity."""
