@@ -4,6 +4,7 @@ Dependency injection for FastAPI endpoints.
 
 import os
 import logging
+from typing import Any, Dict
 
 from fastapi import Depends
 from temporalio.client import Client
