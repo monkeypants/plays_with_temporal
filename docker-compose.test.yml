@@ -1,0 +1,138 @@
+services:
+  postgres-test:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -d temporal"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  calendar-postgres-test:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: calendar
+      POSTGRES_PASSWORD: calendar
+      POSTGRES_DB: calendar
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./cal/repos/postgresql/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calendar -d calendar"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  temporal-test:
+    image: temporalio/auto-setup:1.27.2
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres-test
+    ports:
+      - "7233:7233"
+      - "8233:8233"
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "localhost:7233", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  minio-test:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    tmpfs:
+      - /data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 10s # Give MinIO time to start
+
+  sample-worker-test:
+    build:
+      context: .
+      dockerfile: sample/Dockerfile.worker
+    depends_on:
+      temporal-test:
+        condition: service_started
+      minio-test:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ENDPOINT=temporal-test:7233
+      - MINIO_ENDPOINT=minio-test:9000
+      - LOG_LEVEL=DEBUG
+    restart: on-failure
+
+  sample-api-test:
+    build:
+      context: .
+      dockerfile: sample/Dockerfile.api
+    depends_on:
+      temporal-test:
+        condition: service_started
+      minio-test:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ENDPOINT=temporal-test:7233
+      - MINIO_ENDPOINT=minio-test:9000
+      - LOG_LEVEL=DEBUG
+    ports:
+      - "8003:8000"
+
+  calendar-worker-test:
+    build:
+      context: .
+      dockerfile: cal/Dockerfile.worker
+    depends_on:
+      temporal-test:
+        condition: service_started
+      calendar-postgres-test:
+        condition: service_healthy
+      minio-test:
+        condition: service_healthy # Wait for minio-test to be healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal-test:7233
+      - CALENDAR_DB_HOST=calendar-postgres-test
+      - CALENDAR_DB_PORT=5432
+      - CALENDAR_DB_USER=calendar
+      - CALENDAR_DB_PASSWORD=calendar
+      - CALENDAR_DB_NAME=calendar
+      - LOG_LEVEL=INFO
+      - SYNC_COLLECTION_ID=work
+      - SYNC_INTERVAL_MINUTES=15
+    volumes:
+      - ./config:/app/config:ro
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.json:/app/token.json:rw
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import temporalio; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

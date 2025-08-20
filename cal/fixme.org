@@ -1,0 +1,151 @@
+#+TITLE: FIXME: Calendar Domain Technical Debt
+#+TODO: TODO NEXT WIP BLOCKED | DONE CANCELLED ABANDONED
+#+STARTUP: overview
+
+* Calendar Domain Technical Debt Tasks
+
+This file manages executable tasks for technical debt specific to the cal/ domain. Cross-domain issues are tracked in the root fixme.org file.
+
+All tasks follow the methodology documented in memory-bank/methodology.org and maintain Clean Architecture boundaries from memory-bank/systemPatterns.org.
+
+** Active Calendar Domain Tasks
+
+*** NEXT Fix Calendar Domain Model Validation Workarounds
+Remove temporary workarounds in CalendarEvent validation and implement proper Google Calendar data quality handling.
+
+**** Architectural Rationale
+Current CalendarEvent validation contains temporary workarounds that mask real data quality issues from Google Calendar API. Per memory-bank/mvp.org, these should be addressed after MVP evaluation. Production code should not contain "TEMPORARY" workarounds.
+
+**** Files to create/modify
+- `cal/domain.py`: Remove temporary UTC assumption and 1-hour adjustment workarounds
+- `cal/repos/google/calendar.py`: Implement proper data quality handling and validation
+- `cal/validation.py`: Create calendar data quality utilities
+- `cal/tests/test_google_calendar_data_quality.py`: Add comprehensive data quality tests
+
+**** Completion Criteria
+- [ ] No temporary workarounds in CalendarEvent validation
+- [ ] Proper timezone handling for naive datetimes in Google Calendar integration
+- [ ] Invalid time ranges handled with proper error reporting
+- [ ] Comprehensive data quality validation in GoogleCalendarRepository
+- [ ] All calendar domain tests pass with strict validation
+
+*** TODO Split PostgreSQL Calendar Repository Responsibilities
+Split PostgreSQLCalendarRepository into separate Calendar and Schedule repositories following Single Responsibility Principle.
+
+**** Architectural Rationale
+PostgreSQLCalendarRepository currently implements both CalendarRepository and ScheduleRepository, violating Single Responsibility Principle from memory-bank/systemPatterns.org. Should be split into separate classes following sample/ pattern.
+
+**** Files to create/modify
+- `cal/repos/postgresql/calendar.py`: Keep only CalendarRepository implementation
+- `cal/repos/postgresql/schedule.py`: Create new ScheduleRepository implementation
+- `cal/repos/temporal/postgresql_calendar.py`: Update to wrap only CalendarRepository
+- `cal/repos/temporal/postgresql_schedule.py`: Create new Temporal activity wrapper for ScheduleRepository
+- `cal/repos/temporal/proxies/postgresql_schedule.py`: Create new workflow proxy for ScheduleRepository
+
+**** Completion Criteria
+- [ ] PostgreSQLCalendarRepository implements only CalendarRepository protocol
+- [ ] New PostgreSQLScheduleRepository implements only ScheduleRepository protocol
+- [ ] Proper three-layer pattern maintained for both repositories
+- [ ] All calendar tests pass with split repositories
+- [ ] No mixed responsibilities in repository implementations
+
+*** TODO Fix Calendar Workflow Determinism Issues
+Fix PublishScheduleWorkflow determinism violations and delegate datetime operations to activities.
+
+**** Architectural Rationale
+PublishScheduleWorkflow imports use case at module level and CreateScheduleUseCase uses datetime.now() directly, violating workflow determinism principles from memory-bank/systemPatterns.org. Should follow sample/ pattern with proper dependency injection.
+
+**** Files to create/modify
+- `cal/workflows.py`: Fix PublishScheduleWorkflow dependency injection
+- `cal/usecase.py`: Remove datetime.now() usage, delegate to repository
+- `cal/repos/temporal/datetime_service.py`: Create datetime activity service
+- `cal/repos/temporal/proxies/datetime_service.py`: Create datetime workflow proxy
+
+**** Completion Criteria
+- [ ] PublishScheduleWorkflow uses proper dependency injection
+- [ ] No datetime.now() usage in use cases
+- [ ] Datetime generation delegated to activities for determinism
+- [ ] All calendar workflow tests pass with deterministic behavior
+
+*** TODO Implement Calendar PostgreSQL Connection Management
+Add proper PostgreSQL connection pool management for calendar repositories following sample/ pattern.
+
+**** Architectural Rationale
+PostgreSQLCalendarRepository.__init__ expects a Pool but no pool creation/management code exists, violating the three-layer pattern by requiring infrastructure setup in pure backend. Should follow sample/ pattern with proper connection management.
+
+**** Files to create/modify
+- `cal/repos/postgresql/connection.py`: Create connection pool management utilities
+- `cal/repos/postgresql/calendar.py`: Update to use connection pool properly
+- `cal/repos/postgresql/schedule.py`: Update to use connection pool properly
+- `cal/worker.py`: Add connection pool initialization for calendar repositories
+
+**** Completion Criteria
+- [ ] Proper PostgreSQL connection pool management
+- [ ] Calendar repositories use connection pools correctly
+- [ ] No infrastructure setup required in pure backend repositories
+- [ ] Connection management follows sample/ pattern exactly
+- [ ] All PostgreSQL calendar operations work with connection pooling
+
+** Calendar Performance and Quality Tasks
+
+*** TODO Optimize Calendar File Operations
+Implement batching and caching for LocalCalendarRepository file operations following Large Payload Handling Pattern.
+
+**** Architectural Rationale
+LocalCalendarRepository reads/writes individual JSON files for each event with no caching or batching, violating efficient file operations principles. Should implement batching and caching following memory-bank/systemPatterns.org Large Payload Handling Pattern.
+
+**** Files to create/modify
+- `cal/repos/local/calendar.py`: Implement batch file operations and caching
+- `cal/repos/local/file_cache.py`: Create file caching utilities
+- `cal/tests/test_local_calendar_performance.py`: Add performance tests for file operations
+
+**** Completion Criteria
+- [ ] Batch file operations for multiple events
+- [ ] File caching reduces redundant I/O operations
+- [ ] get_all_events uses batch operations instead of individual file reads
+- [ ] Performance tests validate improved file operation efficiency
+
+*** TODO Improve Calendar Test Coverage
+Add missing integration tests and fix test isolation issues in calendar domain.
+
+**** Architectural Rationale
+Missing integration tests for PostgreSQL repository and test isolation problems violate Testing Strategy Pattern from memory-bank/systemPatterns.org. Should add comprehensive test coverage with proper isolation.
+
+**** Files to create/modify
+- `cal/tests/integration/test_postgresql_calendar.py`: Add PostgreSQL integration tests
+- `cal/tests/integration/test_calendar_sync_workflow.py`: Add end-to-end calendar sync tests
+- `cal/tests/conftest.py`: Add calendar test cleanup utilities
+- `cal/tests/test_domain_properties.py`: Fix flaky property-based tests
+
+**** Completion Criteria
+- [ ] Integration tests for PostgreSQL calendar repository
+- [ ] End-to-end tests for complete calendar sync workflows
+- [ ] Proper test cleanup prevents shared state issues
+- [ ] Property-based tests are reliable and deterministic
+- [ ] Test coverage meets standards from memory-bank/systemPatterns.org
+
+** Completed Calendar Domain Tasks
+
+*** DONE Example Completed Task
+This section will contain completed calendar domain tasks moved from active sections above.
+
+** Implementation Notes
+
+*** Task Execution Guidelines
+- Only work on tasks marked NEXT (following memory-bank/methodology.org)
+- Each task focuses on single architectural boundary within calendar domain
+- All changes must maintain Clean Architecture principles
+- Cross-reference memory-bank/systemPatterns.org for implementation patterns
+
+*** Calendar Domain Quality Standards
+- Repository changes must follow exact three-layer pattern from sample/
+- Data quality fixes must be implemented in Google Calendar integration layer
+- Performance improvements must not violate architectural patterns
+- All fixes must maintain calendar domain boundaries and responsibilities
+
+*** Success Metrics
+- All tasks have concrete completion criteria with specific calendar files
+- File changes are explicitly specified for calendar domain
+- Architectural rationale references memory bank documentation
+- Tasks can be executed independently without scope creep in calendar domain
+- Calendar domain maintains Clean Architecture compliance throughout fixes

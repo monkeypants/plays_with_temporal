@@ -1,0 +1,47 @@
+# Calendar sync scheduling configuration
+# This file defines the scheduling parameters for automatic calendar synchronization
+
+# Default sync configuration
+default:
+  interval_minutes: 15
+  full_sync: false
+  retry_policy:
+    maximum_attempts: 3
+    initial_interval_seconds: 60
+    maximum_interval_seconds: 300
+    backoff_coefficient: 2.0
+
+# Collection-specific sync configurations
+collections:
+  work:
+    interval_minutes: 10  # More frequent sync for work calendar
+    full_sync: false
+    enabled: true
+    source_calendar_id: "primary"
+    sink_calendar_id: "postgresql"
+    
+  personal:
+    interval_minutes: 30  # Less frequent sync for personal calendar
+    full_sync: false
+    enabled: true
+    source_calendar_id: "personal@gmail.com"
+    sink_calendar_id: "postgresql"
+    
+  all:
+    interval_minutes: 15  # Standard sync for all calendars
+    full_sync: false
+    enabled: false  # Disabled by default to prevent conflicts
+    source_calendar_id: "primary"
+    sink_calendar_id: "postgresql"
+
+# Health check configuration
+health_check:
+  enabled: true
+  endpoint: "/health/sync"
+  timeout_seconds: 30
+  
+# Monitoring configuration
+monitoring:
+  metrics_enabled: true
+  log_level: "INFO"
+  structured_logging: true

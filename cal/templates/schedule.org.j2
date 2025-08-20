@@ -1,0 +1,38 @@
+#+TITLE: {{ title }}
+#+STARTUP: overview
+
+{% for block in time_blocks %}
+{% set clean_title = block.title.strip().replace('\n', ' ') if block.title else '' %}
+
+* {{ clean_title if clean_title else 'Untitled Event' }}
+{% if block.end_time and block.end_time != block.start_time -%}
+SCHEDULED: <{{ block.start_time.strftime('%Y-%m-%d %a %H:%M') }}-{{ block.end_time.strftime('%H:%M') }}>
+{% else -%}
+SCHEDULED: <{{ block.start_time.strftime('%Y-%m-%d %a %H:%M') }}>
+{% endif -%}
+** Type={{ block.type.value }} Decision {{ block.suggested_decision.value.upper() }}
+{{ block.decision_reason }}
+{%- if block.metadata.get('organizer') %}
+** Organizer {{ block.metadata.organizer }}
+{%- endif %}
+{%- if block.metadata.get('attendee_count') and block.metadata.attendee_count > 0 %}
+- *Attendees*: {{ block.metadata.attendee_count }} people
+{%- endif %}
+{%- if block.metadata.get('status') %}
+- *Status*: {{ block.metadata.status }}
+{%- endif %}
+{%- if block.metadata.get('location') %}
+- *Location*: {{ block.metadata.location }}
+{%- endif %}
+{%- if block.metadata.get('all_day') %}
+- *All Day*: Yes
+{%- endif %}
+** Details
+{%- if block.source_calendar_event_id %}
+- Source Event ID: {{ block.source_calendar_event_id }}
+{%- endif %}
+{%- if block.metadata.get('description') %}
+
+{{ block.metadata.description }}
+{%- endif %}
+{% endfor %}

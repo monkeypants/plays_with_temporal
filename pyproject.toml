@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personal-assistant"
+version = "0.1.0"
+
+[tool.setuptools.packages.find]
+include = ["cal*"]
+exclude = ["sample*"]
+
+[tool.black]
+line-length = 78
+
+[tool.ruff]
+# Set line length to match black. Do not make this longer, seriously.
+# This is my project and the line length is 78, deal with it or fuck off.
+line-length = 78
+
+[tool.ruff.lint]
+# Match flake8's default checks (pycodestyle, pyflakes)
+select = ["E", "F", "W"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "-v"
+testpaths = ["sample/tests", "cal/tests"]

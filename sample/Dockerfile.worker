@@ -1,0 +1,15 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Copy the ROOT requirements.txt to ensure version consistency
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire application code (all domains) to /app
+COPY . /app
+
+# Add the app directory to PYTHONPATH to allow module resolution
+ENV PYTHONPATH "/app"
+
+CMD ["python", "-m", "sample.worker"]

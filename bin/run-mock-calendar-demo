@@ -1,0 +1,7 @@
+#!/bin/sh
+#
+# Wrapper to run the mock calendar CLI demo, demonstrating its usage.
+# For a full list of options, run: python cal/cli/mock_calendar.py --help
+#
+set -e
+python cal/cli/mock_calendar.py --output-path ./mock_demo_output.org

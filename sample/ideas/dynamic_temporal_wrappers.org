@@ -1,0 +1,332 @@
+* Problem: Boilerplate in Temporal Repository Wrappers
+** Context
+   In our Clean Architecture, the `OrderFulfillmentUseCase` depends on abstract `Repository` protocols (e.g., `OrderRepository`). Concrete implementations of these protocols handle data access. When integrating with Temporal, we introduce two layers of concrete repositories:
+   1.  **Pure Backend Repositories**: (e.g., `MinioOrderRepository` in `sample/repos/minio/`) These interact directly with the backend technology (e.g., Minio) and are completely unaware of Temporal.
+   2.  **Temporal Activity Implementations**: (e.g., `TemporalMinioOrderRepository` in `sample/repos/temporal/`) These classes implement the same domain protocols, but their methods are decorated with `@activity.defn`. Their sole purpose is to wrap calls to the pure backend repositories and expose them as Temporal Activities.
+   3.  **Workflow-Specific Repository Proxies**: (e.g., `WorkflowOrderRepositoryProxy` in `sample/repos/temporal/proxies/`) These are deterministic shims used *inside* the workflow to call `workflow.execute_activity()`, ensuring workflow determinism.
+
+** The Boilerplate Issue
+   The `Temporal Activity Implementations` (point 2 above) currently involve significant boilerplate. For each domain concept (e.g., Order, Payment, Inventory) and each backend technology (e.g., Minio), we have to manually write a class like `TemporalMinioOrderRepository`. This class typically:
+   -   Takes an instance of the pure backend repository (e.g., `MinioOrderRepository`) in its constructor.
+   -   Has a private member (e.g., `self._minio_order_repo`) to hold this instance.
+   -   For every method defined in the `OrderRepository` protocol, it defines an `async def` method with the exact same signature.
+   -   Each of these methods is decorated with `@activity.defn`.
+   -   The body of each method is a simple delegation: `return await self._minio_order_repo.original_method(*args, **kwargs)`.
+
+   This pattern is highly repetitive. If we have half a dozen repository protocols and a handful of backend technologies, this quickly leads to dozens of nearly identical files and hundreds of lines of boilerplate code. This increases development time, introduces potential for manual errors, and makes the codebase harder to maintain.
+
+** The Challenge: Bridging Deterministic and Non-Deterministic Worlds
+   The core architectural challenge is to bridge the deterministic world of Temporal Workflows with the non-deterministic world of external interactions (like database calls, API calls, ID generation).
+   -   **Workflows** must be deterministic for replayability. They cannot perform direct I/O or non-deterministic operations. They *must* delegate these to Activities.
+   -   **Repositories** (the pure backend ones) are inherently non-deterministic as they perform I/O.
+   -   The `Temporal Activity Implementations` are the crucial "adapter" layer that exposes these non-deterministic repository operations as Temporal Activities. The boilerplate arises from this necessary adaptation.
+
+* Approach 1: Dynamic Factory (Runtime Generation)
+** Description
+   This approach involves writing a Python factory function or class decorator that, at runtime (e.g., when the Temporal worker starts up), dynamically inspects the repository protocols and the pure backend repository implementations. It then programmatically creates the `Temporal Activity Implementation` classes and their `@activity.defn` methods.
+
+** Technical Approach
+   -   A central Python script (e.g., `sample/repos/temporal/generator.py`) would contain the logic.
+   -   It would import the `Protocol` definitions (e.g., `OrderRepository`) and the pure backend repository classes (e.g., `MinioOrderRepository`).
+   -   Using Python's `inspect` module, it would iterate over the methods of the `Protocol`.
+   -   For each method, it would dynamically create an `async def` function.
+   -   This dynamically created function would be decorated with `@activity.defn`.
+   -   The function's body would simply delegate the call to an injected `_repo` instance (which would be the pure backend repository).
+   -   The `__init__` method of the dynamically created class would accept the pure backend repository instance, typed by its `Protocol` (e.g., `backend_repo: OrderRepository`), and store it as `self._repo`.
+   -   The factory would return this dynamically constructed class.
+   -   In `sample/worker.py`, instead of importing pre-defined `TemporalMinioOrderRepository` classes, you'd call this factory function to get the class, then instantiate it, and register its methods as activities.
+
+** Conceptual Code Example
+   ```python
+   # sample/repos/temporal/generator.py
+   import inspect
+   from typing import Type, Protocol, Any, Optional
+   from temporalio import activity
+
+   def create_temporal_activity_wrapper(
+       protocol_type: Type[Protocol],
+       backend_repo_instance: Any # Instance of the pure backend repo
+   ) -> Type[Protocol]:
+       """
+       Dynamically creates a Temporal activity wrapper class for a given repository protocol.
+       """
+       class DynamicTemporalRepo(protocol_type):
+           _repo: Any # Will hold the backend repository instance
+
+           def __init__(self, backend_repo: Any):
+               if not isinstance(backend_repo, protocol_type):
+                   raise TypeError(
+                       f"Backend repository {type(backend_repo).__name__} "
+                       f"does not implement protocol {protocol_type.__name__}"
+                   )
+               self._repo = backend_repo
+
+       for name, member in inspect.getmembers(protocol_type, inspect.isfunction):
+           if name.startswith("_"):
+               continue
+
+           original_signature = inspect.signature(member)
+
+           async def activity_method(self, *args, **kwargs):
+               activity.logger.debug(f"Activity '{name}' called, delegating to backend repo")
+               return await getattr(self._repo, name)(*args, **kwargs)
+
+           decorated_method = activity.defn(activity_method)
+           decorated_method.__name__ = name
+           decorated_method.__qualname__ = f"{DynamicTemporalRepo.__qualname__}.{name}"
+           decorated_method.__doc__ = member.__doc__
+           decorated_method.__signature__ = original_signature
+
+           setattr(DynamicTemporalRepo, name, decorated_method)
+
+       DynamicTemporalRepo.__name__ = f"Temporal{type(backend_repo_instance).__name__}"
+       DynamicTemporalRepo.__qualname__ = f"Temporal{type(backend_repo_instance).__name__}"
+       DynamicTemporalRepo.__doc__ = f"Dynamically generated Temporal activity wrapper for {protocol_type.__name__} using {type(backend_repo_instance).__name__}."
+
+       return DynamicTemporalRepo
+
+   # --- Usage in sample/worker.py ---
+   # from sample.repos.minio.order import MinioOrderRepository
+   # from sample.repos.temporal.generator import create_temporal_activity_wrapper
+   # from sample.repositories import OrderRepository
+
+   # async def run_worker():
+   #     minio_order_repo = MinioOrderRepository()
+   #     TemporalMinioOrderRepositoryClass = create_temporal_activity_wrapper(OrderRepository, minio_order_repo)
+   #     temporal_order_activities = TemporalMinioOrderRepositoryClass(minio_order_repo)
+   #     activities = [temporal_order_activities.generate_order_id, ...]
+   #     # ... worker setup and run ...
+   ```
+
+** Pros
+   -   **Boilerplate Reduction**: Significantly cuts down on repetitive code for `Temporal Activity Implementations`.
+   -   **Consistency**: Ensures all generated activity wrappers follow the exact same pattern, reducing human error.
+   -   **Maintainability**: Changes to the core wrapping logic (e.g., adding common logging, adjusting `activity.defn` arguments) only need to be made in the generator, not across many files.
+   -   **Scalability**: Easily add new backend technologies or domain concepts without writing new wrapper classes manually.
+
+** Cons
+   -   **Increased "Magic" / Reduced Explicitness**: Dynamically generated code can be harder to debug and reason about for developers unfamiliar with the pattern. Stack traces might point to the generator, not the "logical" method definition.
+   -   **IDE and Type Checker Support**: This is the trickiest bit. IDEs might struggle with autocompletion and refactoring for dynamically created methods. Static type checkers (like MyPy) might also need careful handling or specific plugins to fully understand the generated types and ensure correctness. This can impact developer experience.
+   -   **Limited Customization**: If a specific activity method needs unique logic (e.g., a different `start_to_close_timeout` for just one method, or some pre/post-processing specific to that activity), the dynamic approach might make it harder to override or extend without breaking the pattern. The current explicit approach allows for easy, granular customisation.
+   -   **Initial Complexity**: Setting up the dynamic generation correctly requires a good understanding of Python's introspection capabilities.
+
+* Approach 2: Code Generation (Build-Time via Makefile/Macro)
+** Description
+   This approach involves generating the Python code for the `Temporal Activity Implementation` classes as part of a build step (e.g., using a Makefile). A dedicated script (the "macro") writes the actual `.py` files to disk. These generated files are then treated as regular source code by the rest of the application.
+
+** Technical Approach
+   -   A Python script (e.g., `scripts/generate_temporal_wrappers.py`) would be created. This script is the "macro."
+   -   It would import the `Protocol` definitions from `sample/repositories.py` and the pure backend repository implementations (e.g., `MinioOrderRepository`) from `sample/repos/minio/`.
+   -   It would use Python's `inspect` module to read the method signatures from the protocols.
+   -   For each protocol and backend combination, it would construct the Python code as a *string* for the `Temporal{Backend}{Domain}Repository` class. This string would include:
+       -   The `__init__` method parameter typed by the `Protocol` (e.g., `minio_order_repo: OrderRepository`).
+       -   The private member named `_repo` (e.g., `self._repo = minio_order_repo`).
+       -   All the `@activity.defn` methods, each being an `async def` named after the protocol method, with the protocol method's signature, and delegating to `return await self._repo.{protocol_method}(*args, **kwargs)`.
+   -   Finally, it would write these generated code strings to the appropriate files (e.g., `sample/repos/temporal/minio_orders.py`).
+   -   A `Makefile` (in the project root) would include a target (e.g., `generate-repos`) that executes this Python generator script.
+   -   A `README.md` or `sample/repos/temporal/__init__.py` would contain a prominent warning: "DO NOT EDIT THESE FILES. They are generated. See `Makefile` and `scripts/generate_temporal_wrappers.py` for details."
+
+** Conceptual Code Example
+   ```python
+   # scripts/generate_temporal_wrappers.py
+   import inspect
+   import os
+   from pathlib import Path
+   from typing import Type, Protocol
+
+   # Assume these imports are available for the generator script
+   # from sample.repositories import OrderRepository, PaymentRepository, InventoryRepository, OrderRequestRepository
+   # from sample.repos.minio.order import MinioOrderRepository
+   # from sample.repos.minio.payment import MinioPaymentRepository
+   # from sample.repos.minio.inventory import MinioInventoryRepository
+   # from sample.repos.minio.order_request import MinioOrderRequestRepository
+
+   # Define the mapping of protocols to their pure backend implementations
+   # In a real scenario, you might discover these dynamically or list them explicitly
+   PROTOCOL_BACKEND_MAP = {
+       "OrderRepository": ("sample.repositories.OrderRepository", "sample.repos.minio.order.MinioOrderRepository"),
+       "PaymentRepository": ("sample.repositories.PaymentRepository", "sample.repos.minio.payment.MinioPaymentRepository"),
+       # Add other mappings here
+   }
+
+   GENERATED_DIR = Path("sample/repos/temporal")
+
+   def generate_wrapper_code(protocol_path: str, backend_impl_path: str) -> str:
+       # Dynamically import the protocol and backend implementation classes
+       # This is for the generator's introspection, not the generated code's imports
+       module_name, protocol_name = protocol_path.rsplit('.', 1)
+       protocol_module = __import__(module_name, fromlist=[protocol_name])
+       protocol_type = getattr(protocol_module, protocol_name)
+
+       backend_module_name, backend_class_name = backend_impl_path.rsplit('.', 1)
+       backend_module = __import__(backend_module_name, fromlist=[backend_class_name])
+       backend_class = getattr(backend_module, backend_class_name)
+
+       # Determine the generated class name and file name
+       # e.g., MinioOrderRepository -> TemporalMinioOrderRepository
+       generated_class_name = f"Temporal{backend_class_name}"
+       generated_file_name = f"{backend_class_name.lower().replace('repository', '')}_" \
+                             f"{protocol_name.lower().replace('repository', '')}s.py" # e.g., minio_orders.py
+
+       # Start building the code string
+       code = f"""
+# This file is GENERATED by scripts/generate_temporal_wrappers.py
+# DO NOT EDIT MANUALLY!
+
+from temporalio import activity
+from {protocol_path} import {protocol_name}
+from {backend_impl_path} import {backend_class_name}
+from typing import Optional # Add other common types if needed, e.g., List, Decimal, Order, Payment
+
+class {generated_class_name}({protocol_name}): # Implements the protocol
+    def __init__(self, backend_repo: {protocol_name}):
+        # Validate that the backend_repo instance actually implements the protocol
+        # This is crucial for type safety and catching errors early
+        if not isinstance(backend_repo, {protocol_name}):
+            raise TypeError(
+                f"Backend repository {{type(backend_repo).__name__}} "
+                f"does not implement protocol {protocol_name}"
+            )
+        self._repo = backend_repo
+
+"""
+       # Add methods
+       for name, member in inspect.getmembers(protocol_type, inspect.isfunction):
+           if name.startswith("_"): # Skip private/dunder methods
+               continue
+
+           # Get the signature of the protocol method
+           # This is tricky to reconstruct perfectly as a string,
+           # but we can get the parameter names and use *args, **kwargs for simplicity
+           # For full fidelity, you'd parse and reconstruct the signature string.
+           # For this example, we'll use a generic signature.
+           # A more robust generator would inspect `inspect.signature(member)`
+           # and reconstruct the exact parameter list and return type.
+           # For now, we'll assume simple delegation.
+
+           # A more advanced generator would parse the signature and reconstruct it
+           # For simplicity, we'll use *args, **kwargs for the generated method signature
+           # and rely on the protocol for type checking.
+           # The actual signature should be copied from the protocol method.
+           # Example: async def {name}(self, {', '.join(p.name for p in inspect.signature(member).parameters.values() if p.kind != inspect.Parameter.VAR_POSITIONAL and p.kind != inspect.Parameter.VAR_KEYWORD)}) -> {inspect.signature(member).return_annotation}:
+           
+           # For a truly robust solution, you'd need to parse the protocol's AST
+           # or use a library that can accurately reconstruct method signatures as strings.
+           # For this conceptual example, we'll use a simplified signature.
+           
+           # A better way to get the signature string:
+           sig = inspect.signature(member)
+           params_str = str(sig).replace('(self, ', '(').replace('(self)', '()') # Remove 'self' from signature string
+           return_annotation_str = f" -> {sig.return_annotation.__name__}" if hasattr(sig.return_annotation, '__name__') else ""
+           if sig.return_annotation == inspect.Signature.empty:
+               return_annotation_str = ""
+           elif sig.return_annotation == type(None):
+               return_annotation_str = " -> None"
+           elif hasattr(sig.return_annotation, '__forward_arg__'): # Handle forward references like "Order"
+               return_annotation_str = f" -> {sig.return_annotation.__forward_arg__}"
+           elif hasattr(sig.return_annotation, '__origin__') and sig.return_annotation.__origin__ is Optional:
+               # Handle Optional[Type]
+               inner_type = sig.return_annotation.__args__[0]
+               inner_type_str = inner_type.__name__ if hasattr(inner_type, '__name__') else str(inner_type)
+               return_annotation_str = f" -> Optional[{inner_type_str}]"
+           else:
+               return_annotation_str = f" -> {str(sig.return_annotation).replace('typing.', '')}" # Basic cleanup
+
+           # Reconstruct parameters for the generated method
+           # This is still a simplification, a full solution would need to handle default values, *args, **kwargs
+           # For now, we'll assume direct parameter passing.
+           param_names = [p.name for p in sig.parameters.values() if p.name != 'self']
+           method_params = ", ".join(param_names)
+           if method_params:
+               method_params = f"self, {method_params}"
+           else:
+               method_params = "self"
+
+           code += f"""
+    @activity.defn
+    async def {name}({method_params}){return_annotation_str}:
+        \"\"\"{member.__doc__.strip() if member.__doc__ else f"Delegated activity for {name}."}\"\"\"
+        # Delegate to the pure backend repository
+        return await self._repo.{name}({', '.join(param_names)})
+
+"""
+       return code
+
+   def main():
+       GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+       
+       # Clear existing generated files to prevent stale code
+       for f in GENERATED_DIR.glob("minio_*.py"):
+           os.remove(f)
+
+       for protocol_name, (protocol_path, backend_impl_path) in PROTOCOL_BACKEND_MAP.items():
+           # Determine the generated file name based on backend and protocol
+           # e.g., MinioOrderRepository -> minio_orders.py
+           backend_class_name = backend_impl_path.rsplit('.', 1)[-1]
+           protocol_short_name = protocol_name.replace('Repository', '').lower()
+           generated_file_name = f"minio_{protocol_short_name}s.py" # Consistent naming
+
+           output_path = GENERATED_DIR / generated_file_name
+           
+           print(f"Generating {output_path} for {protocol_name} using {backend_impl_path}...")
+           generated_code = generate_wrapper_code(protocol_path, backend_impl_path)
+           
+           with open(output_path, "w") as f:
+               f.write(generated_code)
+           print(f"Generated {output_path}")
+
+   if __name__ == "__main__":
+       main()
+   ```
+
+   ```makefile
+   # Makefile (in project root)
+   .PHONY: generate-repos clean-generated
+
+   GENERATED_TEMPORAL_REPOS_DIR := sample/repos/temporal
+   GENERATOR_SCRIPT := scripts/generate_temporal_wrappers.py
+
+   # Target to generate the repository wrapper files
+   generate-repos:
+       @echo "Generating Temporal repository wrappers..."
+       mkdir -p $(GENERATED_TEMPORAL_REPOS_DIR)
+       python $(GENERATOR_SCRIPT)
+
+   # Target to clean up generated files
+   clean-generated:
+       @echo "Cleaning generated Temporal repository wrappers..."
+       rm -f $(GENERATED_TEMPORAL_REPOS_DIR)/minio_*.py # Adjust pattern if other backends are added
+   ```
+
+** Pros
+   -   **No Runtime Magic**: The biggest advantage. The generated files are plain Python code. This means:
+       -   **Full IDE Support**: Autocompletion, "go to definition," refactoring, and all other IDE features work perfectly.
+       -   **Full Static Type Checker Support**: MyPy and other static analysis tools will process these files like any other Python code, ensuring robust type safety.
+       -   **Easier Debugging**: You can set breakpoints directly in the generated files and step through them.
+       -   **Readability**: Any developer can open the generated file and see exactly what's going on, without needing to understand dynamic generation.
+   -   **Enforced Consistency**: Guarantees all Temporal activity wrappers follow the exact same structure.
+   -   **Reduced Boilerplate**: Achieves the primary goal of cutting down on repetitive manual coding.
+   -   **Clear Separation of Concerns**: The code generation logic is completely separate from the application's runtime.
+   -   **Version Control (Optional)**: Generated files can be committed to Git, making it easy for new team members to get started without an initial generation step. (See cons for the flip side).
+
+** Cons
+   -   **Added Build Step**: Developers need to remember to run the Makefile command whenever the underlying protocols or the generation logic itself changes. This adds a step to the development workflow.
+   -   **Potential for Stale Code**: If a developer forgets to run the generation step, the generated files might become out of sync, leading to confusing bugs.
+   -   **Source Control Bloat / Merge Conflicts (if committed)**: If generated files are committed, changes to the generation logic can result in large diffs. Multiple developers working on related changes might face merge conflicts in the generated files.
+       -   **Mitigation**: Many teams add generated files to `.gitignore`. The generation step then becomes a mandatory part of the CI/CD pipeline and the local development setup (e.g., `make install` or `poetry install` could trigger it).
+   -   **Debugging the Generator Itself**: Debugging the *script* that generates the code can sometimes be a bit trickier than debugging live Python code, but it's a one-off effort.
+
+* Recommendation
+** Recommendation: Code Generation (Build-Time via Makefile/Macro)
+   For this project's scale and the desire for clarity and maintainability, the **Code Generation (Build-Time via Makefile/Macro)** approach is the superior choice.
+
+** Rationale
+   While the Dynamic Factory approach offers runtime flexibility, its drawbacks regarding IDE support, static type checking, and debugging outweigh the benefits for this specific use case. The generated code is simple, repetitive, and highly predictable, making it an ideal candidate for pre-generation.
+
+   The build-time generation approach provides:
+   -   **Maximum Developer Experience**: Developers get full IDE features (autocompletion, refactoring) and robust static type checking (MyPy) on the generated code, which is invaluable for productivity and catching errors early.
+   -   **Transparency**: The generated files are physically present and readable, removing any "magic" from the runtime.
+   -   **Maintainability**: The generation logic is centralized, making updates straightforward.
+   -   **Clear Boundaries**: The generation process is a distinct build concern, separate from the application's runtime logic.
+
+   The minor overhead of an additional build step (e.g., `make generate-repos`) is a small price to pay for the significant improvements in code quality, developer experience, and long-term maintainability. It's a common and well-understood pattern in many software projects for managing boilerplate.

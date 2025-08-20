@@ -1,0 +1,67 @@
+# Calendar configuration for multi-calendar support
+# This file defines calendar collections and their sources
+#
+# Configuration validation:
+# - Must be valid YAML
+# - Must contain 'collections' key with list value
+# - Each collection must have: collection_id, display_name, calendar_sources
+# - Each calendar_source must have: calendar_id, display_name, source_type, enabled
+
+collections:
+  - collection_id: "work"
+    display_name: "Work Calendars"
+    default_calendar_id: "primary"
+    calendar_sources:
+      - calendar_id: "primary"
+        display_name: "Primary Work Calendar"
+        source_type: "google"
+        enabled: true
+        sync_priority: 1
+      - calendar_id: "team@company.com"
+        display_name: "Team Calendar"
+        source_type: "google"
+        enabled: true
+        sync_priority: 2
+        metadata:
+          color: "blue"
+          description: "Shared team events and meetings"
+
+  - collection_id: "personal"
+    display_name: "Personal Calendars"
+    default_calendar_id: "personal@gmail.com"
+    calendar_sources:
+      - calendar_id: "personal@gmail.com"
+        display_name: "Personal Calendar"
+        source_type: "google"
+        enabled: true
+        sync_priority: 1
+      - calendar_id: "family@gmail.com"
+        display_name: "Family Calendar"
+        source_type: "google"
+        enabled: true
+        sync_priority: 2
+
+  - collection_id: "all"
+    display_name: "All Calendars"
+    default_calendar_id: "primary"
+    calendar_sources:
+      - calendar_id: "primary"
+        display_name: "Primary Work Calendar"
+        source_type: "google"
+        enabled: true
+        sync_priority: 1
+      - calendar_id: "team@company.com"
+        display_name: "Team Calendar"
+        source_type: "google"
+        enabled: true
+        sync_priority: 2
+      - calendar_id: "personal@gmail.com"
+        display_name: "Personal Calendar"
+        source_type: "google"
+        enabled: true
+        sync_priority: 3
+      - calendar_id: "family@gmail.com"
+        display_name: "Family Calendar"
+        source_type: "google"
+        enabled: false
+        sync_priority: 4
