@@ -236,10 +236,9 @@ Getting Help
 ============
 
 1. Start with `make help` for build system options
-2. Read sample/GUIDE.md for comprehensive architecture guide
-3. Check fun-police/systemPatterns.org for implementation patterns
-4. Look at sample/ for reference implementations
-5. Follow the established three-layer pattern consistently
+2. Check fun-police/systemPatterns.org for implementation patterns
+3. Look at sample/ for reference implementations
+4. Follow the established three-layer pattern consistently
 
 This architecture bootstrap provides the foundation for building robust,
 maintainable Temporal applications. The established patterns and constraints
