@@ -18,7 +18,7 @@ class MockCalendarConfigurationRepository(CalendarConfigurationRepository):
     collections for development and testing purposes.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with predefined mock collections."""
         self.collections = [
             CalendarCollection(

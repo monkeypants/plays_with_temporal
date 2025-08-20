@@ -61,7 +61,7 @@ class CalendarCollection(BaseModel):
 
     @field_validator("calendar_sources")
     @classmethod
-    def collection_must_have_calendars(cls, v):
+    def collection_must_have_calendars(cls, v: List[CalendarSource]) -> List[CalendarSource]:
         if not v:
             raise ValueError(
                 "Calendar collection must contain at least one calendar"
@@ -199,7 +199,7 @@ class CalendarEvent(BaseModel):
 
     @field_validator("end_time")
     @classmethod
-    def end_time_after_start_time(cls, v: datetime, info) -> datetime:
+    def end_time_after_start_time(cls, v: datetime, info: Any) -> datetime:
         """Ensure end time is after start time."""
         if "start_time" in info.data and v <= info.data["start_time"]:
             logger.warning(

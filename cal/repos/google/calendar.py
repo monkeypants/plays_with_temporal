@@ -181,6 +181,7 @@ class GoogleCalendarRepository(CalendarRepository):
 
         return CalendarChanges(
             upserted_events=upserted_events,
+            upserted_events_file_id=None,
             deleted_event_ids=deleted_event_ids,
             new_sync_state=SyncState(sync_token=new_sync_token),
         )
@@ -276,7 +277,7 @@ class GoogleCalendarRepository(CalendarRepository):
             "synchronization."
         )
 
-    async def _execute_request(self, request: Any) -> Dict[str, Any]:
+    async def _execute_request(self, request: Any) -> Any:
         """Asynchronously execute a Google API client request."""
         # The google-api-python-client is not natively async.
         # In a real async app, this would be run in a thread pool.

@@ -46,7 +46,7 @@ from util.repos.temporal.minio_file_storage import (
 logger = logging.getLogger(__name__)
 
 
-def setup_logging():
+def setup_logging() -> None:
     """Configure logging based on environment variables"""
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
     log_format = os.environ.get(
@@ -69,6 +69,7 @@ def setup_logging():
         "Logging configured",
         extra={"log_level": log_level, "numeric_level": numeric_level},
     )
+    return None
 
 
 async def get_temporal_client_with_retries(
@@ -128,7 +129,7 @@ async def get_temporal_client_with_retries(
 async def run_worker(
     temporal_address: Optional[str] = None,
     task_queue: str = "calendar-task-queue",
-):
+) -> None:
     """
     Run the Temporal worker for calendar operations.
 
@@ -357,14 +358,12 @@ async def run_worker(
             await client.create_schedule(
                 schedule_id,
                 ScheduleActionStartWorkflow(
-                    CalendarSyncWorkflow.run,
-                    "primary",  # source_calendar_id
-                    "postgresql",  # sink_calendar_id
-                    False,  # full_sync
+                    "CalendarSyncWorkflow",
+                    args=["primary", "postgresql", False],
                     id=f"sync-{sync_collection_id}-{{.ScheduledTime.Unix}}",
                     task_queue=task_queue,
                 ),
-                ScheduleSpec(
+                spec=ScheduleSpec(
                     intervals=[
                         ScheduleIntervalSpec(
                             every=timedelta(minutes=sync_interval_minutes)
@@ -406,7 +405,7 @@ async def run_worker(
     await worker.run()
 
 
-def main():
+def main() -> None:
     """Entry point for the consolidated calendar worker."""
     asyncio.run(run_worker())
 
