@@ -16,7 +16,6 @@ from sample.validation import (
     ensure_payment_repository,
 )
 from sample.repositories import PaymentRepository, InventoryRepository
-from sample.repos.minio.payment import MinioPaymentRepository
 from sample.repos.minio.inventory import MinioInventoryRepository
 from sample.repos.temporal.minio_payments import (
     TemporalMinioPaymentRepository,
@@ -29,11 +28,8 @@ from sample.domain import Order, Payment, OrderItem
 
 def test_runtime_checkable_validation_success() -> None:
     """Test that @runtime_checkable validation works correctly"""
-    # Test with the Temporal Activity implementation using mocked dependencies
-    mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
-    repo = TemporalMinioPaymentRepository(
-        mock_minio_payment_repo
-    )  # Fixed: only pass payment repo
+    # Test with the Temporal Activity implementation
+    repo = TemporalMinioPaymentRepository("test-endpoint")
 
     # Should not raise
     assert isinstance(repo, PaymentRepository)
@@ -64,10 +60,7 @@ def test_runtime_checkable_validation_failure() -> None:
 
 def test_ensure_repository_provides_type_safety() -> None:
     """Test that ensure_* functions provide proper typing"""
-    mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
-    repo = TemporalMinioPaymentRepository(
-        mock_minio_payment_repo
-    )  # Fixed: only pass payment repo
+    repo = TemporalMinioPaymentRepository("test-endpoint")
 
     # This should pass both runtime and static type checking
     validated_repo = ensure_payment_repository(repo)
@@ -79,10 +72,7 @@ def test_ensure_repository_provides_type_safety() -> None:
 
 def test_isinstance_works_with_all_protocols() -> None:
     """Test isinstance works with all repository protocols"""
-    mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
-    payment_repo = TemporalMinioPaymentRepository(
-        mock_minio_payment_repo
-    )  # Fixed: only pass payment repo
+    payment_repo = TemporalMinioPaymentRepository("test-endpoint")
 
     mock_minio_inventory_repo = MagicMock(spec=MinioInventoryRepository)
     inventory_repo = TemporalMinioInventoryRepository(
@@ -99,10 +89,7 @@ def test_isinstance_works_with_all_protocols() -> None:
 
 def test_validate_repository_protocol_success() -> None:
     """Test successful repository protocol validation"""
-    mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
-    repo = TemporalMinioPaymentRepository(
-        mock_minio_payment_repo
-    )  # Fixed: only pass payment repo
+    repo = TemporalMinioPaymentRepository("test-endpoint")
 
     # Should not raise any exception - just verify it's a PaymentRepository
     assert isinstance(repo, PaymentRepository)
@@ -132,8 +119,8 @@ def test_validate_repository_protocol_non_callable_attribute() -> None:
     """
     incomplete_repo = MagicMock()
     incomplete_repo.process_payment = MagicMock()
-    incomplete_repo.refund_payment = MagicMock()
     incomplete_repo.get_payment = "not_a_function"  # Not callable
+    incomplete_repo.refund_payment = MagicMock()  # Add missing method
 
     # @runtime_checkable doesn't detect non-callable attributes
     # This is expected behaviour - isinstance() only checks attribute
@@ -241,12 +228,8 @@ def test_validate_pydantic_response_invalid_state() -> None:
 
 def test_create_validated_repository_factory_success() -> None:
     """Test creating a validated repository factory"""
-    mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
-
     # Test the factory with a concrete implementation
-    repo = TemporalMinioPaymentRepository(
-        mock_minio_payment_repo
-    )  # Fixed: only pass payment repo
+    repo = TemporalMinioPaymentRepository("test-endpoint")
 
     # Validate that the created repository satisfies the protocol
     assert isinstance(repo, PaymentRepository)
@@ -273,10 +256,7 @@ def test_create_validated_repository_factory_invalid_implementation() -> None:
 
 def test_ensure_payment_repository_success() -> None:
     """Test convenience function for payment repository validation"""
-    mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
-    repo = TemporalMinioPaymentRepository(
-        mock_minio_payment_repo
-    )  # Fixed: only pass payment repo
+    repo = TemporalMinioPaymentRepository("test-endpoint")
 
     # Should not raise any exception
     ensure_payment_repository(repo)
@@ -307,7 +287,8 @@ def test_inventory_repository_validation() -> None:
 def test_factory_function_metadata() -> None:
     """Test that factory function has proper metadata"""
     factory = create_validated_repository_factory(
-        PaymentRepository, TemporalMinioPaymentRepository  # type: ignore[type-abstract]
+        PaymentRepository,
+        TemporalMinioPaymentRepository,  # type: ignore[type-abstract]
     )
 
     assert (
@@ -363,10 +344,7 @@ def test_validation_preserves_pydantic_validation_errors() -> None:
 
 def test_temporal_activity_method_validation() -> None:
     """Test that Temporal activity-decorated methods are handled properly"""
-    mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
-    repo = TemporalMinioPaymentRepository(
-        mock_minio_payment_repo
-    )  # Fixed: only pass payment repo
+    repo = TemporalMinioPaymentRepository("test-endpoint")
 
     # This should pass even though the methods are decorated with
     # @activity.defn
@@ -383,10 +361,7 @@ def test_temporal_activity_method_validation() -> None:
 def test_isinstance_works_with_runtime_checkable() -> None:
     """Test that isinstance() works directly with @runtime_checkable
     protocols"""
-    mock_minio_payment_repo = MagicMock(spec=MinioPaymentRepository)
-    repo = TemporalMinioPaymentRepository(
-        mock_minio_payment_repo
-    )  # Fixed: only pass payment repo
+    repo = TemporalMinioPaymentRepository("test-endpoint")
 
     # Direct isinstance check should work
     assert isinstance(repo, PaymentRepository)

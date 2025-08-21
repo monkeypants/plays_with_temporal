@@ -465,8 +465,7 @@ class OrderFulfillmentUseCase:
                     order_id=order.order_id,
                     status="PAYMENT_FAILED",
                     reason=(
-                        "Payment processing failed: "
-                        f"{payment_outcome.reason}"
+                        f"Payment processing failed: {payment_outcome.reason}"
                     ),
                 )
 
@@ -1037,8 +1036,7 @@ class CancelOrderUseCase:
                 order_id=order_id,
                 status="FAILED",  # Or "FAILED_CANCELLATION" if we add it
                 reason=(
-                    "Cancellation failed due to unexpected error: "
-                    f"{str(e)}"
+                    f"Cancellation failed due to unexpected error: {str(e)}"
                 ),
                 refund_id=order.refund_id,  # Use new field
                 refund_status=order.refund_status,  # Use new field

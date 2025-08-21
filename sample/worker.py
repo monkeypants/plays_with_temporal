@@ -15,7 +15,6 @@ from sample.workflow import (
     CancelOrderWorkflow,
 )  # Added CancelOrderWorkflow
 from sample.repos.minio.order import MinioOrderRepository
-from sample.repos.minio.payment import MinioPaymentRepository
 from sample.repos.minio.inventory import MinioInventoryRepository
 from sample.repos.minio.order_request import MinioOrderRequestRepository
 from util.repos.minio.file_storage import MinioFileStorageRepository
@@ -136,18 +135,20 @@ async def run_worker() -> None:
     logger.debug("Instantiating pure backend repository implementations")
     minio_endpoint = os.environ.get("MINIO_ENDPOINT", "minio:9000")
     minio_order_repo = MinioOrderRepository(endpoint=minio_endpoint)
-    minio_payment_repo = MinioPaymentRepository(endpoint=minio_endpoint)
     minio_inventory_repo = MinioInventoryRepository(endpoint=minio_endpoint)
     minio_order_request_repo = MinioOrderRequestRepository()
     minio_file_storage_repo = (
         MinioFileStorageRepository()
     )  # Uses its own defaults/env vars internally
 
-    # Instantiate Temporal Activity implementations, injecting the pure
-    # backend repos
+    # Instantiate Temporal Activity implementations, using clean consistent
+    # naming with @temporal_repository decorator
     logger.debug("Instantiating Temporal Activity repository implementations")
     temporal_order_repo = TemporalMinioOrderRepository(minio_order_repo)
-    temporal_payment_repo = TemporalMinioPaymentRepository(minio_payment_repo)
+    temporal_payment_repo = TemporalMinioPaymentRepository(
+        endpoint=minio_endpoint
+    )
+
     temporal_inventory_repo = TemporalMinioInventoryRepository(
         minio_inventory_repo
     )
@@ -167,7 +168,7 @@ async def run_worker() -> None:
         temporal_order_repo.cancel_order,  # New activity
         temporal_payment_repo.process_payment,
         temporal_payment_repo.get_payment,
-        temporal_payment_repo.refund_payment,  # New activity
+        temporal_payment_repo.refund_payment,
         temporal_inventory_repo.reserve_items,
         temporal_inventory_repo.release_items,
         temporal_order_request_repo.store_bidirectional_mapping,

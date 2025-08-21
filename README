@@ -18,7 +18,7 @@ Architecture Roadmap
 
 Core Principle: Dependencies point inward. Always.
 
-    Domain (Pure) -> Use Cases (Orchestrate) -> Adapters (Translate) -> Frameworks (Contain)
+    Domain (Pure) <- Use Cases (Orchestrate) <- Adapters (Translate) <- Frameworks (Contain)
 
 Three-Layer Repository Pattern (mandatory for all data access):
 1. Pure Backend -> 2. Temporal Activity -> 3. Workflow Proxy
@@ -28,10 +28,10 @@ Workflow Determinism: Activities for I/O, workflows for logic. No exceptions.
 Reference Applications
 ----------------------
 
-sample/ - Order fulfillment system  
+sample/ - Order fulfillment system
 Complete saga pattern with payments, inventory, cancellation. Your architectural north star.
 
-cal/ - Calendar intelligence system  
+cal/ - Calendar intelligence system
 AI-powered calendar analysis with Google integration. Domain-specific patterns.
 
 Navigation Guide
@@ -43,21 +43,21 @@ Start Here:
 - fun-police/systemPatterns.org - Implementation rules
 
 Deep Dive:
-- fun-police/projectbrief.org - Requirements and boundaries  
+- fun-police/projectbrief.org - Requirements and boundaries
 - fun-police/techContext.org - Technology stack decisions
 - fun-police/methodology.org - Development workflow
 - fun-police/tasks.org - Current work (org-mode TODOs)
 
 Quality Gates:
 - make quality-fast - Pre-commit checks
-- make quality-full - Complete validation  
+- make quality-full - Complete validation
 - make test-e2e - End-to-end with Docker
 
 Testing Strategy
 ----------------
 
     Many unit tests (mocked repositories)
-    Some integration tests (real dependencies)  
+    Some integration tests (real dependencies)
     Few E2E tests (complete workflows)
 
 Development Rules

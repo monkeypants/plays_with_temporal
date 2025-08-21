@@ -1,72 +1,66 @@
 """
 Temporal Activity implementation of PaymentRepository.
-Wraps MinioPaymentRepository and exposes its methods as Temporal activities.
+Uses clean, consistent activity naming for all methods.
+
+This approach uses a single repository class with consistent activity naming
+that follows the pattern: sample.payment_repo.{method_name}
+
+No use case prefixes or implementation details are included in activity names,
+providing a clean separation of concerns.
 """
 
 import logging
-from typing import Optional
-
-from temporalio import activity
-
-from sample.domain import (
-    Order,
-    Payment,
-    PaymentOutcome,
-    RefundPaymentArgs,
-    RefundPaymentOutcome,
-)
-from sample.repositories import PaymentRepository
 from sample.repos.minio.payment import MinioPaymentRepository
+from sample.repos.temporal.decorators import temporal_repository
 
 logger = logging.getLogger(__name__)
 
 
-class TemporalMinioPaymentRepository(PaymentRepository):
+@temporal_repository("sample.payment_repo")
+class TemporalMinioPaymentRepository(MinioPaymentRepository):
     """
     Temporal Activity implementation of PaymentRepository.
-    Delegates calls to a concrete MinioPaymentRepository instance.
+
+    This class inherits from MinioPaymentRepository and automatically wraps
+    all async methods as Temporal activities using the @temporal_repository
+    decorator.
+
+    The decorator creates activities with clean, consistent names:
+    - process_payment -> "sample.payment_repo.process_payment"
+    - get_payment -> "sample.payment_repo.get_payment"
+    - refund_payment -> "sample.payment_repo.refund_payment"
+
+    This approach provides:
+    - Single repository for all use cases
+    - Clean naming without use case mixing
+    - No implementation details leaked (.minio removed)
+    - True inheritance rather than delegation
+    - Significant reduction in boilerplate code
     """
 
-    def __init__(
-        self,
-        minio_payment_repo: MinioPaymentRepository,
-    ):
-        self._minio_payment_repo = minio_payment_repo
+    def __init__(self, endpoint: str):
+        """
+        Initialize the Temporal wrapper with Minio connection details.
+
+        Args:
+            endpoint: Minio endpoint URL (e.g., "localhost:9000")
+        """
+        super().__init__(endpoint)
         logger.debug("Initialized TemporalMinioPaymentRepository")
 
-    @activity.defn(
-        name="sample.order_fulfillment.payment_repo.minio.process_payment"
-    )
-    async def process_payment(self, order: Order) -> PaymentOutcome:
-        """Process payment via the underlying Minio repository."""
-        logger.info(
-            "Activity: process_payment called",
-            extra={
-                "order_id": order.order_id,
-                "amount": str(order.total_amount),
-            },
-        )
-        return await self._minio_payment_repo.process_payment(order)
-
-    @activity.defn(
-        name="sample.order_fulfillment.payment_repo.minio.get_payment"
-    )
-    async def get_payment(self, payment_id: str) -> Optional[Payment]:
-        """Get payment via the underlying Minio repository."""
-        logger.info(
-            "Activity: get_payment called", extra={"payment_id": payment_id}
-        )
-        return await self._minio_payment_repo.get_payment(payment_id)
-
-    @activity.defn(
-        name="sample.cancel_order.payment_repo.minio.refund_payment"
-    )
-    async def refund_payment(
-        self, args: RefundPaymentArgs
-    ) -> RefundPaymentOutcome:
-        """Refund payment via the underlying Minio repository."""
-        logger.info(
-            "Activity: refund_payment called",
-            extra={"payment_id": args.payment_id, "amount": str(args.amount)},
-        )
-        return await self._minio_payment_repo.refund_payment(args)
+    # That's it! No method definitions needed.
+    # The @temporal_repository decorator automatically wraps all async methods
+    # from the parent MinioPaymentRepository class as Temporal activities:
+    #
+    # - async def process_payment(self, order: Order) -> PaymentOutcome
+    #   becomes activity "sample.payment_repo.process_payment"
+    #
+    # - async def get_payment(self, payment_id: str) -> Optional[Payment]
+    #   becomes activity "sample.payment_repo.get_payment"
+    #
+    # - async def refund_payment(self, args: RefundPaymentArgs) ->
+    # RefundPaymentOutcome becomes activity
+    # "sample.payment_repo.refund_payment"
+    #
+    # All methods maintain their original signatures and behavior while being
+    # wrapped as Temporal activities for use in workflows.
