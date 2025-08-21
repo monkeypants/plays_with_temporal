@@ -132,6 +132,7 @@ def test_validate_repository_protocol_non_callable_attribute() -> None:
     """
     incomplete_repo = MagicMock()
     incomplete_repo.process_payment = MagicMock()
+    incomplete_repo.refund_payment = MagicMock()
     incomplete_repo.get_payment = "not_a_function"  # Not callable
 
     # @runtime_checkable doesn't detect non-callable attributes
