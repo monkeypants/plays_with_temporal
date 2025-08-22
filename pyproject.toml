@@ -15,8 +15,13 @@ line-length = 78
 
 [tool.ruff]
 # Set line length to match black. Do not make this longer, seriously.
-# This is my project and the line length is 78, deal with it or fuck off.
+# This is my project and the line length is 78, OK.
 line-length = 78
+extend-select = [
+    "W291",  # trailing-whitespace
+    "W292",  # no-newline-at-end-of-file
+    "W293",  # blank-line-with-whitespace
+]
 
 [tool.ruff.lint]
 # Match flake8's default checks (pycodestyle, pyflakes)
