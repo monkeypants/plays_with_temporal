@@ -37,10 +37,10 @@ test-unit: reports
 # E2E test setup (starts ephemeral infrastructure)
 e2e-test-setup: reports
 	@echo "Starting ephemeral test infrastructure..."
-	docker-compose -f docker-compose.test.yml build
-	docker-compose -f docker-compose.test.yml up -d --force-recreate
+	docker compose -f docker-compose.test.yml build
+	docker compose -f docker-compose.test.yml up -d --force-recreate
 	@echo "Waiting for services to be healthy..."
-	@timeout 120 bash -c 'until docker-compose -f docker-compose.test.yml ps | grep -q "healthy"; do echo "Waiting for health checks..."; docker-compose -f docker-compose.test.yml ps; sleep 5; done' || (echo "Services failed to start, capturing logs..." && docker-compose -f docker-compose.test.yml logs > reports/e2e-infrastructure.log 2>&1 && docker-compose -f docker-compose.test.yml down -v && exit 1)
+	@timeout 120 bash -c 'until docker compose -f docker-compose.test.yml ps | grep -q "healthy"; do echo "Waiting for health checks..."; docker compose -f docker-compose.test.yml ps; sleep 5; done' || (echo "Services failed to start, capturing logs..." && docker compose -f docker-compose.test.yml logs > reports/e2e-infrastructure.log 2>&1 && docker compose -f docker-compose.test.yml down -v && exit 1)
 	@echo "Ephemeral test infrastructure is healthy."
 
 # E2E test run (runs pytest against running infrastructure)
