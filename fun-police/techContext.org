@@ -199,7 +199,8 @@ handles Pydantic models automatically. No explicit configuration is needed.
 #+BEGIN_SRC python
 # Assumes 'Worker' is imported from 'temporalio.worker'
 # Client configuration
-client = await Client.connect("localhost:7233", namespace="default")
+client = await Client.connect("localhost:7233", 
+                             namespace="default")
 
 # Worker inherits data converter from client
 worker = Worker(client, task_queue="queue", workflows=[...])
@@ -378,7 +379,10 @@ make quality-security
 make format
 #+END_SRC
 
-=black= handles most formatting automatically. However, it does not format docstrings or comments. To adhere to the project's line-length limits (enforced by =ruff=), long lines in docstrings and comments must be wrapped manually using semantic line breaks.
+=black= handles most formatting automatically. However, it does not format
+docstrings or comments. To adhere to the project's line-length limits
+(enforced by =ruff=), long lines in docstrings and comments must be wrapped
+manually using semantic line breaks.
 
 ** Database Operations:
 #+BEGIN_SRC bash
