@@ -227,6 +227,8 @@ client = await Client.connect("localhost:7233", namespace="default")
 worker = Worker(client, task_queue="queue", workflows=[...])
 #+END_SRC
 
+Note: this is why domain models use pydantic
+(rather than dataclasses)
 *** Serialization Patterns:
 #+BEGIN_SRC python
 # API to Workflow: Handle Decimal serialization
@@ -509,7 +511,10 @@ await workflow.execute_activity(
 * User Interface Standards
 
 ** Text-Only Interface Policy
-All command-line interfaces and text outputs must use plain text without emojis, Unicode symbols, or decorative characters. Emojis are unprofessional and create inconsistent display across different terminals and systems. Use clear, descriptive text instead.
+All command-line interfaces and text outputs must use plain text without emojis,
+Unicode symbols, or decorative characters.
+Emojis are unprofessional and create inconsistent display
+across different terminals and systems. Use clear, descriptive text instead.
 
 Examples:
 - Use "Calendar sync completed successfully!" instead of "✅ Calendar sync completed!"
@@ -550,4 +555,7 @@ PostgreSQL: temporal/temporal
 - Encryption in transit (TLS)
 - Access logging and audit trails
 
-This technical context provides the foundation for understanding how to develop, test, and deploy the system while maintaining the architectural patterns and quality standards established in the POC implementation.
+This technical context provides the foundation for understanding
+how to develop, test, and deploy the system
+while maintaining the architectural patterns
+and quality standards established in the POC implementation.
