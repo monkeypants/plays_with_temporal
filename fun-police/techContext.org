@@ -145,14 +145,6 @@ asyncpg>=0.29.0            # PostgreSQL async driver
 alembic>=1.13.0            # Database migrations
 #+END_SRC
 
-*** Development Dependencies:
-#+BEGIN_SRC bash
-pytest>=8.0.0             # Testing framework
-pytest-asyncio>=1.0.0     # Async test support
-mypy>=1.0.0               # Static type checking
-black>=24.0.0             # Code formatting
-#+END_SRC
-
 *** Installation:
 #+BEGIN_SRC bash
 # Create virtual environment
@@ -161,9 +153,6 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Development dependencies
-pip install pytest pytest-asyncio mypy black
 #+END_SRC
 
 ** Repository Implementation Structure
@@ -269,36 +258,22 @@ return OrderStatusResponse(attachment_id=file_metadata.file_id)
 Testing follows the pyramid strategy documented in systemPatterns.org (unit → integration → E2E).
 
 *** Unit Tests:
+Use the Makefile target for running unit tests:
 #+BEGIN_SRC bash
-# Run all unit tests
-pytest sample/tests/test_*.py -v
-
-# Run specific test file
-pytest sample/tests/test_usecase.py -v
-
-# Run with coverage
-pytest --cov=sample sample/tests/test_*.py
-#+END_SRC
-
-*** Integration Tests:
-#+BEGIN_SRC bash
-# API integration tests
-pytest sample/tests/api/ -v
-
-# Repository contract tests
-pytest sample/tests/test_repository_contracts.py -v
+# Run unit tests with coverage
+make test-unit
 #+END_SRC
 
 *** End-to-End Tests:
+Use the Makefile targets for E2E testing:
 #+BEGIN_SRC bash
-# Start test environment
-docker-compose -f sample/docker-compose.test.yml up -d
+# Full E2E test cycle (setup, run, teardown)
+make test-e2e
 
-# Run E2E tests
-pytest sample/tests/e2e/ -v -m e2e
-
-# Cleanup
-docker-compose -f sample/docker-compose.test.yml down
+# Individual E2E test steps if needed
+make e2e-test-setup
+make e2e-test-run
+make e2e-test-teardown
 #+END_SRC
 
 ** Test Configuration
@@ -397,65 +372,32 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 ** Code Quality
 
-Code quality is enforced automatically using =pre-commit= hooks defined in =.pre-commit-config.yaml=, which run =black= for formatting and =ruff= for linting.
+The project uses a Makefile to standardize quality checks. See `make help` for all available commands.
 
-*** Static Type Checking:
+*** Quality Checks:
 #+BEGIN_SRC bash
-# Run mypy on entire codebase
-mypy sample/
+# Fast quality checks (for pre-commit)
+make quality-fast
 
-# Check specific files
-mypy sample/usecase.py sample/domain.py
+# Full quality suite (for CI)
+make quality-full
+
+# Type checking
+make quality-types
+
+# Security scanning
+make quality-security
 #+END_SRC
 
 *** Code Formatting:
 #+BEGIN_SRC bash
 # Format code with black
-black sample/
-
-# Check formatting without changes
-black --check sample/
+make format
 #+END_SRC
+
 =black= handles most formatting automatically. However, it does not format docstrings or comments. To adhere to the project's line-length limits (enforced by =ruff=), long lines in docstrings and comments must be wrapped manually using semantic line breaks.
 
-*** Linting:
-#+BEGIN_SRC bash
-# Run ruff for style checking
-ruff check sample/
-
-# Run ruff with automatic fixes
-ruff check sample/ --fix
-#+END_SRC
-
-** Development Commands
-
-*** Service Management:
-#+BEGIN_SRC bash
-# Start development environment
-make dev-up
-
-# Stop services
-make dev-down
-
-# View logs
-docker-compose logs -f worker
-docker-compose logs -f api
-#+END_SRC
-
-*** Testing Commands:
-#+BEGIN_SRC bash
-# Run fast unit tests
-make test-unit
-
-# Run all tests including E2E
-make test-all
-
-# Run specific test category
-make test-api
-make test-e2e
-#+END_SRC
-
-*** Database Operations:
+** Database Operations:
 #+BEGIN_SRC bash
 # Reset Temporal database
 docker-compose exec postgres psql -U temporal -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
