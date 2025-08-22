@@ -9,11 +9,8 @@ No use case prefixes or implementation details are included in activity names,
 providing a clean separation of concerns.
 """
 
-import logging
 from sample.repos.minio.payment import MinioPaymentRepository
 from sample.repos.temporal.decorators import temporal_repository
-
-logger = logging.getLogger(__name__)
 
 
 @temporal_repository("sample.payment_repo")
@@ -38,29 +35,9 @@ class TemporalMinioPaymentRepository(MinioPaymentRepository):
     - Significant reduction in boilerplate code
     """
 
-    def __init__(self, endpoint: str):
-        """
-        Initialize the Temporal wrapper with Minio connection details.
-
-        Args:
-            endpoint: Minio endpoint URL (e.g., "localhost:9000")
-        """
-        super().__init__(endpoint)
-        logger.debug("Initialized TemporalMinioPaymentRepository")
-
-    # That's it! No method definitions needed.
-    # The @temporal_repository decorator automatically wraps all async methods
-    # from the parent MinioPaymentRepository class as Temporal activities:
-    #
-    # - async def process_payment(self, order: Order) -> PaymentOutcome
-    #   becomes activity "sample.payment_repo.process_payment"
-    #
-    # - async def get_payment(self, payment_id: str) -> Optional[Payment]
-    #   becomes activity "sample.payment_repo.get_payment"
-    #
-    # - async def refund_payment(self, args: RefundPaymentArgs) ->
-    # RefundPaymentOutcome becomes activity
-    # "sample.payment_repo.refund_payment"
-    #
-    # All methods maintain their original signatures and behavior while being
-    # wrapped as Temporal activities for use in workflows.
+    # That's it! The @temporal_repository decorator automatically wraps
+    # all async methods as Temporal activities:
+    # - process_payment -> "sample.payment_repo.process_payment"
+    # - get_payment -> "sample.payment_repo.get_payment"
+    # - refund_payment -> "sample.payment_repo.refund_payment"
+    pass
