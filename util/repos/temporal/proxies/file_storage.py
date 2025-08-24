@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class WorkflowFileStorageRepositoryProxy(FileStorageRepository):
     """
     Workflow implementation of FileStorageRepository that calls activities.
-    This proxy ensures that all interactions with the FileStorageRepository are
-    performed via Temporal activities, maintaining workflow determinism.
+    This proxy ensures that all interactions with the FileStorageRepository
+    are performed via Temporal activities, maintaining workflow determinism.
     """
 
     def __init__(self) -> None:

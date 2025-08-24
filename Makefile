@@ -4,8 +4,8 @@
 # Fast quality checks (for pre-commit)
 quality-fast:
 	@echo "Running fast quality checks..."
-	black --check cal/ sample/
-	ruff check cal/ sample/
+	black --check cal/ sample/ util/
+	ruff check cal/ sample/ util/
 	pytest -x -m "not e2e" --no-cov -q
 
 # Full quality suite (for post-commit/CI)
