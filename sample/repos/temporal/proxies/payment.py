@@ -54,7 +54,7 @@ class WorkflowPaymentRepositoryProxy(PaymentRepository):
         # might deserialize it as a dict in the workflow context.
         # Explicitly re-validate to ensure it's a Pydantic model.
         raw_result = await workflow.execute_activity(
-            "sample.order_fulfillment.payment_repo.minio.process_payment",
+            "sample.payment_repo.minio.process_payment",
             order,
             start_to_close_timeout=self.activity_timeout,
             retry_policy=self.activity_fail_fast_retry_policy,
@@ -82,7 +82,7 @@ class WorkflowPaymentRepositoryProxy(PaymentRepository):
         # Temporal's data converter might deserialize it as a dict or None
         # in the workflow context. Explicitly re-validate if not None.
         raw_result = await workflow.execute_activity(
-            "sample.order_fulfillment.payment_repo.minio.get_payment",
+            "sample.payment_repo.minio.get_payment",
             payment_id,
             start_to_close_timeout=self.activity_timeout,
         )
@@ -111,7 +111,7 @@ class WorkflowPaymentRepositoryProxy(PaymentRepository):
             extra={"payment_id": args.payment_id, "amount": str(args.amount)},
         )
         raw_result = await workflow.execute_activity(
-            "sample.cancel_order.payment_repo.minio.refund_payment",
+            "sample.payment_repo.minio.refund_payment",
             args,
             start_to_close_timeout=self.activity_timeout,
             retry_policy=self.activity_fail_fast_retry_policy,

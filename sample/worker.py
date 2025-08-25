@@ -20,9 +20,7 @@ from sample.repos.minio.inventory import MinioInventoryRepository
 from sample.repos.minio.order_request import MinioOrderRequestRepository
 from util.repos.minio.file_storage import MinioFileStorageRepository
 from sample.repos.temporal.minio_orders import TemporalMinioOrderRepository
-from sample.repos.temporal.minio_payments import (
-    TemporalMinioPaymentRepository,
-)
+from util.repos.temporal import temporal_repository
 from sample.repos.temporal.minio_inventory import (
     TemporalMinioInventoryRepository,
 )
@@ -136,7 +134,6 @@ async def run_worker() -> None:
     logger.debug("Instantiating pure backend repository implementations")
     minio_endpoint = os.environ.get("MINIO_ENDPOINT", "minio:9000")
     minio_order_repo = MinioOrderRepository(endpoint=minio_endpoint)
-    minio_payment_repo = MinioPaymentRepository(endpoint=minio_endpoint)
     minio_inventory_repo = MinioInventoryRepository(endpoint=minio_endpoint)
     minio_order_request_repo = MinioOrderRequestRepository()
     minio_file_storage_repo = (
@@ -147,7 +144,18 @@ async def run_worker() -> None:
     # backend repos
     logger.debug("Instantiating Temporal Activity repository implementations")
     temporal_order_repo = TemporalMinioOrderRepository(minio_order_repo)
-    temporal_payment_repo = TemporalMinioPaymentRepository(minio_payment_repo)
+
+    # This is an example (using the payment repository) of how the decorater
+    # automatically creates the temporal version of the pure minio payment
+    # repository, eliminating the need for the second layer to be an explicit
+    # class.
+    TemporalMinioPaymentRepository = temporal_repository(
+        "sample.payment_repo.minio"
+    )(MinioPaymentRepository)
+    temporal_payment_repo = TemporalMinioPaymentRepository(
+        endpoint=minio_endpoint
+    )
+
     temporal_inventory_repo = TemporalMinioInventoryRepository(
         minio_inventory_repo
     )
