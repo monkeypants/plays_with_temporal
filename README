@@ -13,6 +13,43 @@ Quick Start
     make quality-fast
     make help  # See all commands
 
+Getting Started - Running the Service
+-------------------------------------
+
+Start the complete system (Temporal server + reference applications):
+
+    docker compose up -d
+
+This starts:
+- Temporal Server (localhost:7234)
+- Temporal Web UI (http://localhost:8001)
+- Sample Order API (http://localhost:8002)
+- Minio Storage UI (http://localhost:9001 - admin/minioadmin)
+- Calendar Worker + PostgreSQL
+
+Verify everything is running:
+
+    docker compose ps  # All services should show "healthy" or "running"
+
+Try the Sample Application:
+
+    # First, open the Temporal UI to watch workflows execute
+    open http://localhost:8001
+
+    # Create an order using the API defined by the sample project:
+    curl -X POST http://localhost:8002/orders \
+      -H "Content-Type: application/json" \
+      -d '{"customer_id": "cust-123", "items": [{"product_id": "prod-456", "quantity": 2, "price": "19.99"}]}'
+
+    # Check order status (use the request_id from above response)
+    curl http://localhost:8002/orders/{request_id}
+
+View the Temporal UI to explore the details of the order and associated events.
+
+Stop everything:
+
+    docker compose down -v  # -v removes volumes for clean restart
+
 Architecture Roadmap
 --------------------
 
@@ -28,10 +65,10 @@ Workflow Determinism: Activities for I/O, workflows for logic. No exceptions.
 Reference Applications
 ----------------------
 
-sample/ - Order fulfillment system  
+sample/ - Order fulfillment system
 Complete saga pattern with payments, inventory, cancellation. Your architectural north star.
 
-cal/ - Calendar intelligence system  
+cal/ - Calendar intelligence system
 AI-powered calendar analysis with Google integration. Domain-specific patterns.
 
 Navigation Guide
@@ -43,21 +80,21 @@ Start Here:
 - fun-police/systemPatterns.org - Implementation rules
 
 Deep Dive:
-- fun-police/projectbrief.org - Requirements and boundaries  
+- fun-police/projectbrief.org - Requirements and boundaries
 - fun-police/techContext.org - Technology stack decisions
 - fun-police/methodology.org - Development workflow
 - fun-police/tasks.org - Current work (org-mode TODOs)
 
 Quality Gates:
 - make quality-fast - Pre-commit checks
-- make quality-full - Complete validation  
+- make quality-full - Complete validation
 - make test-e2e - End-to-end with Docker
 
 Testing Strategy
 ----------------
 
     Many unit tests (mocked repositories)
-    Some integration tests (real dependencies)  
+    Some integration tests (real dependencies)
     Few E2E tests (complete workflows)
 
 Development Rules
