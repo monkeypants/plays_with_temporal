@@ -79,9 +79,6 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
                 ) and not name.startswith("_"):
                     async_methods_to_wrap[name] = method
 
-        # Use the original class as the target
-        target_cls = cls
-
         # Now wrap all the async methods we found
         for name, method in async_methods_to_wrap.items():
             # Create activity name by combining prefix and method name
@@ -103,9 +100,7 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
 
                 # Preserve method metadata
                 wrapper_method.__name__ = method_name
-                wrapper_method.__qualname__ = (
-                    f"{target_cls.__name__}.{method_name}"
-                )
+                wrapper_method.__qualname__ = f"{cls.__name__}.{method_name}"
                 wrapper_method.__doc__ = original_method.__doc__
                 wrapper_method.__annotations__ = getattr(
                     original_method, "__annotations__", {}
@@ -117,20 +112,19 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
             wrapper_method = create_wrapper_method(method, name)
             wrapped_method = activity.defn(name=activity_name)(wrapper_method)
 
-            # Replace the method on the target class with the wrapped version
-            setattr(target_cls, name, wrapped_method)
+            # Replace the method on the class with the wrapped version
+            setattr(cls, name, wrapped_method)
 
             wrapped_methods.append(name)
 
         logger.info(
-            f"Temporal repository decorator applied to {target_cls.__name__}",
+            f"Temporal repository decorator applied to {cls.__name__}",
             extra={
                 "wrapped_methods": wrapped_methods,
                 "activity_prefix": activity_prefix,
-                "class_name": cls.__name__,
             },
         )
 
-        return target_cls
+        return cls
 
     return decorator
