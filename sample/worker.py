@@ -130,32 +130,37 @@ async def run_worker() -> None:
         MinioFileStorageRepository()
     )  # Uses its own defaults/env vars internally
 
-    # Create decorated repositories dynamically
+    # This is an example of how the decorater automatically creates the temporal
+    # version of the pure minio repositories, eliminating the need for the
+    # second layer to be an explicit class.
+    # This is an example of how the decorater automatically creates the temporal
+    # version of the pure minio repositories, eliminating the need for the
+    # second layer to be an explicit class.
     logger.debug("Creating Temporal Activity repository implementations")
 
     TemporalMinioOrderRepository = temporal_repository(
-        "sample.order_repo.minio"
+        "sample.order_repo.minio", new_class=True
     )(MinioOrderRepository)
     temporal_order_repo = TemporalMinioOrderRepository(
         endpoint=minio_endpoint
     )
 
     TemporalMinioPaymentRepository = temporal_repository(
-        "sample.payment_repo.minio"
+        "sample.payment_repo.minio", new_class=True
     )(MinioPaymentRepository)
     temporal_payment_repo = TemporalMinioPaymentRepository(
         endpoint=minio_endpoint
     )
 
     TemporalMinioInventoryRepository = temporal_repository(
-        "sample.inventory_repo.minio"
+        "sample.inventory_repo.minio", new_class=True
     )(MinioInventoryRepository)
     temporal_inventory_repo = TemporalMinioInventoryRepository(
         endpoint=minio_endpoint
     )
 
     TemporalMinioOrderRequestRepository = temporal_repository(
-        "sample.order_request_repo.minio"
+        "sample.order_request_repo.minio", new_class=True
     )(MinioOrderRequestRepository)
     temporal_order_request_repo = TemporalMinioOrderRequestRepository()
     temporal_file_storage_repo = TemporalMinioFileStorageRepository(
