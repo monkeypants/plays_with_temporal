@@ -72,17 +72,53 @@ class PaymentRepository(Protocol):
    - Contains implementation logic for data persistence, service integration, etc.
    - may be non-deterministic, but must be idempotent
 
-2. *Temporal Activity Implementation* (=sample/repos/temporal/minio_payments.py=):
-   - Wraps pure backend repository
-   - Methods decorated with =@activity.defn=
-   - Simple delegation pattern
-   - Registered with Temporal worker
+2. *Temporal Activity Implementation* (=sample/repos/temporal/__init__.py=):
+   - Created using =@temporal_repository= decorator.
+   - Automatically wraps all async methods with =@activity.defn=
+   - Imported and instantiated in worker for registration
 
 3. *Workflow Proxy* (=sample/repos/temporal/proxies/payment.py=):
    - Used inside workflows for determinism
    - Calls =workflow.execute_activity()=
    - No actual business logic
    - Ensures workflow replay safety
+
+*Decorator Implementation Details*:
+
+The =@temporal_repository= decorator creates explicit Temporal Activity classes.
+The recommended approach is to define these classes in the temporal package's
+=__init__.py= file for clarity:
+
+#+BEGIN_SRC python
+# In sample/repos/temporal/__init__.py
+from util.repos.temporal.decorators import temporal_repository
+from sample.repos.minio.payment import MinioPaymentRepository
+
+@temporal_repository("sample.payment_repo.minio")
+class TemporalMinioPaymentRepository(MinioPaymentRepository):
+    """
+    Temporal activity wrapper for MinioPaymentRepository.
+    All async methods automatically wrapped as activities.
+    """
+    pass
+
+# In sample/worker.py - Simple import and instantiation
+from sample.repos.temporal import TemporalMinioPaymentRepository
+
+temporal_payment_repo = TemporalMinioPaymentRepository(endpoint=minio_endpoint)
+#+END_SRC
+
+*Key Benefits*:
+- Eliminates ~200+ lines of boilerplate delegation code
+- Clear, explicit class definitions in dedicated module
+- Automatically wraps all public async methods as activities
+- Generates consistent activity names: =prefix.method_name=
+- Self-contained worker setup - all Temporal concerns explicit
+
+*Activity Name Generation*:
+- =process_payment= → =sample.payment_repo.minio.process_payment=
+- =get_payment= → =sample.payment_repo.minio.get_payment=
+- =refund_payment= → =sample.payment_repo.minio.refund_payment=
 
 *** 3. Temporal Workflow Determinism Pattern
 
@@ -94,10 +130,10 @@ class OrderFulfillmentWorkflow:
     async def run(self, request_dict: dict) -> OrderStatusResponse:
         # Create deterministic proxies
         payment_repo = WorkflowPaymentRepositoryProxy()
-        
+
         # Use case remains unaware of Temporal
         use_case = OrderFulfillmentUseCase(payment_repo=payment_repo)
-        
+
         # Business logic execution
         return await use_case.fulfill_order(request, request_id)
 #+END_SRC
@@ -114,21 +150,21 @@ class OrderFulfillmentWorkflow:
 #+BEGIN_SRC python
 async def fulfill_order(self, request, request_id):
     inventory_reserved = False
-    
+
     try:
         # Forward Action 1: Reserve Inventory
         inventory_outcome = await self.inventory_repo.reserve_items(order)
         if inventory_outcome.status == "failed":
             return failure_response
         inventory_reserved = True
-        
+
         # Forward Action 2: Process Payment
         payment_outcome = await self.payment_repo.process_payment(order)
         if payment_outcome.status == "failed":
             # Compensation: Release inventory
             await self.inventory_repo.release_items(order)
             return failure_response
-            
+
         return success_response
     except Exception as e:
         # Defensive compensation on unexpected errors
@@ -157,14 +193,14 @@ class Order(BaseModel):
     items: List[OrderItem]
     total_amount: Decimal
     status: Literal["pending", "completed", "FAILED", "PAYMENT_FAILED"]
-    
+
     @field_validator('items')
     @classmethod
     def items_must_not_be_empty(cls, v):
         if not v:
             raise ValueError('Order must contain at least one item')
         return v
-    
+
     @field_validator('total_amount')
     @classmethod
     def total_amount_must_be_positive(cls, v):
@@ -187,7 +223,7 @@ class Order(BaseModel):
    #+BEGIN_SRC python
    # API request validation
    request = CreateOrderRequest(**request_data)  # Pydantic validation
-   
+
    # Repository protocol validation
    validated_repo = ensure_payment_repository(repo)
    #+END_SRC
@@ -247,7 +283,7 @@ return OrderStatusResponse(attachment_id=file_metadata.file_id)
 #+BEGIN_SRC python
 class OrderFulfillmentUseCase:
     def __init__(
-        self, 
+        self,
         payment_repo: PaymentRepository,  # Protocol, not concrete class
         inventory_repo: InventoryRepository,
         order_repo: OrderRepository,
@@ -303,7 +339,7 @@ request = CreateOrderRequest(**request_dict)
 *Testing Pyramid Implementation*:
 
 1. *Unit Tests* (Most): Use case logic with mocked repositories
-2. *Integration Tests* (Some): Repository implementations with real dependencies  
+2. *Integration Tests* (Some): Repository implementations with real dependencies
 3. *End-to-End Tests* (Few): Full workflow execution with Docker services
 
 *Mock Strategy*:

@@ -154,14 +154,31 @@ sample/repos/
 │   ├── payment.py    # No Temporal dependencies
 │   └── inventory.py  # Contains actual business logic
 ├── temporal/         # Temporal activity implementations
-│   ├── minio_*.py    # Activity wrappers with @activity.defn
+│   ├── __init__.py   # Temporal classes created with @temporal_repository decorator
 │   └── proxies/      # Workflow-safe delegates
 #+END_EXAMPLE
 
 *** Layer Responsibilities:
 - *Pure Backend*: Direct interaction with storage technology (Minio)
-- *Temporal Activities*: Wrapper methods decorated with =@activity.defn=
+- *Temporal Activities*: Classes created with =@temporal_repository= decorator in =__init__.py=
 - *Workflow Proxies*: Deterministic delegates that call =workflow.execute_activity()=
+
+*** Temporal Class Creation Pattern:
+#+BEGIN_SRC python
+# In sample/repos/temporal/__init__.py
+from util.repos.temporal.decorators import temporal_repository
+from sample.repos.minio.payment import MinioPaymentRepository
+
+@temporal_repository("sample.payment_repo.minio")
+class TemporalMinioPaymentRepository(MinioPaymentRepository):
+    """Temporal wrapper with all async methods as activities."""
+    pass
+
+# In sample/worker.py
+from sample.repos.temporal import TemporalMinioPaymentRepository
+
+temporal_payment_repo = TemporalMinioPaymentRepository(endpoint=minio_endpoint)
+#+END_SRC
 
 *** Activity Naming Convention
 All Temporal activities follow the Use Case Constructor Parameter naming pattern documented in systemPatterns.org:
@@ -173,7 +190,7 @@ Format: `{domain}.{usecase}.{constructor_param_name}.{method}`
 @activity.defn(name="cal.calendar_sync.source_repo.get_changes")
 @activity.defn(name="cal.calendar_sync.sink_repo.apply_changes")
 
-# CreateScheduleUseCase with calendar_repo, schedule_repo, classifier_repo parameters  
+# CreateScheduleUseCase with calendar_repo, schedule_repo, classifier_repo parameters
 @activity.defn(name="cal.create_schedule.calendar_repo.get_events_by_date_range")
 @activity.defn(name="cal.create_schedule.schedule_repo.save_schedule")
 @activity.defn(name="cal.create_schedule.classifier_repo.triage_event")
@@ -199,7 +216,7 @@ handles Pydantic models automatically. No explicit configuration is needed.
 #+BEGIN_SRC python
 # Assumes 'Worker' is imported from 'temporalio.worker'
 # Client configuration
-client = await Client.connect("localhost:7233", 
+client = await Client.connect("localhost:7233",
                              namespace="default")
 
 # Worker inherits data converter from client
