@@ -20,9 +20,6 @@ from sample.repositories import PaymentRepository, InventoryRepository
 from sample.repos.minio.inventory import MinioInventoryRepository
 from sample.repos.minio.payment import MinioPaymentRepository
 from util.repos.temporal import temporal_repository
-from sample.repos.temporal.minio_inventory import (
-    TemporalMinioInventoryRepository,
-)
 from sample.domain import Order, Payment, OrderItem
 
 
@@ -167,11 +164,20 @@ def test_ensure_payment_repository_failure() -> None:
 
 def test_inventory_repository_validation() -> None:
     """Test that inventory repository validation works"""
-    mock_minio_repo = MagicMock(spec=MinioInventoryRepository)
-    repo = TemporalMinioInventoryRepository(mock_minio_repo)
+    # Create decorated inventory repository dynamically
+    TemporalMinioInventoryRepository = temporal_repository(
+        "sample.inventory_repo.minio"
+    )(MinioInventoryRepository)
 
-    # Should not raise any exception - just verify it's an InventoryRepository
-    assert isinstance(repo, InventoryRepository)
+    with patch("sample.repos.minio.inventory.Minio") as mock_minio:
+        mock_client = MagicMock()
+        mock_minio.return_value = mock_client
+        mock_client.bucket_exists.return_value = True
+
+        repo = TemporalMinioInventoryRepository("test-endpoint")
+
+        # Should not raise any exception - verify it's an InventoryRepository
+        assert isinstance(repo, InventoryRepository)
 
 
 def test_factory_function_metadata() -> None:
