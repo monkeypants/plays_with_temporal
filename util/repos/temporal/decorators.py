@@ -16,9 +16,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-def temporal_repository(
-    activity_prefix: str, *, new_class: bool = False
-) -> Callable[[Type[T]], Type[T]]:
+def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
     """
     Class decorator that automatically wraps all async methods as Temporal
     activities.
@@ -32,13 +30,10 @@ def temporal_repository(
         activity_prefix: Prefix for activity names (e.g.,
         "sample.payment_repo.minio") Method names will be appended to create
         full activity names like "sample.payment_repo.minio.process_payment"
-        new_class: If True, creates a new class instead of modifying the
-        original. Useful for testing or when you need both decorated and
-        undecorated versions. Defaults to False for backward compatibility.
 
     Returns:
-        The decorated class (or new class if new_class=True) with all async
-        methods wrapped as Temporal activities
+        The decorated class with all async methods wrapped as Temporal
+        activities
 
     Example:
         @temporal_repository("sample.order_fulfillment.payment_repo")
@@ -84,18 +79,8 @@ def temporal_repository(
                 ) and not name.startswith("_"):
                     async_methods_to_wrap[name] = method
 
-        # Create target class - either new class or modify existing
-        if new_class:
-            # Create a new class that inherits from the original
-            target_cls = type(
-                f"Temporal{cls.__name__}",
-                (cls,),
-                {}
-            )
-            logger.debug(f"Created new class: {target_cls.__name__}")
-        else:
-            # Modify the original class
-            target_cls = cls
+        # Use the original class as the target
+        target_cls = cls
 
         # Now wrap all the async methods we found
         for name, method in async_methods_to_wrap.items():
@@ -142,8 +127,7 @@ def temporal_repository(
             extra={
                 "wrapped_methods": wrapped_methods,
                 "activity_prefix": activity_prefix,
-                "new_class": new_class,
-                "original_class": cls.__name__,
+                "class_name": cls.__name__,
             },
         )
 

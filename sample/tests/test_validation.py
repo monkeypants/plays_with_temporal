@@ -26,15 +26,16 @@ from sample.domain import Order, Payment, OrderItem
 @pytest.fixture
 def temporal_payment_repo() -> Generator[PaymentRepository, None, None]:
     """Fixture that provides a mocked TemporalMinioPaymentRepository."""
+
+    @temporal_repository("sample.payment_repo.minio")
+    class TestTemporalMinioPaymentRepository(MinioPaymentRepository):
+        pass
+
     with patch("sample.repos.minio.payment.Minio") as mock_minio:
         mock_client = MagicMock()
         mock_minio.return_value = mock_client
         mock_client.bucket_exists.return_value = True
-        # Create decorated class dynamically like in worker.py
-        TemporalMinioPaymentRepository = temporal_repository(
-            "sample.payment_repo.minio", new_class=True
-        )(MinioPaymentRepository)
-        yield TemporalMinioPaymentRepository("test-endpoint")
+        yield TestTemporalMinioPaymentRepository("test-endpoint")
 
 
 def test_ensure_repository_provides_type_safety(
@@ -164,17 +165,17 @@ def test_ensure_payment_repository_failure() -> None:
 
 def test_inventory_repository_validation() -> None:
     """Test that inventory repository validation works"""
-    # Create decorated inventory repository dynamically
-    TemporalMinioInventoryRepository = temporal_repository(
-        "sample.inventory_repo.minio", new_class=True
-    )(MinioInventoryRepository)
+
+    @temporal_repository("sample.inventory_repo.minio")
+    class TestTemporalMinioInventoryRepository(MinioInventoryRepository):
+        pass
 
     with patch("sample.repos.minio.inventory.Minio") as mock_minio:
         mock_client = MagicMock()
         mock_minio.return_value = mock_client
         mock_client.bucket_exists.return_value = True
 
-        repo = TemporalMinioInventoryRepository("test-endpoint")
+        repo = TestTemporalMinioInventoryRepository("test-endpoint")
 
         # Should not raise any exception - verify it's an InventoryRepository
         assert isinstance(repo, InventoryRepository)
@@ -182,20 +183,22 @@ def test_inventory_repository_validation() -> None:
 
 def test_factory_function_metadata() -> None:
     """Test that factory function has proper metadata"""
-    # Create decorated class for testing factory
-    TemporalMinioPaymentRepository = temporal_repository(
-        "sample.payment_repo.minio", new_class=True
-    )(MinioPaymentRepository)
+
+    @temporal_repository("sample.payment_repo.minio")
+    class TestTemporalMinioPaymentRepository(MinioPaymentRepository):
+        pass
+
     factory = create_validated_repository_factory(
-        PaymentRepository, TemporalMinioPaymentRepository  # type: ignore[type-abstract]
+        PaymentRepository, TestTemporalMinioPaymentRepository  # type: ignore[type-abstract]
     )
 
     assert (
-        factory.__name__ == "create_validated_TemporalMinioPaymentRepository"
+        factory.__name__
+        == "create_validated_TestTemporalMinioPaymentRepository"
     )
     assert (
         factory.__doc__ is not None
-        and "TemporalMinioPaymentRepository" in factory.__doc__
+        and "TestTemporalMinioPaymentRepository" in factory.__doc__
     )
     assert (
         factory.__doc__ is not None and "PaymentRepository" in factory.__doc__

@@ -72,10 +72,10 @@ class PaymentRepository(Protocol):
    - Contains implementation logic for data persistence, service integration, etc.
    - may be non-deterministic, but must be idempotent
 
-2. *Temporal Activity Implementation* (dynamically created in =sample/worker.py=):
-   - Can be created using =@temporal_repository= decorator
+2. *Temporal Activity Implementation* (=sample/repos/temporal/__init__.py=):
+   - Created using =@temporal_repository= decorator.
    - Automatically wraps all async methods with =@activity.defn=
-   - Registered with Temporal worker at runtime
+   - Imported and instantiated in worker for registration
 
 3. *Workflow Proxy* (=sample/repos/temporal/proxies/payment.py=):
    - Used inside workflows for determinism
@@ -85,27 +85,32 @@ class PaymentRepository(Protocol):
 
 *Decorator Implementation Details*:
 
-The =@temporal_repository= decorator automatically creates the Temporal Activity
-layer but you can instead define it explicitly if you prefer. Here's how you can
-use the decorator:
+The =@temporal_repository= decorator creates explicit Temporal Activity classes.
+The recommended approach is to define these classes in the temporal package's
+=__init__.py= file for clarity:
 
 #+BEGIN_SRC python
-# In sample/worker.py - Dynamic creation
-from util.repos.temporal import temporal_repository
+# In sample/repos/temporal/__init__.py
+from util.repos.temporal.decorators import temporal_repository
 from sample.repos.minio.payment import MinioPaymentRepository
 
-# Creates new TemporalMinioPaymentRepository class that inherits from MinioPaymentRepository
-TemporalMinioPaymentRepository = temporal_repository(
-    "sample.payment_repo.minio", new_class=True
-)(MinioPaymentRepository)
+@temporal_repository("sample.payment_repo.minio")
+class TemporalMinioPaymentRepository(MinioPaymentRepository):
+    """
+    Temporal activity wrapper for MinioPaymentRepository.
+    All async methods automatically wrapped as activities.
+    """
+    pass
 
-# Instantiate the decorated repository
+# In sample/worker.py - Simple import and instantiation
+from sample.repos.temporal import TemporalMinioPaymentRepository
+
 temporal_payment_repo = TemporalMinioPaymentRepository(endpoint=minio_endpoint)
 #+END_SRC
 
 *Key Benefits*:
 - Eliminates ~200+ lines of boilerplate delegation code
-- Preserves original classes for testing (=new_class=True=)
+- Clear, explicit class definitions in dedicated module
 - Automatically wraps all public async methods as activities
 - Generates consistent activity names: =prefix.method_name=
 - Self-contained worker setup - all Temporal concerns explicit

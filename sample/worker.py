@@ -14,12 +14,13 @@ from sample.workflow import (
     OrderFulfillmentWorkflow,
     CancelOrderWorkflow,
 )  # Added CancelOrderWorkflow
-from sample.repos.minio.order import MinioOrderRepository
-from sample.repos.minio.inventory import MinioInventoryRepository
-from sample.repos.minio.payment import MinioPaymentRepository
-from sample.repos.minio.order_request import MinioOrderRequestRepository
+from sample.repos.temporal import (
+    TemporalMinioOrderRepository,
+    TemporalMinioPaymentRepository,
+    TemporalMinioInventoryRepository,
+    TemporalMinioOrderRequestRepository,
+)
 from util.repos.minio.file_storage import MinioFileStorageRepository
-from util.repos.temporal import temporal_repository
 from util.repos.temporal.minio_file_storage import (
     TemporalMinioFileStorageRepository,
 )
@@ -130,38 +131,19 @@ async def run_worker() -> None:
         MinioFileStorageRepository()
     )  # Uses its own defaults/env vars internally
 
-    # This is an example of how the decorater automatically creates the temporal
-    # version of the pure minio repositories, eliminating the need for the
-    # second layer to be an explicit class.
-    # This is an example of how the decorater automatically creates the temporal
-    # version of the pure minio repositories, eliminating the need for the
-    # second layer to be an explicit class.
+    # Instantiate temporal repository classes (created using
+    # @temporal_repository decorator)
     logger.debug("Creating Temporal Activity repository implementations")
 
-    TemporalMinioOrderRepository = temporal_repository(
-        "sample.order_repo.minio", new_class=True
-    )(MinioOrderRepository)
     temporal_order_repo = TemporalMinioOrderRepository(
         endpoint=minio_endpoint
     )
-
-    TemporalMinioPaymentRepository = temporal_repository(
-        "sample.payment_repo.minio", new_class=True
-    )(MinioPaymentRepository)
     temporal_payment_repo = TemporalMinioPaymentRepository(
         endpoint=minio_endpoint
     )
-
-    TemporalMinioInventoryRepository = temporal_repository(
-        "sample.inventory_repo.minio", new_class=True
-    )(MinioInventoryRepository)
     temporal_inventory_repo = TemporalMinioInventoryRepository(
         endpoint=minio_endpoint
     )
-
-    TemporalMinioOrderRequestRepository = temporal_repository(
-        "sample.order_request_repo.minio", new_class=True
-    )(MinioOrderRequestRepository)
     temporal_order_request_repo = TemporalMinioOrderRequestRepository()
     temporal_file_storage_repo = TemporalMinioFileStorageRepository(
         minio_file_storage_repo
