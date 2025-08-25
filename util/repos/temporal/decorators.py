@@ -7,7 +7,7 @@ as Temporal activities, reducing boilerplate and ensuring consistent patterns.
 
 import inspect
 import logging
-from typing import Type, TypeVar
+from typing import Any, Callable, Type, TypeVar
 
 from temporalio import activity
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-def temporal_repository(activity_prefix: str):
+def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
     """
     Class decorator that automatically wraps all async methods as Temporal
     activities.
@@ -90,8 +90,12 @@ def temporal_repository(activity_prefix: str):
 
             # Create a new method that calls the original to avoid decorator
             # conflicts
-            def create_wrapper_method(original_method, method_name):
-                async def wrapper_method(self, *args, **kwargs):
+            def create_wrapper_method(
+                original_method: Callable[..., Any], method_name: str
+            ) -> Callable[..., Any]:
+                async def wrapper_method(
+                    self: Any, *args: Any, **kwargs: Any
+                ) -> Any:
                     return await original_method(self, *args, **kwargs)
 
                 # Preserve method metadata

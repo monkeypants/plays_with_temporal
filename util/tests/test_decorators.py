@@ -7,7 +7,7 @@ repository implementations.
 """
 
 from unittest.mock import patch
-from typing import Optional
+from typing import Any, Optional
 
 from temporalio import activity
 
@@ -56,7 +56,7 @@ class MockRepository(MockBaseRepository):
         return f"private_{value}"
 
 
-def test_decorator_wraps_public_async_methods():
+def test_decorator_wraps_public_async_methods() -> None:
     """Test decorator wraps all public async methods as activities."""
 
     @temporal_repository("test.repo")
@@ -107,7 +107,7 @@ def test_decorator_wraps_public_async_methods():
     assert base_async_attrs
 
 
-def test_decorator_does_not_wrap_sync_methods():
+def test_decorator_does_not_wrap_sync_methods() -> None:
     """Test that sync methods are not wrapped as activities."""
 
     @temporal_repository("test.repo")
@@ -123,7 +123,7 @@ def test_decorator_does_not_wrap_sync_methods():
     )
 
 
-def test_decorator_does_not_wrap_private_methods():
+def test_decorator_does_not_wrap_private_methods() -> None:
     """Test that private async methods are not wrapped as activities."""
 
     @temporal_repository("test.repo")
@@ -139,7 +139,7 @@ def test_decorator_does_not_wrap_private_methods():
     )
 
 
-def test_decorated_methods_preserve_functionality():
+def test_decorated_methods_preserve_functionality() -> None:
     """Test that decorated methods still work as expected."""
 
     @temporal_repository("test.repo")
@@ -153,7 +153,7 @@ def test_decorated_methods_preserve_functionality():
     assert result == "sync_test"
 
     # Test private method works normally
-    async def test_private():
+    async def test_private() -> None:
         result = await repo._private_method("test")
         assert result == "private_test"
 
@@ -162,7 +162,7 @@ def test_decorated_methods_preserve_functionality():
     asyncio.run(test_private())
 
 
-def test_decorated_methods_preserve_metadata():
+def test_decorated_methods_preserve_metadata() -> None:
     """Test that decorated methods preserve original method metadata."""
 
     @temporal_repository("test.repo")
@@ -177,18 +177,20 @@ def test_decorated_methods_preserve_metadata():
     assert repo.refund_payment.__name__ == "refund_payment"
 
     # Check that docstrings are preserved
-    assert "Mock payment processing method" in repo.process_payment.__doc__
-    assert "Mock get payment method" in repo.get_payment.__doc__
-    assert "Mock refund payment method" in repo.refund_payment.__doc__
+    assert "Mock payment processing method" in (
+        repo.process_payment.__doc__ or ""
+    )
+    assert "Mock get payment method" in (repo.get_payment.__doc__ or "")
+    assert "Mock refund payment method" in (repo.refund_payment.__doc__ or "")
 
 
-def test_activity_names_with_different_prefixes():
+def test_activity_names_with_different_prefixes() -> None:
     """Test different prefixes generate different activity names."""
 
     captured_activity_names = []
     original_activity_defn = activity.defn
 
-    def mock_activity_defn(name=None, **kwargs):
+    def mock_activity_defn(name: Optional[str] = None, **kwargs: Any) -> Any:
         """Mock activity.defn to capture the activity names being created."""
         if name:
             captured_activity_names.append(name)
@@ -240,7 +242,7 @@ def test_activity_names_with_different_prefixes():
     assert not set(payment_activities).intersection(set(inventory_activities))
 
 
-def test_decorator_handles_inheritance_correctly():
+def test_decorator_handles_inheritance_correctly() -> None:
     """Test that the decorator properly handles method resolution order."""
 
     class ChildRepository(MockRepository):
@@ -272,7 +274,7 @@ def test_decorator_handles_inheritance_correctly():
     )
 
 
-def test_decorator_logs_wrapped_methods():
+def test_decorator_logs_wrapped_methods() -> None:
     """Test that the decorator logs which methods it wraps."""
 
     with patch("util.repos.temporal.decorators.logger") as mock_logger:
@@ -291,7 +293,7 @@ def test_decorator_logs_wrapped_methods():
         assert "DecoratedRepository" in info_call[0][0]
 
 
-def test_empty_class_decorator():
+def test_empty_class_decorator() -> None:
     """Test decorator behavior with a class that has no async methods."""
 
     class EmptyRepository:
@@ -308,7 +310,7 @@ def test_empty_class_decorator():
     )
 
 
-def test_decorator_type_preservation():
+def test_decorator_type_preservation() -> None:
     """Test decorator preserves class type for isinstance checks."""
 
     @temporal_repository("test.types")
@@ -323,7 +325,7 @@ def test_decorator_type_preservation():
     assert isinstance(repo, MockBaseRepository)
 
 
-def test_multiple_decorations():
+def test_multiple_decorations() -> None:
     """Test repository can be decorated multiple times with prefixes."""
 
     @temporal_repository("test.first")

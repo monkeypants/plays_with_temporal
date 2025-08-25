@@ -15,7 +15,7 @@ quality-full: reports quality-types quality-security test-unit test-e2e
 # Type checking
 quality-types: reports
 	@echo "Type checking..."
-	mypy cal/ sample/ --config-file=mypy.ini > reports/mypy.txt 2>&1 || true
+	mypy cal/ sample/ util/ --config-file=mypy.ini > reports/mypy.txt 2>&1
 
 # Security scanning
 quality-security: reports
