@@ -32,7 +32,7 @@ class WorkflowOrderRepositoryProxy(OrderRepository):
         logger.debug("Workflow: Calling generate_order_id activity")
 
         result = await workflow.execute_activity(
-            "sample.order_fulfillment.order_repo.minio.generate_order_id",
+            "sample.order_repo.minio.generate_order_id",
             start_to_close_timeout=self.activity_timeout,
         )
 
@@ -49,7 +49,7 @@ class WorkflowOrderRepositoryProxy(OrderRepository):
             extra={"order_id": order.order_id, "status": order.status},
         )
         await workflow.execute_activity(
-            "sample.order_fulfillment.order_repo.minio.save_order",
+            "sample.order_repo.minio.save_order",
             order,
             start_to_close_timeout=self.activity_timeout,
         )
@@ -70,7 +70,7 @@ class WorkflowOrderRepositoryProxy(OrderRepository):
         # in the workflow context.
         # Explicitly re-validate if not None.
         raw_result = await workflow.execute_activity(
-            "sample.order_fulfillment.order_repo.minio.get_order",
+            "sample.order_repo.minio.get_order",
             order_id,
             start_to_close_timeout=self.activity_timeout,
         )
@@ -98,7 +98,7 @@ class WorkflowOrderRepositoryProxy(OrderRepository):
             extra={"order_id": order_id, "reason": reason},
         )
         await workflow.execute_activity(
-            "sample.cancel_order.order_repo.minio.cancel_order",
+            "sample.order_repo.minio.cancel_order",
             {
                 "order_id": order_id,
                 "reason": reason,

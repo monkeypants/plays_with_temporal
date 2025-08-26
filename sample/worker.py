@@ -14,21 +14,13 @@ from sample.workflow import (
     OrderFulfillmentWorkflow,
     CancelOrderWorkflow,
 )  # Added CancelOrderWorkflow
-from sample.repos.minio.order import MinioOrderRepository
-from sample.repos.minio.payment import MinioPaymentRepository
-from sample.repos.minio.inventory import MinioInventoryRepository
-from sample.repos.minio.order_request import MinioOrderRequestRepository
-from util.repos.minio.file_storage import MinioFileStorageRepository
-from sample.repos.temporal.minio_orders import TemporalMinioOrderRepository
-from sample.repos.temporal.minio_payments import (
+from sample.repos.activities import (
+    TemporalMinioOrderRepository,
     TemporalMinioPaymentRepository,
-)
-from sample.repos.temporal.minio_inventory import (
     TemporalMinioInventoryRepository,
-)
-from sample.repos.temporal.minio_order_requests import (
     TemporalMinioOrderRequestRepository,
 )
+from util.repos.minio.file_storage import MinioFileStorageRepository
 from util.repos.temporal.minio_file_storage import (
     TemporalMinioFileStorageRepository,
 )
@@ -132,28 +124,25 @@ async def run_worker() -> None:
 
     client = await get_temporal_client_with_retries(temporal_endpoint)
 
-    # Instantiate pure backend repositories
-    logger.debug("Instantiating pure backend repository implementations")
+    # Get Minio endpoint for repositories
+    logger.debug("Preparing repository configurations")
     minio_endpoint = os.environ.get("MINIO_ENDPOINT", "minio:9000")
-    minio_order_repo = MinioOrderRepository(endpoint=minio_endpoint)
-    minio_payment_repo = MinioPaymentRepository(endpoint=minio_endpoint)
-    minio_inventory_repo = MinioInventoryRepository(endpoint=minio_endpoint)
-    minio_order_request_repo = MinioOrderRequestRepository()
     minio_file_storage_repo = (
         MinioFileStorageRepository()
     )  # Uses its own defaults/env vars internally
 
-    # Instantiate Temporal Activity implementations, injecting the pure
-    # backend repos
-    logger.debug("Instantiating Temporal Activity repository implementations")
-    temporal_order_repo = TemporalMinioOrderRepository(minio_order_repo)
-    temporal_payment_repo = TemporalMinioPaymentRepository(minio_payment_repo)
+    # Instantiate temporal repository classes (imported from sample.repos)
+    logger.debug("Creating Temporal Activity repository implementations")
+    temporal_order_repo = TemporalMinioOrderRepository(
+        endpoint=minio_endpoint
+    )
+    temporal_payment_repo = TemporalMinioPaymentRepository(
+        endpoint=minio_endpoint
+    )
     temporal_inventory_repo = TemporalMinioInventoryRepository(
-        minio_inventory_repo
+        endpoint=minio_endpoint
     )
-    temporal_order_request_repo = TemporalMinioOrderRequestRepository(
-        minio_order_request_repo
-    )
+    temporal_order_request_repo = TemporalMinioOrderRequestRepository()
     temporal_file_storage_repo = TemporalMinioFileStorageRepository(
         minio_file_storage_repo
     )  # New Temporal activity repo

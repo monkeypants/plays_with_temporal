@@ -6,6 +6,7 @@ as Temporal activities, reducing boilerplate and ensuring consistent patterns.
 """
 
 import inspect
+import functools
 import logging
 from typing import Any, Callable, Type, TypeVar
 
@@ -36,17 +37,17 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
         activities
 
     Example:
-        @temporal_repository("sample.order_fulfillment.payment_repo")
-        class OrderFulfillmentPaymentRepository(MinioPaymentRepository):
+        @temporal_repository("sample.payment_repo.minio")
+        class TemporalMinioPaymentRepository(MinioPaymentRepository):
             pass
 
         # This automatically creates activities for all async methods:
         # - process_payment ->
-        #   "sample.order_fulfillment.payment_repo.process_payment"
+        #   "sample.payment_repo.minio.process_payment"
         # - get_payment ->
-        #   "sample.order_fulfillment.payment_repo.get_payment"
+        #   "sample.payment_repo.minio.get_payment"
         # - refund_payment ->
-        #   "sample.order_fulfillment.payment_repo.refund_payment"
+        #   "sample.payment_repo.minio.refund_payment"
     """
 
     def decorator(cls: Type[T]) -> Type[T]:
@@ -89,16 +90,18 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
             )
 
             # Create a new method that calls the original to avoid decorator
-            # conflicts
+            # conflicts while preserving the exact signature for Pydantic
             def create_wrapper_method(
                 original_method: Callable[..., Any], method_name: str
             ) -> Callable[..., Any]:
-                async def wrapper_method(
-                    self: Any, *args: Any, **kwargs: Any
-                ) -> Any:
-                    return await original_method(self, *args, **kwargs)
+                # Create wrapper with preserved signature for proper type
+                # conversion
 
-                # Preserve method metadata
+                @functools.wraps(original_method)
+                async def wrapper_method(*args: Any, **kwargs: Any) -> Any:
+                    return await original_method(*args, **kwargs)
+
+                # Preserve method metadata explicitly
                 wrapper_method.__name__ = method_name
                 wrapper_method.__qualname__ = f"{cls.__name__}.{method_name}"
                 wrapper_method.__doc__ = original_method.__doc__
