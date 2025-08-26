@@ -11,28 +11,15 @@ from temporalio.client import Client
 from temporalio.contrib.pydantic import pydantic_data_converter
 
 from sample.repositories import (
-    PaymentRepository,
-    InventoryRepository,
-    OrderRepository,
     OrderRequestRepository,
 )
 from util.repositories import FileStorageRepository  # Updated import path
-from sample.repos.temporal.client_proxies.payment import (
-    TemporalPaymentRepository,
-)
-from sample.repos.temporal.client_proxies.inventory import (
-    TemporalInventoryRepository,
-)
-from sample.repos.temporal.client_proxies.order_request import (
-    TemporalOrderRequestRepository,
-)
+
 from sample.repos.minio.order_request import MinioOrderRequestRepository
 from sample.repos.minio.order import MinioOrderRepository
 from sample.repos.minio.payment import MinioPaymentRepository
 from sample.usecase import (
-    OrderFulfillmentUseCase,
     GetOrderUseCase,
-    CancelOrderUseCase,
 )
 from sample.validation import (
     ensure_order_repository,
@@ -99,31 +86,6 @@ async def get_temporal_client() -> Client:
     return await _container.get_temporal_client()
 
 
-async def get_temporal_payment_repository() -> PaymentRepository:
-    """FastAPI dependency for PaymentRepository."""
-    client = await get_temporal_client()
-    return TemporalPaymentRepository(client)
-
-
-async def get_temporal_inventory_repository() -> InventoryRepository:
-    """FastAPI dependency for InventoryRepository."""
-    client = await get_temporal_client()
-    return TemporalInventoryRepository(client)
-
-
-async def get_temporal_order_repository() -> OrderRepository:
-    """FastAPI dependency for OrderRepository."""
-    # Note: TemporalOrderRepository is abstract, this would need a concrete
-    # implementation. For now, we'll use the Minio implementation directly
-    return await get_minio_order_repository()
-
-
-async def get_temporal_order_request_repository() -> OrderRequestRepository:
-    """FastAPI dependency for OrderRequestRepository."""
-    client = await get_temporal_client()
-    return TemporalOrderRequestRepository(client)
-
-
 async def get_minio_order_request_repository() -> OrderRequestRepository:
     """FastAPI dependency for direct Minio OrderRequestRepository."""
     return MinioOrderRequestRepository()
@@ -170,33 +132,15 @@ async def get_get_order_use_case(
     )
 
 
-async def get_order_fulfillment_use_case() -> OrderFulfillmentUseCase:
-    """FastAPI dependency for OrderFulfillmentUseCase."""
-    payment_repo = await get_temporal_payment_repository()
-    inventory_repo = await get_temporal_inventory_repository()
-    order_repo = (
-        await get_temporal_order_repository()
-    )  # This remains the Temporal proxy for fulfillment
-    order_request_repo = await get_temporal_order_request_repository()
-    file_storage_repo = await get_temporal_file_storage_repository()
+async def get_minio_file_storage_repository() -> FileStorageRepository:
+    """FastAPI dependency for direct Minio FileStorageRepository."""
+    from util.repos.minio.file_storage import MinioFileStorageRepository
 
-    return OrderFulfillmentUseCase(
-        payment_repo=payment_repo,
-        inventory_repo=inventory_repo,
-        order_repo=order_repo,
-        order_request_repo=order_request_repo,
-        file_storage_repo=file_storage_repo,
-    )
+    return MinioFileStorageRepository()
 
 
-async def get_cancel_order_use_case() -> CancelOrderUseCase:
-    """FastAPI dependency for CancelOrderUseCase."""
-    order_repo = await get_temporal_order_repository()
-    payment_repo = await get_temporal_payment_repository()
-    inventory_repo = await get_temporal_inventory_repository()
-
-    return CancelOrderUseCase(
-        order_repo=order_repo,
-        payment_repo=payment_repo,
-        inventory_repo=inventory_repo,
-    )
+# Note: OrderFulfillmentUseCase and CancelOrderUseCase are used within
+# workflows, not directly in the API. The API dispatches workflows using the
+# Temporal client. The workflow dependencies are handled by workflow proxies,
+# not client-side repositories. For simple CRUD operations like file
+# upload/download, use direct repositories.

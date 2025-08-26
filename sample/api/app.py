@@ -37,17 +37,17 @@ from sample.workflow import (
     CancelOrderWorkflow,
 )
 from sample.usecase import (
-    OrderFulfillmentUseCase,
     GetOrderUseCase,
 )
 from sample.api.requests import (
     CancelOrderRequest,
 )
+from util.repositories import FileStorageRepository
 from sample.api.dependencies import (
-    get_order_fulfillment_use_case,
     get_minio_order_request_repository,
     get_get_order_use_case,
     get_temporal_client,
+    get_minio_file_storage_repository,
 )
 
 
@@ -259,8 +259,8 @@ async def upload_order_attachment(
     metadata_json_str: str = Form(
         "{}"
     ),  # Metadata as a JSON string from form
-    use_case: OrderFulfillmentUseCase = Depends(
-        get_order_fulfillment_use_case
+    file_storage_repo: FileStorageRepository = Depends(
+        get_minio_file_storage_repository
     ),
 ) -> FileUploadResponse:
     """
@@ -308,6 +308,7 @@ async def upload_order_attachment(
 
         # Combine metadata from request body and file object
         combined_metadata = {
+            "order_id": order_id,
             "filename": filename,
             "content_type": content_type,
             **parsed_metadata,  # Add extra metadata from parsed JSON string
@@ -321,16 +322,19 @@ async def upload_order_attachment(
             },
         )
 
-        # Upload via use case (security validation happens in repository
+        # Upload via repository (security validation happens in repository
         # layer)
-        file_metadata = await use_case.upload_order_attachment(
-            order_id=order_id,
+        from util.domain import FileUploadArgs
+
+        upload_args = FileUploadArgs(
             file_id=file_id,
             data=file_content,
             metadata=combined_metadata,
             content_type=content_type,
             filename=filename,
         )
+
+        file_metadata = await file_storage_repo.upload_file(upload_args)
 
         logger.info(
             "Attachment uploaded successfully",
@@ -349,9 +353,6 @@ async def upload_order_attachment(
             size_bytes=file_metadata.size_bytes,
             metadata=file_metadata.metadata,
         )
-    except ValueError as e:
-        # Security validation errors from domain model or repository
-        raise HTTPException(status_code=400, detail=str(e))
     except json.JSONDecodeError as e:
         logger.error(
             "Invalid JSON in metadata form field",
@@ -361,6 +362,9 @@ async def upload_order_attachment(
         raise HTTPException(
             status_code=422, detail=f"Invalid JSON in metadata field: {e}"
         )
+    except ValueError as e:
+        # Security validation errors from domain model or repository
+        raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         logger.error(
             "File storage service not available for upload",
@@ -391,8 +395,8 @@ async def upload_order_attachment(
 async def download_order_attachment(
     order_id: str,
     file_id: str,
-    use_case: OrderFulfillmentUseCase = Depends(
-        get_order_fulfillment_use_case
+    file_storage_repo: FileStorageRepository = Depends(
+        get_minio_file_storage_repository
     ),
 ) -> Response:
     """
@@ -406,9 +410,7 @@ async def download_order_attachment(
 
     try:
         # First, get metadata to verify ownership and content type
-        file_metadata = await use_case.get_order_attachment_metadata(
-            order_id, file_id
-        )
+        file_metadata = await file_storage_repo.get_file_metadata(file_id)
         if not file_metadata:
             logger.warning(
                 "Attachment not found or not associated with order",
@@ -420,9 +422,7 @@ async def download_order_attachment(
                 "order.",
             )
 
-        file_content = await use_case.download_order_attachment(
-            order_id, file_id
-        )
+        file_content = await file_storage_repo.download_file(file_id)
 
         if file_content is None:
             logger.error(
@@ -491,8 +491,8 @@ async def download_order_attachment(
 async def get_order_attachment_metadata(
     order_id: str,
     file_id: str,
-    use_case: OrderFulfillmentUseCase = Depends(
-        get_order_fulfillment_use_case
+    file_storage_repo: FileStorageRepository = Depends(
+        get_minio_file_storage_repository
     ),
 ) -> FileDownloadResponse:
     """
@@ -505,9 +505,7 @@ async def get_order_attachment_metadata(
     )
 
     try:
-        file_metadata = await use_case.get_order_attachment_metadata(
-            order_id, file_id
-        )
+        file_metadata = await file_storage_repo.get_file_metadata(file_id)
 
         if not file_metadata:
             logger.warning(
