@@ -94,10 +94,11 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
             def create_wrapper_method(
                 original_method: Callable[..., Any], method_name: str
             ) -> Callable[..., Any]:
-                # Create wrapper with preserved signature for proper type conversion
+                # Create wrapper with preserved signature for proper type
+                # conversion
 
                 @functools.wraps(original_method)
-                async def wrapper_method(*args, **kwargs):
+                async def wrapper_method(*args: Any, **kwargs: Any) -> Any:
                     return await original_method(*args, **kwargs)
 
                 # Preserve method metadata explicitly
