@@ -14,7 +14,7 @@ from sample.workflow import (
     OrderFulfillmentWorkflow,
     CancelOrderWorkflow,
 )  # Added CancelOrderWorkflow
-from sample.repos.temporal import (
+from sample.repos.activities import (
     TemporalMinioOrderRepository,
     TemporalMinioPaymentRepository,
     TemporalMinioInventoryRepository,
@@ -131,10 +131,8 @@ async def run_worker() -> None:
         MinioFileStorageRepository()
     )  # Uses its own defaults/env vars internally
 
-    # Instantiate temporal repository classes (created using
-    # @temporal_repository decorator)
+    # Instantiate temporal repository classes (imported from sample.repos)
     logger.debug("Creating Temporal Activity repository implementations")
-
     temporal_order_repo = TemporalMinioOrderRepository(
         endpoint=minio_endpoint
     )

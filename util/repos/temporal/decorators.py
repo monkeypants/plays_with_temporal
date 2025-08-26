@@ -36,17 +36,17 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
         activities
 
     Example:
-        @temporal_repository("sample.order_fulfillment.payment_repo")
-        class OrderFulfillmentPaymentRepository(MinioPaymentRepository):
+        @temporal_repository("sample.payment_repo.minio")
+        class TemporalMinioPaymentRepository(MinioPaymentRepository):
             pass
 
         # This automatically creates activities for all async methods:
         # - process_payment ->
-        #   "sample.order_fulfillment.payment_repo.process_payment"
+        #   "sample.payment_repo.minio.process_payment"
         # - get_payment ->
-        #   "sample.order_fulfillment.payment_repo.get_payment"
+        #   "sample.payment_repo.minio.get_payment"
         # - refund_payment ->
-        #   "sample.order_fulfillment.payment_repo.refund_payment"
+        #   "sample.payment_repo.minio.refund_payment"
     """
 
     def decorator(cls: Type[T]) -> Type[T]:

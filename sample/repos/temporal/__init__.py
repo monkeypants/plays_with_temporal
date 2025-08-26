@@ -1,59 +1,14 @@
 """
-Temporal activity implementations using the @temporal_repository decorator.
+Temporal activity implementations package.
 
-This module creates the temporal activity wrapper classes for all repository
-types used in the sample domain. These classes are created using the
-@temporal_repository decorator which automatically wraps all async methods
-as Temporal activities.
+This package contains Temporal activity wrappers and workflow proxies.
+The __init__.py is intentionally minimal to avoid importing restricted modules
+during workflow initialization, which would cause sandbox violations.
 
-The classes created here follow the naming pattern documented in
-systemPatterns.org:
-- Activity names: {domain}.{usecase}.{constructor_param_name}.{method}
-- Since these are shared across use cases, they use repo-specific prefixes
+Temporal activity classes are created dynamically in worker.py using the
+@temporal_repository decorator to avoid importing Minio libraries during
+workflow import time.
 """
 
-from util.repos.temporal.decorators import temporal_repository
-from sample.repos.minio.order import MinioOrderRepository
-from sample.repos.minio.payment import MinioPaymentRepository
-from sample.repos.minio.inventory import MinioInventoryRepository
-from sample.repos.minio.order_request import MinioOrderRequestRepository
-
-# Create temporal repository classes using the decorator
-# These will be imported and instantiated in worker.py
-
-
-@temporal_repository("sample.order_repo.minio")
-class TemporalMinioOrderRepository(MinioOrderRepository):
-    """Temporal activity wrapper for MinioOrderRepository."""
-
-    pass
-
-
-@temporal_repository("sample.payment_repo.minio")
-class TemporalMinioPaymentRepository(MinioPaymentRepository):
-    """Temporal activity wrapper for MinioPaymentRepository."""
-
-    pass
-
-
-@temporal_repository("sample.inventory_repo.minio")
-class TemporalMinioInventoryRepository(MinioInventoryRepository):
-    """Temporal activity wrapper for MinioInventoryRepository."""
-
-    pass
-
-
-@temporal_repository("sample.order_request_repo.minio")
-class TemporalMinioOrderRequestRepository(MinioOrderRequestRepository):
-    """Temporal activity wrapper for MinioOrderRequestRepository."""
-
-    pass
-
-
-# Export the temporal repository classes for use in worker.py
-__all__ = [
-    "TemporalMinioOrderRepository",
-    "TemporalMinioPaymentRepository",
-    "TemporalMinioInventoryRepository",
-    "TemporalMinioOrderRequestRepository",
-]
+# Intentionally empty - temporal repository classes are created directly
+# in worker.py to avoid workflow sandbox violations

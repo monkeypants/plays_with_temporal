@@ -196,9 +196,9 @@ Format: `{domain}.{usecase}.{constructor_param_name}.{method}`
 @activity.defn(name="cal.create_schedule.classifier_repo.triage_event")
 
 # OrderFulfillmentUseCase with order_repo, payment_repo, inventory_repo parameters
-@activity.defn(name="sample.order_fulfillment.order_repo.generate_order_id")
-@activity.defn(name="sample.order_fulfillment.payment_repo.process_payment")
-@activity.defn(name="sample.order_fulfillment.inventory_repo.reserve_items")
+@activity.defn(name="sample.order_repo.generate_order_id")
+@activity.defn(name="sample.payment_repo.process_payment")
+@activity.defn(name="sample.inventory_repo.reserve_items")
 #+END_EXAMPLE
 
 This ensures workflows remain implementation-agnostic while providing unique, meaningful activity names that map directly to use case constructor parameters.

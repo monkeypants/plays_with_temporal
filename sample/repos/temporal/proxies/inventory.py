@@ -50,7 +50,7 @@ class WorkflowInventoryRepositoryProxy(InventoryRepository):
         # might deserialize it as a dict in the workflow context.
         # Explicitly re-validate to ensure it's a Pydantic model.
         raw_result = await workflow.execute_activity(
-            "sample.order_fulfillment.inventory_repo.minio.reserve_items",
+            "sample.inventory_repo.minio.reserve_items",
             order,
             start_to_close_timeout=self.activity_timeout,
             retry_policy=self.activity_fail_fast_retry_policy,
@@ -87,7 +87,7 @@ class WorkflowInventoryRepositoryProxy(InventoryRepository):
         # workflow context. Explicitly re-validate each item to ensure
         # they are Pydantic models.
         raw_results = await workflow.execute_activity(
-            "sample.cancel_order.inventory_repo.minio.release_items",
+            "sample.inventory_repo.minio.release_items",
             order,
             start_to_close_timeout=self.activity_timeout,
         )

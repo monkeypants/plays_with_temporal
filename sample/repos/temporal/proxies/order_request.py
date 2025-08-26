@@ -37,7 +37,7 @@ class WorkflowOrderRequestRepositoryProxy(OrderRequestRepository):
         )
 
         await workflow.execute_activity(
-            "sample.order_fulfillment.order_request_repo.minio.store_bidirectional_mapping",
+            "sample.order_request_repo.minio.store_bidirectional_mapping",
             args=[request_id, order_id],
             start_to_close_timeout=self.activity_timeout,
         )
@@ -57,7 +57,7 @@ class WorkflowOrderRequestRepositoryProxy(OrderRequestRepository):
         )
 
         result = await workflow.execute_activity(
-            "sample.order_fulfillment.order_request_repo.minio.get_order_id_for_request",
+            "sample.order_request_repo.minio.get_order_id_for_request",
             args=[request_id],
             start_to_close_timeout=self.activity_timeout,
         )
@@ -76,7 +76,7 @@ class WorkflowOrderRequestRepositoryProxy(OrderRequestRepository):
         )
 
         result = await workflow.execute_activity(
-            "sample.order_fulfillment.order_request_repo.minio.get_request_id_for_order",
+            "sample.order_request_repo.minio.get_request_id_for_order",
             args=[order_id],
             start_to_close_timeout=self.activity_timeout,
         )
