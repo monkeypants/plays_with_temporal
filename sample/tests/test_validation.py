@@ -157,7 +157,7 @@ def test_ensure_payment_repository_success(
 def test_ensure_payment_repository_failure() -> None:
     """Test convenience function with invalid payment repository"""
     # Create a mock that's definitely missing required methods
-    invalid_repo = MagicMock()
+    invalid_repo = MagicMock(spec=[])
 
     with pytest.raises(RepositoryValidationError):
         ensure_payment_repository(invalid_repo)
