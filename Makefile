@@ -4,8 +4,8 @@
 # Fast quality checks (for pre-commit)
 quality-fast:
 	@echo "Running fast quality checks..."
-	black --check cal/ sample/
-	ruff check cal/ sample/
+	black --check cal/ sample/ util/
+	ruff check cal/ sample/ util/
 	pytest -x -m "not e2e" --no-cov -q
 
 # Full quality suite (for post-commit/CI)
@@ -15,7 +15,7 @@ quality-full: reports quality-types quality-security test-unit test-e2e
 # Type checking
 quality-types: reports
 	@echo "Type checking..."
-	mypy cal/ sample/ --config-file=mypy.ini > reports/mypy.txt 2>&1 || true
+	mypy cal/ sample/ util/ --config-file=mypy.ini > reports/mypy.txt 2>&1
 
 # Security scanning
 quality-security: reports

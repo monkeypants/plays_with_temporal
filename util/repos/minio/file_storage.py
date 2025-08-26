@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Dict
+from typing import Optional
 
 from minio import Minio  # type: ignore[import-untyped]
 from minio.error import S3Error  # type: ignore[import-untyped]
@@ -25,12 +25,20 @@ class MinioFileStorageRepository(FileStorageRepository):
         secure: bool = False,
         bucket_name: Optional[str] = None,
     ):
-        self._endpoint = endpoint or os.environ.get("MINIO_ENDPOINT", "localhost:9000")
-        self._access_key = access_key or os.environ.get("MINIO_ROOT_USER", "minioadmin")
-        self._secret_key = secret_key or os.environ.get("MINIO_ROOT_PASSWORD", "minioadmin")
+        self._endpoint = endpoint or os.environ.get(
+            "MINIO_ENDPOINT", "localhost:9000"
+        )
+        self._access_key = access_key or os.environ.get(
+            "MINIO_ROOT_USER", "minioadmin"
+        )
+        self._secret_key = secret_key or os.environ.get(
+            "MINIO_ROOT_PASSWORD", "minioadmin"
+        )
         self._secure = secure
-        self._bucket_name = bucket_name or os.environ.get("MINIO_BUCKET_NAME", "file-storage")
-        
+        self._bucket_name = bucket_name or os.environ.get(
+            "MINIO_BUCKET_NAME", "file-storage"
+        )
+
         self._client: Optional[Minio] = None
         logger.debug(
             "MinioFileStorageRepository initialized",
@@ -69,7 +77,10 @@ class MinioFileStorageRepository(FileStorageRepository):
             except S3Error as e:
                 logger.error(
                     f"Error checking or creating Minio bucket: {e}",
-                    extra={"bucket_name": self._bucket_name, "error_code": e.code},
+                    extra={
+                        "bucket_name": self._bucket_name,
+                        "error_code": e.code,
+                    },
                 )
                 raise
         return self._client
@@ -160,14 +171,26 @@ class MinioFileStorageRepository(FileStorageRepository):
                     "content_type": stat.content_type,
                 },
             )
-            uploaded_at_str: Optional[str] = stat.last_modified.isoformat() if stat.last_modified else None
+            uploaded_at_str: Optional[str] = (
+                stat.last_modified.isoformat() if stat.last_modified else None
+            )
             return FileMetadata(
                 file_id=file_id,
-                filename=stat.user_metadata.get("X-Amz-Meta-Filename"),  # Minio prepends X-Amz-Meta-
+                filename=stat.user_metadata.get(
+                    "X-Amz-Meta-Filename"
+                ),  # Minio prepends X-Amz-Meta-
                 content_type=stat.content_type,
                 size_bytes=stat.size,
-                uploaded_at=uploaded_at_str or "",  # Provide empty string if None
-                metadata={k.replace("X-Amz-Meta-", ""): v for k,v in stat.user_metadata.items()} if stat.user_metadata else {}
+                uploaded_at=uploaded_at_str
+                or "",  # Provide empty string if None
+                metadata=(
+                    {
+                        k.replace("X-Amz-Meta-", ""): v
+                        for k, v in stat.user_metadata.items()
+                    }
+                    if stat.user_metadata
+                    else {}
+                ),
             )
         except S3Error as e:
             if e.code == "NoSuchKey":
