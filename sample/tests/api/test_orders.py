@@ -2,17 +2,17 @@ import pytest
 from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 import io
-import uuid  # Added uuid import
 import json
 
 from sample.api.app import app
 from sample.api.dependencies import (
-    get_order_fulfillment_use_case,
     get_minio_order_request_repository,
     get_get_order_use_case,
+    get_minio_file_storage_repository,
 )
 from sample.api.responses import OrderStatusResponse
-from sample.usecase import OrderFulfillmentUseCase, GetOrderUseCase
+from sample.usecase import GetOrderUseCase
+from util.repositories import FileStorageRepository
 from util.domain import FileMetadata
 
 
@@ -136,30 +136,30 @@ def test_get_order_status_endpoint() -> None:
 @pytest.mark.asyncio
 async def test_upload_order_attachment_endpoint() -> None:
     """Test the /orders/{order_id}/attachments endpoint for file upload."""
-    mock_use_case = AsyncMock(spec=OrderFulfillmentUseCase)
+    mock_file_storage_repo = AsyncMock(spec=FileStorageRepository)
 
     test_order_id = "order-attach-123"
     test_file_content = b"This is some test file content."
     test_filename = "test_document.txt"
     test_content_type = "text/plain"
-    test_file_id = str(uuid.uuid4())  # Simulate generated file_id
 
-    # Configure mock use case to return a FileMetadata object
-    mock_use_case.upload_order_attachment = AsyncMock(
-        return_value=FileMetadata(
-            file_id=test_file_id,
-            filename=test_filename,
-            content_type=test_content_type,
-            size_bytes=len(test_file_content),
-            metadata={
-                "order_id": test_order_id,
-                "custom_key": "custom_value",
-            },
+    # Configure mock file storage repository with a function that returns
+    # FileMetadata based on the actual input arguments
+    def mock_upload_file(upload_args):
+        return FileMetadata(
+            file_id=upload_args.file_id,  # Use the actual file_id from input
+            filename=upload_args.filename,
+            content_type=upload_args.content_type,
+            size_bytes=len(upload_args.data),
+            metadata=upload_args.metadata,
         )
+
+    mock_file_storage_repo.upload_file = AsyncMock(
+        side_effect=mock_upload_file
     )
 
-    app.dependency_overrides[get_order_fulfillment_use_case] = (
-        lambda: mock_use_case
+    app.dependency_overrides[get_minio_file_storage_repository] = (
+        lambda: mock_file_storage_repo
     )
 
     client = TestClient(app)
@@ -189,21 +189,28 @@ async def test_upload_order_attachment_endpoint() -> None:
     assert response.status_code == 200
     response_json = response.json()
     assert response_json["message"] == "File uploaded successfully"
-    assert response_json["file_id"] == test_file_id
+    returned_file_id = response_json["file_id"]
     assert response_json["filename"] == test_filename
     assert response_json["content_type"] == test_content_type
     assert response_json["size_bytes"] == len(test_file_content)
     assert response_json["metadata"]["order_id"] == test_order_id
     assert response_json["metadata"]["custom_key"] == "custom_value"
 
-    # Verify use case method was called with correct arguments
-    mock_use_case.upload_order_attachment.assert_awaited_once()
-    call_args = mock_use_case.upload_order_attachment.call_args[1]
-    assert call_args["order_id"] == test_order_id
-    assert call_args["data"] == test_file_content
-    assert call_args["metadata"]["filename"] == test_filename
-    assert call_args["metadata"]["content_type"] == test_content_type
-    assert call_args["metadata"]["custom_key"] == "custom_value"
+    # Verify the mock file storage repository was called correctly
+    mock_file_storage_repo.upload_file.assert_awaited_once()
+    call_args = mock_file_storage_repo.upload_file.call_args
+    upload_args = call_args[0][
+        0
+    ]  # First positional argument is FileUploadArgs
+
+    # Verify that the API-generated file_id flows through the entire chain:
+    # API generates file_id → passes to repository → repository returns it
+    # → API returns it
+    assert upload_args.file_id == returned_file_id
+    assert upload_args.filename == test_filename
+    assert upload_args.content_type == test_content_type
+    assert upload_args.data == test_file_content
+    assert upload_args.metadata["custom_key"] == "custom_value"
 
     app.dependency_overrides = {}
 
@@ -213,7 +220,7 @@ async def test_download_order_attachment_endpoint() -> None:
     """Test the /orders/{order_id}/attachments/{file_id} endpoint for file
     download.
     """
-    mock_use_case = AsyncMock(spec=OrderFulfillmentUseCase)
+    mock_file_storage_repo = AsyncMock(spec=FileStorageRepository)
 
     test_order_id = "order-attach-123"
     test_file_id = "some-file-id-123"
@@ -222,7 +229,8 @@ async def test_download_order_attachment_endpoint() -> None:
     test_content_type = "application/pdf"
 
     # Configure mock use case for metadata and content
-    mock_use_case.get_order_attachment_metadata = AsyncMock(
+    # Configure mock file storage repository to return file metadata
+    mock_file_storage_repo.get_file_metadata = AsyncMock(
         return_value=FileMetadata(
             file_id=test_file_id,
             filename=test_filename,
@@ -231,12 +239,12 @@ async def test_download_order_attachment_endpoint() -> None:
             metadata={"order_id": test_order_id},
         )
     )
-    mock_use_case.download_order_attachment = AsyncMock(
+    mock_file_storage_repo.download_file = AsyncMock(
         return_value=test_file_content
     )
 
-    app.dependency_overrides[get_order_fulfillment_use_case] = (
-        lambda: mock_use_case
+    app.dependency_overrides[get_minio_file_storage_repository] = (
+        lambda: mock_file_storage_repo
     )
 
     client = TestClient(app)
@@ -252,11 +260,12 @@ async def test_download_order_attachment_endpoint() -> None:
         == f'attachment; filename="{test_filename}"'
     )
 
-    mock_use_case.get_order_attachment_metadata.assert_awaited_once_with(
-        test_order_id, test_file_id
+    # Verify the mock file storage repository was called
+    mock_file_storage_repo.get_file_metadata.assert_awaited_once_with(
+        test_file_id
     )
-    mock_use_case.download_order_attachment.assert_awaited_once_with(
-        test_order_id, test_file_id
+    mock_file_storage_repo.download_file.assert_awaited_once_with(
+        test_file_id
     )
 
     app.dependency_overrides = {}
@@ -265,7 +274,7 @@ async def test_download_order_attachment_endpoint() -> None:
 @pytest.mark.asyncio
 async def test_get_order_attachment_metadata_endpoint() -> None:
     """Test the /orders/{order_id}/attachments/{file_id}/metadata endpoint."""
-    mock_use_case = AsyncMock(spec=OrderFulfillmentUseCase)
+    mock_file_storage_repo = AsyncMock(spec=FileStorageRepository)
 
     test_order_id = "order-attach-123"
     test_file_id = "some-file-id-123"
@@ -274,8 +283,8 @@ async def test_get_order_attachment_metadata_endpoint() -> None:
     test_size_bytes = 1234
     test_uploaded_at = "2023-10-27T10:00:00.000000"
 
-    # Configure mock use case for metadata
-    mock_use_case.get_order_attachment_metadata = AsyncMock(
+    # Configure mock file storage repository for metadata
+    mock_file_storage_repo.get_file_metadata = AsyncMock(
         return_value=FileMetadata(
             file_id=test_file_id,
             filename=test_filename,
@@ -286,8 +295,8 @@ async def test_get_order_attachment_metadata_endpoint() -> None:
         )
     )
 
-    app.dependency_overrides[get_order_fulfillment_use_case] = (
-        lambda: mock_use_case
+    app.dependency_overrides[get_minio_file_storage_repository] = (
+        lambda: mock_file_storage_repo
     )
 
     client = TestClient(app)
@@ -305,8 +314,8 @@ async def test_get_order_attachment_metadata_endpoint() -> None:
     assert response_json["metadata"]["order_id"] == test_order_id
     assert response_json["metadata"]["source"] == "api"
 
-    mock_use_case.get_order_attachment_metadata.assert_awaited_once_with(
-        test_order_id, test_file_id
+    mock_file_storage_repo.get_file_metadata.assert_awaited_once_with(
+        test_file_id
     )
 
     app.dependency_overrides = {}
