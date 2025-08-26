@@ -13,7 +13,7 @@ from sample.api.dependencies import (
 from sample.api.responses import OrderStatusResponse
 from sample.usecase import GetOrderUseCase
 from util.repositories import FileStorageRepository
-from util.domain import FileMetadata
+from util.domain import FileMetadata, FileUploadArgs
 
 
 def test_create_order_endpoint() -> None:
@@ -145,7 +145,7 @@ async def test_upload_order_attachment_endpoint() -> None:
 
     # Configure mock file storage repository with a function that returns
     # FileMetadata based on the actual input arguments
-    def mock_upload_file(upload_args):
+    def mock_upload_file(upload_args: FileUploadArgs) -> FileMetadata:
         return FileMetadata(
             file_id=upload_args.file_id,  # Use the actual file_id from input
             filename=upload_args.filename,
