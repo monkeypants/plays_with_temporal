@@ -9,10 +9,11 @@ All domain models use Pydantic BaseModel for validation, serialization,
 and type safety, following the patterns established in the sample project.
 """
 
-from .document import Document, DocumentMetadata, DocumentStatus
+from .document import Document, DocumentStatus
+from .custom_fields import ContentStream
 
 __all__ = [
     "Document",
-    "DocumentMetadata",
     "DocumentStatus",
+    "ContentStream",
 ]
