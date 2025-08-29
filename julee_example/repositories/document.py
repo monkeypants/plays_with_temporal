@@ -23,7 +23,7 @@ stubs that delegate to activities for durability and proper error handling.
 """
 
 from typing import Protocol, Optional, runtime_checkable
-from julee_example.domain import DocumentMetadata, DocumentStatus
+from julee_example.domain import Document, DocumentMetadata, DocumentStatus
 
 
 @runtime_checkable
@@ -33,6 +33,23 @@ class DocumentRepository(Protocol):
     This repository manages the core document storage and metadata
     operations within the Capture, Extract, Assemble, Publish workflow.
     """
+
+    async def retrieve_document(self, document_id: str) -> Optional[Document]:
+        """Retrieve a complete document with content and metadata.
+
+        Args:
+            document_id: Unique document identifier
+
+        Returns:
+            Document object if found, None otherwise
+
+        Implementation Notes:
+        - Must be idempotent: multiple calls return same result
+        - Should handle missing documents gracefully (return None)
+        - Returns complete Document object with both content and metadata
+        - Primary method for document retrieval in CEAP workflow
+        """
+        ...
 
     async def retrieve_content(self, document_id: str) -> Optional[bytes]:
         """Retrieve the raw content of a document.
@@ -48,6 +65,7 @@ class DocumentRepository(Protocol):
         - Should handle missing documents gracefully (return None)
         - May retrieve from object storage (Minio, S3, etc.)
         - Critical for extraction phase where raw content is needed
+        - Consider using retrieve_document() for complete object
         """
         ...
 
@@ -70,6 +88,20 @@ class DocumentRepository(Protocol):
         """
         ...
 
+    async def update_document(self, document: Document) -> None:
+        """Update a complete document with content and metadata.
+
+        Args:
+            document: Updated Document object
+
+        Implementation Notes:
+        - Must be idempotent: updating with same document is safe
+        - Should update the updated_at timestamp in metadata
+        - Updates both content and metadata atomically
+        - Primary method for document updates in CEAP workflow
+        """
+        ...
+
     async def update_metadata(
         self, document_id: str, metadata: DocumentMetadata
     ) -> None:
@@ -84,13 +116,33 @@ class DocumentRepository(Protocol):
         - Should update the updated_at timestamp
         - Critical for tracking document progress through CEAP pipeline
         - Used after each major workflow stage
+        - Consider using update_document() for complete object updates
         """
         ...
 
-    async def store_document(
+    async def store_document(self, document: Document) -> str:
+        """Store a new document with its content and metadata.
+
+        Args:
+            document: Document object to store
+
+        Returns:
+            Document ID of the stored document
+
+        Implementation Notes:
+        - Must be idempotent: storing same document returns same ID
+        - Should generate unique document ID if not provided in metadata
+        - Must store both content and metadata atomically
+        - Entry point for the "Capture" phase of Capture, Extract, Assemble,
+          Publish
+        - Primary method for document storage in CEAP workflow
+        """
+        ...
+
+    async def store_document_parts(
         self, content: bytes, metadata: DocumentMetadata
     ) -> str:
-        """Store a new document with its metadata.
+        """Store a new document with its metadata (legacy method).
 
         Args:
             content: Raw document content
@@ -103,8 +155,7 @@ class DocumentRepository(Protocol):
         - Must be idempotent: storing same content returns same ID
         - Should generate unique document ID if not provided
         - Must store both content and metadata atomically
-        - Entry point for the "Capture" phase of Capture, Extract, Assemble,
-          Publish
+        - Consider using store_document() with Document object instead
         """
         ...
 
