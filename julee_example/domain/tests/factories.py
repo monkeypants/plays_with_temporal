@@ -29,28 +29,6 @@ def _get_default_content_bytes() -> bytes:
     return b"Test document content for testing purposes"
 
 
-def _get_pdf_content_bytes() -> bytes:
-    """Generate PDF content bytes for documents."""
-    return b"%PDF-1.4 fake PDF content for testing"
-
-
-def _get_json_content_bytes() -> bytes:
-    """Generate JSON content bytes for documents."""
-    return b'{"test": "data", "numbers": [1, 2, 3]}'
-
-
-def _get_large_content_bytes() -> bytes:
-    """Generate large content bytes for streaming tests."""
-    chunk = b"Large document content for testing streaming operations. "
-    target_bytes = 10 * 1024  # 10KB
-    repeat_count = target_bytes // len(chunk)
-    content_bytes = chunk * repeat_count
-    # Add extra chunks to ensure we meet minimum size
-    while len(content_bytes) < target_bytes:
-        content_bytes += chunk
-    return content_bytes
-
-
 class ContentStreamFactory(Factory):
     class Meta:
         model = ContentStream

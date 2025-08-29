@@ -9,10 +9,34 @@ and type safety, following the patterns established in the sample project.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Callable, Optional, List, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
 from .custom_fields import ContentStream
+
+
+def delegate_to_content(*method_names: str) -> Callable[[type], type]:
+    """Decorator to delegate IO methods to the content stream property."""
+
+    def decorator(cls: type) -> type:
+        for method_name in method_names:
+
+            def make_delegated_method(name: str) -> Callable[..., Any]:
+                def delegated_method(
+                    self: Any, *args: Any, **kwargs: Any
+                ) -> Any:
+                    return getattr(self.content, name)(*args, **kwargs)
+
+                delegated_method.__name__ = name
+                delegated_method.__doc__ = (
+                    f"Delegate {name} to content stream."
+                )
+                return delegated_method
+
+            setattr(cls, method_name, make_delegated_method(method_name))
+        return cls
+
+    return decorator
 
 
 class DocumentStatus(str, Enum):
@@ -28,6 +52,7 @@ class DocumentStatus(str, Enum):
     FAILED = "failed"
 
 
+@delegate_to_content("read", "seek", "tell")
 class Document(BaseModel):
     """Complete document entity including content and metadata.
 
@@ -93,31 +118,3 @@ class Document(BaseModel):
         if not v or not v.strip():
             raise ValueError("Content multihash cannot be empty")
         return v.strip()
-
-    def read(self, size: int = -1) -> bytes:
-        """Read content from the document stream.
-
-        Args:
-            size: Number of bytes to read. -1 reads all content.
-
-        Returns:
-            Content bytes from the document stream.
-        """
-        return self.content.read(size)
-
-    def seek(self, offset: int, whence: int = 0) -> int:
-        """Seek to position in document stream.
-
-        Args:
-            offset: Offset to seek to
-            whence: How to interpret offset (0=absolute, 1=relative, 2=from
-                end)
-
-        Returns:
-            New absolute position in the stream.
-        """
-        return self.content.seek(offset, whence)
-
-    def tell(self) -> int:
-        """Get current position in document stream."""
-        return self.content.tell()
