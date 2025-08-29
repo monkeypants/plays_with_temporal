@@ -4,7 +4,7 @@ from pydantic import (
     field_validator,
 )
 from typing import Optional, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class FileMetadata(BaseModel):
@@ -15,7 +15,7 @@ class FileMetadata(BaseModel):
     content_type: Optional[str] = None
     size_bytes: Optional[int] = None
     uploaded_at: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat()
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     metadata: Dict[str, str] = Field(default_factory=dict)
 

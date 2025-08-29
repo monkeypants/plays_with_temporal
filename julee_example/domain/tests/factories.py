@@ -1,9 +1,9 @@
 """
 Test factories for creating domain objects using factory_boy.
 
-This module provides factory_boy factories for creating test instances of domain
-objects with sensible defaults. Uses proper factory_boy patterns for better
-test object creation.
+This module provides factory_boy factories for creating test instances of
+domain objects with sensible defaults. Uses proper factory_boy patterns for
+better test object creation.
 
 Design decisions documented:
 - ContentStream wraps io.BytesIO for small test content
@@ -55,8 +55,9 @@ class ContentStreamFactory(Factory):
     # Create ContentStream with BytesIO containing test content
     @classmethod
     def _create(cls, model_class, **kwargs):
-        content = kwargs.get('content', b"Test stream content")
+        content = kwargs.get("content", b"Test stream content")
         return model_class(io.BytesIO(content))
+
 
 class DocumentFactory(Factory):
     """Factory for creating Document instances with sensible test defaults."""
@@ -65,10 +66,10 @@ class DocumentFactory(Factory):
         model = Document
 
     # Core document identification
-    document_id = Faker('uuid4')
-    original_filename = 'test_document.txt'
-    content_type = 'text/plain'
-    content_multihash = Faker('sha256')
+    document_id = Faker("uuid4")
+    original_filename = "test_document.txt"
+    content_type = "text/plain"
+    content_multihash = Faker("sha256")
 
     # Document processing state
     status = DocumentStatus.CAPTURED

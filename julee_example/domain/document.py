@@ -28,9 +28,6 @@ class DocumentStatus(str, Enum):
     FAILED = "failed"
 
 
-
-
-
 class Document(BaseModel):
     """Complete document entity including content and metadata.
 
@@ -105,7 +102,8 @@ class Document(BaseModel):
 
         Args:
             offset: Offset to seek to
-            whence: How to interpret offset (0=absolute, 1=relative, 2=from end)
+            whence: How to interpret offset (0=absolute, 1=relative, 2=from
+                end)
 
         Returns:
             New absolute position in the stream.

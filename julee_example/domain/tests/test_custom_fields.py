@@ -19,23 +19,28 @@ from typing import Any
 from julee_example.domain.custom_fields import ContentStream
 
 
-@pytest.mark.parametrize("stream_input,error_message", [
-    # Valid inputs - io.IOBase instances
-    (io.BytesIO(b"test content"), None),
-    (io.StringIO("text content"), None),
-    (io.BufferedReader(io.BytesIO(b"buffered")), None),
-    (ContentStream(io.BytesIO(b"nested content")).stream, None),
-
-    # Invalid inputs - not io.IOBase
-    (b"raw bytes", "ContentStream requires an io.IOBase instance"),
-    ("string", "ContentStream requires an io.IOBase instance"),
-    (123, "ContentStream requires an io.IOBase instance"),
-    (None, "ContentStream requires an io.IOBase instance"),
-    ([], "ContentStream requires an io.IOBase instance"),
-    ({}, "ContentStream requires an io.IOBase instance"),
-])
-def test_content_stream_validation(stream_input: Any, error_message: str | None):
-    """Test ContentStream validation with various input types including nested streams."""
+@pytest.mark.parametrize(
+    "stream_input,error_message",
+    [
+        # Valid inputs - io.IOBase instances
+        (io.BytesIO(b"test content"), None),
+        (io.StringIO("text content"), None),
+        (io.BufferedReader(io.BytesIO(b"buffered")), None),
+        (ContentStream(io.BytesIO(b"nested content")).stream, None),
+        # Invalid inputs - not io.IOBase
+        (b"raw bytes", "ContentStream requires an io.IOBase instance"),
+        ("string", "ContentStream requires an io.IOBase instance"),
+        (123, "ContentStream requires an io.IOBase instance"),
+        (None, "ContentStream requires an io.IOBase instance"),
+        ([], "ContentStream requires an io.IOBase instance"),
+        ({}, "ContentStream requires an io.IOBase instance"),
+    ],
+)
+def test_content_stream_validation(
+    stream_input: Any, error_message: str | None
+):
+    """Test ContentStream validation with various input types including nested
+    streams."""
     if error_message is None:
         # Should create successfully
         content_stream = ContentStream(stream_input)

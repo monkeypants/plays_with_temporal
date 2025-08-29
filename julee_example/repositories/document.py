@@ -30,7 +30,7 @@ stubs that delegate to activities for durability and proper error handling.
 """
 
 from typing import Protocol, Optional, runtime_checkable
-from julee_example.domain import Document, DocumentStatus
+from julee_example.domain import Document
 
 
 @runtime_checkable
@@ -41,10 +41,7 @@ class DocumentRepository(Protocol):
     operations within the Capture, Extract, Assemble, Publish workflow.
     """
 
-    async def get(
-        self,
-        document_id: str
-    ) -> Optional[Document]:
+    async def get(self, document_id: str) -> Optional[Document]:
         """Retrieve a document with metadata and content.
 
         Args:
@@ -74,22 +71,40 @@ class DocumentRepository(Protocol):
         """
         ...
 
-    async def store(self, document: Document) -> str:
+    async def store(self, document: Document) -> None:
         """Store a new document with its content and metadata.
 
         Args:
             document: Document object with ContentStream
 
-        Returns:
-            Document ID of the stored document
-
         Implementation Notes:
-        - Must be idempotent: storing same document returns same ID
-        - Should generate unique document ID if not provided in metadata
+        - Must be idempotent
         - Reads content from document.content ContentStream if provided
         - Must store both content stream and metadata atomically
-        - Should calculate and verify content_multihash
+        - Must use document id from generate_id call
         - Entry point for the "Capture" phase of Capture, Extract, Assemble,
           Publish
+        """
+        ...
+
+    async def generate_id(self) -> str:
+        """Generate a unique document identifier.
+
+        This operation is non-deterministic and must be called from
+        workflow activities, not directly from workflow code.
+
+        Returns:
+            Unique document ID string
+
+        Implementation Notes:
+        - Must generate globally unique identifiers
+        - May use UUIDs, database sequences, or distributed ID generators
+        - Should be fast and reliable
+        - Failure here should be rare but handled gracefully
+
+        Workflow Context:
+        In Temporal workflows, this method is implemented as an activity
+        to ensure the generated ID is durably stored and consistent
+        across workflow replays.
         """
         ...

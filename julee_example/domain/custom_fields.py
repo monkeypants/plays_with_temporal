@@ -1,7 +1,8 @@
 """
 Custom Pydantic field types for the CEAP workflow domain.
 
-This module contains custom field types that provide proper Pydantic validation
+This module contains custom field types that provide proper Pydantic
+validation
 for specialized data types used in the document processing workflow.
 """
 
