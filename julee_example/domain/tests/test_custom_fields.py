@@ -38,7 +38,7 @@ from julee_example.domain.custom_fields import ContentStream
 )
 def test_content_stream_validation(
     stream_input: Any, error_message: str | None
-):
+) -> None:
     """Test ContentStream validation with various input types including nested
     streams."""
     if error_message is None:

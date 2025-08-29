@@ -65,6 +65,13 @@ class Document(BaseModel):
     additional_metadata: Dict[str, Any] = Field(default_factory=dict)
     content: ContentStream = Field(exclude=True)
 
+    @field_validator("document_id")
+    @classmethod
+    def document_id_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Document ID cannot be empty")
+        return v.strip()
+
     @field_validator("original_filename")
     @classmethod
     def filename_must_not_be_empty(cls, v: str) -> str:
@@ -82,6 +89,7 @@ class Document(BaseModel):
     @field_validator("content_multihash")
     @classmethod
     def content_multihash_must_not_be_empty(cls, v: str) -> str:
+        # TODO: actually validate the multihash against the content?
         if not v or not v.strip():
             raise ValueError("Content multihash cannot be empty")
         return v.strip()

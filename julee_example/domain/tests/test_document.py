@@ -51,8 +51,14 @@ class TestDocumentInstantiation:
                 True,
             ),
             # Invalid cases - empty required fields
-            # Note: Empty document_id is actually valid in Pydantic (no
-            # validator for it)
+            (
+                "",
+                "test.txt",
+                "text/plain",
+                100,
+                "sha256:hash",
+                False,
+            ),  # Empty document_id
             (
                 "doc-4",
                 "",
@@ -78,6 +84,14 @@ class TestDocumentInstantiation:
                 False,
             ),  # Empty multihash
             # Invalid cases - whitespace only
+            (
+                "   ",
+                "test.txt",
+                "text/plain",
+                100,
+                "sha256:hash",
+                False,
+            ),  # Whitespace document_id
             (
                 "doc-7",
                 "   ",
@@ -129,9 +143,9 @@ class TestDocumentInstantiation:
         size_bytes: int,
         multihash: str,
         expected_success: bool,
-    ):
+    ) -> None:
         """Test document creation with various field validation scenarios."""
-        content_stream = ContentStreamFactory()
+        content_stream = ContentStreamFactory.build()
 
         if expected_success:
             # Should create successfully
@@ -159,18 +173,20 @@ class TestDocumentInstantiation:
                     content_type=content_type,
                     size_bytes=size_bytes,
                     content_multihash=multihash,
-                    content=content_stream,
+                    content=ContentStreamFactory.build(),
                 )
 
 
 class TestDocumentSerialization:
     """Test Document JSON serialization behavior."""
 
-    def test_document_json_excludes_content(self):
+    def test_document_json_excludes_content(self) -> None:
         """Test that content stream is excluded from JSON serialization."""
         content = b"Secret content not for JSON"
-        content_stream = ContentStreamFactory(content=content)
-        doc = DocumentFactory(content=content_stream, size_bytes=len(content))
+        content_stream = ContentStreamFactory.build(content=content)
+        doc = DocumentFactory.build(
+            content=content_stream, size_bytes=len(content)
+        )
 
         json_str = doc.model_dump_json()
         json_data = json.loads(json_str)

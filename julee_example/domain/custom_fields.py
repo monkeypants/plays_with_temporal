@@ -8,6 +8,7 @@ for specialized data types used in the document processing workflow.
 
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
+from typing import Any
 import io
 
 
@@ -22,12 +23,21 @@ class ContentStream:
 
     def __init__(self, stream: io.IOBase):
         if not isinstance(stream, io.IOBase):
-            raise ValueError("ContentStream requires an io.IOBase instance")
+            raise ValueError(
+                "ContentStream requires an io.IOBase instance, "
+                + f"got {type(stream)}"
+            )
         self._stream = stream
 
     def read(self, size: int = -1) -> bytes:
         """Read from the underlying stream."""
-        return self._stream.read(size)
+        result = self.stream.read(size)
+        if not isinstance(result, bytes):
+            # Handle case where stream returns str (like StringIO)
+            if isinstance(result, str):
+                return result.encode("utf-8")
+            return b""  # Fallback for other types
+        return result
 
     def seek(self, offset: int, whence: int = 0) -> int:
         """Seek in the underlying stream."""
@@ -44,16 +54,18 @@ class ContentStream:
 
     @classmethod
     def __get_pydantic_core_schema__(
-        cls, source_type, handler: GetCoreSchemaHandler
+        cls, source_type: type, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
         """Define how Pydantic should validate this type."""
         return core_schema.no_info_plain_validator_function(cls._validate)
 
     @classmethod
-    def _validate(cls, v):
+    def _validate(cls, value: Any) -> "ContentStream":
         """Validate input and convert to ContentStream."""
-        if isinstance(v, cls):
-            return v
-        if isinstance(v, io.IOBase):
-            return cls(v)
-        raise ValueError(f"ContentStream expects io.IOBase, got {type(v)}")
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, io.IOBase):
+            return cls(value)
+        raise ValueError(
+            f"ContentStream expects io.IOBase, got {type(value)}"
+        )
