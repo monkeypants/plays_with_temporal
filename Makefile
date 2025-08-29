@@ -4,8 +4,8 @@
 # Fast quality checks (for pre-commit)
 quality-fast:
 	@echo "Running fast quality checks..."
-	black --check cal/ sample/ util/
-	ruff check cal/ sample/ util/
+	black --check cal/ sample/ util/ julee_example/
+	ruff check cal/ sample/ util/ julee_example/
 	pytest -x -m "not e2e" --no-cov -q
 
 # Full quality suite (for post-commit/CI)
@@ -15,7 +15,7 @@ quality-full: reports quality-types quality-security test-unit test-e2e
 # Type checking
 quality-types: reports
 	@echo "Type checking..."
-	mypy cal/ sample/ util/ --config-file=mypy.ini > reports/mypy.txt 2>&1
+	mypy cal/ sample/ util/ julee_example/ --config-file=mypy.ini > reports/mypy.txt 2>&1
 
 # Security scanning
 quality-security: reports
@@ -32,7 +32,7 @@ quality-security: reports
 # Unit tests with coverage
 test-unit: reports
 	@echo "Running unit tests with coverage..."
-	pytest --cov=cal --cov=sample --cov-fail-under=60 --cov-report=html:reports/htmlcov --cov-report=xml:reports/coverage.xml -m "not e2e"
+	pytest --cov=cal --cov=sample --cov=julee_example --cov-fail-under=60 --cov-report=html:reports/htmlcov --cov-report=xml:reports/coverage.xml -m "not e2e"
 
 # E2E test setup (starts ephemeral infrastructure)
 e2e-test-setup: reports
@@ -100,7 +100,7 @@ clean:
 # Format code with black
 format:
 	@echo "Formatting code with black..."
-	black cal/ sample/
+	black cal/ sample/ julee_example/
 
 # Help target
 help:
