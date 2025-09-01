@@ -11,17 +11,20 @@ The implementation separates document metadata (stored as JSON) from content
 payload handling pattern from the architectural guidelines."""
 
 import io
+import json
+
 import logging
 import uuid
 import hashlib
 from datetime import datetime, timezone
 from typing import Optional
-from minio import Minio  # type: ignore[import-untyped]
+
 from minio.error import S3Error  # type: ignore[import-untyped]
 import multihash  # type: ignore[import-untyped]
 
 from julee_example.domain import Document, ContentStream
 from julee_example.repositories.document import DocumentRepository
+from .client import MinioClient
 
 logger = logging.getLogger(__name__)
 
@@ -38,20 +41,15 @@ class MinioDocumentRepository(DocumentRepository):
     large content files without hitting Temporal's 2MB payload limits.
     """
 
-    def __init__(self, endpoint: str):
-        minio_endpoint = endpoint
-        logger.debug(
-            "Initializing MinioDocumentRepository",
-            extra={"minio_endpoint": minio_endpoint},
-        )
+    def __init__(self, client: MinioClient) -> None:
+        """Initialize repository with Minio client.
 
-        # TODO: add credential management.
-        self.client = Minio(
-            minio_endpoint,
-            access_key="minioadmin",
-            secret_key="minioadmin",
-            secure=False,
-        )
+        Args:
+            client: MinioClient protocol implementation (real or fake)
+        """
+        logger.debug("Initializing MinioDocumentRepository")
+
+        self.client = client
         self.metadata_bucket = "documents"
         self.content_bucket = "documents-content"
         self._ensure_buckets_exist()
@@ -100,10 +98,8 @@ class MinioDocumentRepository(DocumentRepository):
 
             metadata_json = metadata_data.decode("utf-8")
 
-            # Parse metadata without content stream
-            document_dict = Document.model_validate_json(
-                metadata_json
-            ).model_dump()
+            # Parse metadata JSON directly to dict (content field excluded)
+            document_dict = json.loads(metadata_json)
 
             # Now get the content stream using the content multihash as key
             content_multihash = document_dict.get("content_multihash")
@@ -459,7 +455,7 @@ class MinioDocumentRepository(DocumentRepository):
             hasher.update(chunk)
 
         # Create proper multihash (0x12 = SHA-256, length = 32 bytes)
-        mh = multihash.encode(hasher.digest(), "sha2-256")
+        mh = multihash.encode(hasher.digest(), multihash.SHA2_256)
         return str(mh.hex())
 
     async def _store_metadata(self, document: Document) -> None:
