@@ -7,17 +7,18 @@ Fun-Police Framework. It handles document storage with both metadata and
 content streams, ensuring idempotency and proper error handling.
 
 The implementation separates document metadata (stored as JSON) from content
-(stored as binary objects) in Minio, following the large payload handling
-pattern from the architectural guidelines.
-"""
+(stored as content-addressable binary objects) in Minio, following the large
+payload handling pattern from the architectural guidelines. """
 
 import io
 import logging
 import uuid
+import hashlib
 from datetime import datetime, timezone
 from typing import Optional
 from minio import Minio  # type: ignore[import-untyped]
 from minio.error import S3Error  # type: ignore[import-untyped]
+import multihash  # type: ignore[import-untyped]
 
 from julee_example.domain import Document, ContentStream
 from julee_example.repositories.document import DocumentRepository
@@ -202,8 +203,20 @@ class MinioDocumentRepository(DocumentRepository):
         )
 
         try:
-            # Store content first
-            await self._store_content(document)
+            # Store content first and get calculated multihash
+            calculated_multihash = await self._store_content(document)
+
+            # Verify and update multihash if needed
+            if document.content_multihash != calculated_multihash:
+                logger.warning(
+                    "MinioDocumentRepository: Provided multihash differs from calculated, using calculated",
+                    extra={
+                        "document_id": document.document_id,
+                        "provided_multihash": document.content_multihash,
+                        "calculated_multihash": calculated_multihash,
+                    },
+                )
+                document.content_multihash = calculated_multihash
 
             # Store metadata second (atomic operation)
             await self._store_metadata(document)
@@ -212,6 +225,7 @@ class MinioDocumentRepository(DocumentRepository):
                 "MinioDocumentRepository: Document stored successfully",
                 extra={
                     "document_id": document.document_id,
+                    "content_multihash": calculated_multihash,
                     "metadata_bucket": self.metadata_bucket,
                     "content_bucket": self.content_bucket,
                 },
@@ -244,8 +258,20 @@ class MinioDocumentRepository(DocumentRepository):
         document.updated_at = datetime.now(timezone.utc)
 
         try:
-            # Store content using multihash key (idempotent - no duplicates)
-            await self._store_content(document)
+            # Store content using multihash key and get calculated multihash
+            calculated_multihash = await self._store_content(document)
+
+            # Verify and update multihash if needed
+            if document.content_multihash != calculated_multihash:
+                logger.warning(
+                    "MinioDocumentRepository: Provided multihash differs from calculated, using calculated",
+                    extra={
+                        "document_id": document.document_id,
+                        "provided_multihash": document.content_multihash,
+                        "calculated_multihash": calculated_multihash,
+                    },
+                )
+                document.content_multihash = calculated_multihash
 
             # Always update metadata (includes updated_at timestamp)
             await self._store_metadata(document)
@@ -254,7 +280,7 @@ class MinioDocumentRepository(DocumentRepository):
                 "MinioDocumentRepository: Document updated successfully",
                 extra={
                     "document_id": document.document_id,
-                    "content_multihash": document.content_multihash,
+                    "content_multihash": calculated_multihash,
                     "updated_at": document.updated_at.isoformat() if document.updated_at else None,
                 },
             )
@@ -285,13 +311,21 @@ class MinioDocumentRepository(DocumentRepository):
 
         return document_id
 
-    async def _store_content(self, document: Document) -> None:
+    async def _store_content(self, document: Document) -> str:
         """Store document content to Minio using content multihash as key.
 
         This provides natural deduplication and immutability - identical content
         is only stored once regardless of how many documents reference it.
+
+        Returns:
+            The calculated multihash of the stored content
         """
-        object_name = document.content_multihash
+        # First, calculate the actual multihash from content stream
+        document.content.seek(0)
+        calculated_multihash = self._calculate_multihash_from_stream(document.content)
+
+        # Use calculated multihash as the key (not provided multihash)
+        object_name = calculated_multihash
 
         try:
             # Check if content already exists (idempotency via content-addressing)
@@ -309,7 +343,7 @@ class MinioDocumentRepository(DocumentRepository):
                         "content_multihash": object_name,
                     },
                 )
-                return
+                return calculated_multihash
 
             except S3Error as e:
                 if getattr(e, "code", None) == "NoSuchKey":
@@ -324,34 +358,33 @@ class MinioDocumentRepository(DocumentRepository):
                 else:
                     raise  # Re-raise if it's another S3 error
 
-            # Read content from stream only when we need to store it
-            document.content.seek(0)  # Ensure we're at the beginning
-            content_data = document.content.read()
-
-            # Store the content
-            data_stream = io.BytesIO(content_data)
+            # Store the content using calculated multihash
+            document.content.seek(0)  # Reset stream position
+            # Pass the stream directly to Minio - no need to read into memory
             self.client.put_object(
                 bucket_name=self.content_bucket,
                 object_name=object_name,
-                data=data_stream,
-                length=len(content_data),
+                data=document.content.stream,
+                length=document.size_bytes,
                 content_type=document.content_type,
                 metadata={
-                    "content_multihash": document.content_multihash,
+                    "content_multihash": calculated_multihash,
                     "content_type": document.content_type,
                     "stored_at": datetime.now(timezone.utc).isoformat(),
                 },
             )
 
             logger.debug(
-                "MinioDocumentRepository: Content stored successfully",
-                extra={
-                    "document_id": document.document_id,
-                    "content_multihash": object_name,
-                    "bucket": self.content_bucket,
-                    "content_size": len(content_data),
-                },
-            )
+            "MinioDocumentRepository: Content stored successfully",
+            extra={
+                "document_id": document.document_id,
+                "content_multihash": calculated_multihash,
+                "bucket": self.content_bucket,
+                "content_size": document.size_bytes,
+            },
+        )
+
+            return calculated_multihash
 
         except S3Error as e:
             logger.error(
@@ -375,6 +408,33 @@ class MinioDocumentRepository(DocumentRepository):
                 exc_info=True,
             )
             raise
+
+    def _calculate_multihash_from_stream(self, stream: io.IOBase, chunk_size: int = 8192) -> str:
+        """Calculate SHA-256 multihash from a stream without loading all content into memory.
+
+        Args:
+            stream: The content stream to hash
+            chunk_size: Size of chunks to read at a time
+
+        Returns:
+            Hex-encoded multihash string
+        """
+        hasher = hashlib.sha256()
+
+        # Process stream in chunks
+        while True:
+            chunk = stream.read(chunk_size)
+            if not chunk:
+                break
+            if isinstance(chunk, str):
+                chunk = chunk.encode('utf-8')
+            hasher.update(chunk)
+
+        # Create proper multihash (0x12 = SHA-256, length = 32 bytes)
+        mh = multihash.encode(hasher.digest(), 'sha2-256')
+        return mh.hex()
+
+
 
     async def _store_metadata(self, document: Document) -> None:
         """Store document metadata to Minio with idempotency check."""
