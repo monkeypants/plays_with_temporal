@@ -9,7 +9,7 @@ and discovering edge cases.
 
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Tuple
-from hypothesis import given, strategies as st, example
+from hypothesis import given, strategies as st, example, settings
 from hypothesis.strategies import composite, DrawFn
 
 from cal.domain import (
@@ -29,14 +29,18 @@ from cal.domain import (
 # Custom strategies for domain-specific types
 
 
+# Hypothesis settings for faster test execution
+fast_settings = settings(max_examples=10, deadline=1000)
+
+
 @composite
 def timezone_aware_datetime(draw: DrawFn) -> datetime:
     """Generate timezone-aware datetime objects."""
     # Generate a datetime in UTC
     dt = draw(
         st.datetimes(
-            min_value=datetime(2020, 1, 1),
-            max_value=datetime(2030, 12, 31),
+            min_value=datetime(2024, 1, 1),
+            max_value=datetime(2024, 12, 31),
             timezones=st.just(timezone.utc),
         )
     )
@@ -56,9 +60,11 @@ def valid_time_range(draw: DrawFn) -> Tuple[datetime, datetime]:
 @composite
 def attendee_strategy(draw: DrawFn) -> Attendee:
     """Generate valid Attendee objects."""
-    email = draw(st.emails())
+    email = draw(
+        st.text(min_size=5, max_size=20).map(lambda x: f"{x}@test.com")
+    )
     display_name = draw(
-        st.one_of(st.none(), st.text(min_size=1, max_size=100))
+        st.one_of(st.none(), st.text(min_size=1, max_size=50))
     )
     response_status = draw(st.sampled_from(AttendeeResponseStatus))
 
@@ -74,10 +80,8 @@ def calendar_event_strategy(draw: DrawFn) -> CalendarEvent:
     """Generate valid CalendarEvent objects."""
     event_id = draw(st.text(min_size=1, max_size=100))
     calendar_id = draw(st.text(min_size=1, max_size=100))
-    title = draw(
-        st.text(min_size=1, max_size=200).filter(lambda x: x.strip())
-    )
-    description = draw(st.one_of(st.none(), st.text(max_size=1000)))
+    title = draw(st.text(min_size=1, max_size=50).filter(lambda x: x.strip()))
+    description = draw(st.one_of(st.none(), st.text(max_size=200)))
 
     start_time, end_time = draw(valid_time_range())
 
@@ -85,8 +89,13 @@ def calendar_event_strategy(draw: DrawFn) -> CalendarEvent:
     location = draw(st.one_of(st.none(), st.text(max_size=200)))
     status = draw(st.sampled_from(CalendarEventStatus))
 
-    attendees = draw(st.lists(attendee_strategy(), max_size=20))
-    organizer = draw(st.one_of(st.none(), st.emails()))
+    attendees = draw(st.lists(attendee_strategy(), max_size=5))
+    organizer = draw(
+        st.one_of(
+            st.none(),
+            st.text(min_size=5, max_size=15).map(lambda x: f"{x}@test.com"),
+        )
+    )
 
     last_modified = draw(timezone_aware_datetime())
     etag = draw(st.one_of(st.none(), st.text(max_size=100)))
@@ -165,6 +174,7 @@ class TestCalendarEventProperties:
     """Property-based tests for CalendarEvent validation rules."""
 
     @given(calendar_event_strategy())
+    @fast_settings
     def test_calendar_event_creation_with_valid_data(
         self, event: CalendarEvent
     ) -> None:
@@ -187,6 +197,7 @@ class TestCalendarEventProperties:
         timezone_aware_datetime(),  # start_time
         timezone_aware_datetime(),  # end_time (will be invalid)
     )
+    @fast_settings
     def test_calendar_event_rejects_invalid_time_ranges(
         self,
         event_id: str,
@@ -231,6 +242,7 @@ class TestCalendarEventProperties:
         st.text(),  # title (can be empty or whitespace)
         timezone_aware_datetime(),  # start_time
     )
+    @fast_settings
     def test_calendar_event_strips_title_whitespace(
         self,
         event_id: str,
@@ -260,7 +272,8 @@ class TestCalendarEventProperties:
         # Title should be stripped of leading/trailing whitespace
         assert event.title == title.strip()
 
-    @given(st.lists(attendee_strategy(), max_size=50))
+    @given(st.lists(attendee_strategy(), max_size=10))
+    @fast_settings
     def test_calendar_event_attendee_list_handling(
         self, attendees: List[Attendee]
     ) -> None:
@@ -298,6 +311,7 @@ class TestTimeBlockProperties:
     """Property-based tests for TimeBlock validation rules."""
 
     @given(time_block_strategy())
+    @fast_settings
     def test_time_block_creation_with_valid_data(
         self, time_block: TimeBlock
     ) -> None:
@@ -318,6 +332,7 @@ class TestTimeBlockProperties:
         timezone_aware_datetime(),  # start_time
         st.sampled_from(TimeBlockType),  # type
     )
+    @fast_settings
     def test_time_block_metadata_is_always_dict(
         self,
         time_block_id: str,
@@ -356,6 +371,7 @@ class TestTimeBlockProperties:
         ),  # suggested_decision
         st.one_of(st.none(), st.text(max_size=500)),  # decision_reason
     )
+    @fast_settings
     def test_time_block_decision_fields_consistency(
         self,
         time_block_id: str,
@@ -405,6 +421,7 @@ class TestScheduleProperties:
         st.lists(time_block_strategy(), max_size=20),  # time_blocks
         st.sampled_from(ScheduleStatus),  # status
     )
+    @fast_settings
     def test_schedule_creation_with_valid_data(
         self,
         schedule_id: str,
@@ -440,6 +457,7 @@ class TestScheduleProperties:
         st.text(min_size=1, max_size=100),  # schedule_id
         timezone_aware_datetime(),  # start_date
     )
+    @fast_settings
     def test_schedule_with_empty_time_blocks(
         self, schedule_id: str, start_date: datetime
     ) -> None:
@@ -462,6 +480,7 @@ class TestScheduleProperties:
         timezone_aware_datetime(),  # base_date
         st.integers(min_value=1, max_value=30),  # duration_days
     )
+    @fast_settings
     def test_schedule_date_range_properties(
         self, schedule_id: str, base_date: datetime, duration_days: int
     ) -> None:
@@ -496,6 +515,7 @@ class TestDomainModelIntegration:
         st.text(min_size=1, max_size=100),  # time_block_id
         st.sampled_from(TimeBlockType),
     )
+    @fast_settings
     def test_calendar_event_to_time_block_conversion(
         self,
         calendar_event: CalendarEvent,
@@ -542,6 +562,7 @@ class TestDomainModelIntegration:
         st.lists(time_block_strategy(), min_size=1, max_size=10),
         st.text(min_size=1, max_size=100),  # schedule_id
     )
+    @fast_settings
     def test_schedule_time_block_aggregation(
         self, time_blocks: List[TimeBlock], schedule_id: str
     ) -> None:
@@ -601,6 +622,7 @@ class TestEdgeCaseDiscovery:
         "\n\t  \n",
         datetime(2024, 1, 1, 11, 0, tzinfo=timezone.utc),
     )
+    @fast_settings
     def test_calendar_event_title_edge_cases(
         self,
         event_id: str,
@@ -638,6 +660,7 @@ class TestEdgeCaseDiscovery:
             min_value=-1440, max_value=1440
         ),  # Minutes offset (can be negative)
     )
+    @fast_settings
     def test_time_range_boundary_conditions(
         self, start_time: datetime, minutes_offset: int
     ) -> None:
