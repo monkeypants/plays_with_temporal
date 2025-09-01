@@ -11,6 +11,8 @@ The implementation separates document metadata (stored as JSON) from content
 payload handling pattern from the architectural guidelines."""
 
 import io
+import json
+
 import logging
 import uuid
 import hashlib
@@ -97,8 +99,6 @@ class MinioDocumentRepository(DocumentRepository):
             metadata_json = metadata_data.decode("utf-8")
 
             # Parse metadata JSON directly to dict (content field excluded)
-            import json
-
             document_dict = json.loads(metadata_json)
 
             # Now get the content stream using the content multihash as key
