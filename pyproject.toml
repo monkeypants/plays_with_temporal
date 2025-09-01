@@ -22,12 +22,7 @@ line-length = 78
 # Match flake8's default checks (pycodestyle, pyflakes)
 select = ["E", "F", "W"]
 extend-select = [
-    "W291",  # trailing-whitespace
-    "W292",  # no-newline-at-end-of-file
-    "W293",  # blank-line-with-whitespace
+    "W291", # trailing-whitespace
+    "W292", # no-newline-at-end-of-file
+    "W293", # blank-line-with-whitespace
 ]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-addopts = "-v"
-testpaths = ["sample/tests", "cal/tests"]
