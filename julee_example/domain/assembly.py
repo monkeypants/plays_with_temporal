@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
+import jsonschema
 
 
 class AssemblyStatus(str, Enum):
@@ -49,12 +50,15 @@ class Assembly(BaseModel):
                    "This information may be used by knowledge service for "
                    "document-assembly matching"
     )
+    prompt: str = Field(
+        description="The main prompt that will be given as the instruction to the LLM "
+                   "to be used together with the jsonschema, for extracting the data for the assembly"
+    )
 
     # Assembly configuration
     status: AssemblyStatus = AssemblyStatus.ACTIVE
-    extractor_ids: List[str] = Field(
-        default_factory=list,
-        description="List of top-level extractor IDs required for this assembly"
+    jsonschema: Dict[str, Any] = Field(
+        description="JSON Schema defining the structure of data to be extracted for this assembly"
     )
 
     # Assembly metadata
@@ -90,21 +94,30 @@ class Assembly(BaseModel):
             raise ValueError("Assembly applicability cannot be empty")
         return v.strip()
 
-    @field_validator("extractor_ids")
+    @field_validator("prompt")
     @classmethod
-    def extractor_ids_must_be_valid(cls, v: List[str]) -> List[str]:
-        if not isinstance(v, list):
-            raise ValueError("Extractor IDs must be a list")
+    def prompt_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Assembly prompt cannot be empty")
+        return v.strip()
 
-        # Remove empty strings and strip whitespace
-        cleaned_ids = []
-        for extractor_id in v:
-            if isinstance(extractor_id, str) and extractor_id.strip():
-                cleaned_ids.append(extractor_id.strip())
-            elif extractor_id:  # Non-empty, non-string values
-                raise ValueError(f"All extractor IDs must be strings, got {type(extractor_id)}")
+    @field_validator("jsonschema")
+    @classmethod
+    def jsonschema_must_be_valid(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        if not isinstance(v, dict):
+            raise ValueError("JSON Schema must be a dictionary")
 
-        return cleaned_ids
+        # Basic validation that it looks like a JSON schema
+        if "type" not in v:
+            raise ValueError("JSON Schema must have a 'type' field")
+
+        # Validate that it's a proper JSON Schema using jsonschema library
+        try:
+            jsonschema.Draft7Validator.check_schema(v)
+        except jsonschema.SchemaError as e:
+            raise ValueError(f"Invalid JSON Schema: {e.message}")
+
+        return v
 
     @field_validator("version")
     @classmethod
