@@ -20,7 +20,7 @@ from factory.base import Factory
 from factory.faker import Faker
 from factory.declarations import LazyAttribute, LazyFunction
 
-from julee_example.domain import Document, DocumentStatus, ContentStream
+from julee_example.domain import Document, DocumentStatus, ContentStream, Assembly, AssemblyStatus
 
 
 # Helper functions to generate content bytes consistently
@@ -83,3 +83,43 @@ class DocumentFactory(Factory):
     def content(self) -> ContentStream:
         # Create ContentStream with default content
         return ContentStream(io.BytesIO(_get_default_content_bytes()))
+
+
+class AssemblyFactory(Factory):
+    """Factory for creating Assembly instances with sensible test defaults."""
+
+    class Meta:
+        model = Assembly
+
+    # Core assembly identification
+    assembly_id = Faker("uuid4")
+    name = "Test Assembly"
+    applicability = "Test documents for automated testing purposes"
+    prompt = "Extract test data from the document according to the provided JSON schema"
+
+    # Valid JSON Schema for testing
+    @LazyAttribute
+    def jsonschema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "content": {"type": "string"},
+                "metadata": {
+                    "type": "object",
+                    "properties": {
+                        "author": {"type": "string"},
+                        "created_date": {"type": "string", "format": "date"}
+                    }
+                }
+            },
+            "required": ["title"]
+        }
+
+    # Assembly configuration
+    status = AssemblyStatus.ACTIVE
+    version = "0.1.0"
+
+    # Timestamps
+    created_at = LazyFunction(lambda: datetime.now(timezone.utc))
+    updated_at = LazyFunction(lambda: datetime.now(timezone.utc))

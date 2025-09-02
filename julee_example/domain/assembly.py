@@ -54,12 +54,12 @@ class Assembly(BaseModel):
         description="The main prompt that will be given as the instruction to the LLM "
                    "to be used together with the jsonschema, for extracting the data for the assembly"
     )
-
-    # Assembly configuration
-    status: AssemblyStatus = AssemblyStatus.ACTIVE
     jsonschema: Dict[str, Any] = Field(
         description="JSON Schema defining the structure of data to be extracted for this assembly"
     )
+
+    # Assembly configuration
+    status: AssemblyStatus = AssemblyStatus.ACTIVE
 
     # Assembly metadata
     version: str = Field(default="0.1.0", description="Assembly definition version")
