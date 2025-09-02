@@ -4,8 +4,9 @@ Assembly domain models for the Capture, Extract, Assemble, Publish workflow.
 This module contains the Assembly domain object that represents
 assembly configurations in the CEAP workflow system.
 
-An Assembly defines a type of document output (like "meeting minutes")
-and specifies which extractors are needed to collect the data for that output.
+An Assembly defines a type of document output (like "meeting minutes"), includes
+information about its applicability and and specifies which extractors are
+needed to collect the data for that output.
 
 All domain models use Pydantic BaseModel for validation, serialization,
 and type safety, following the patterns established in the sample project.
@@ -27,52 +28,46 @@ class AssemblyStatus(str, Enum):
 
 
 class Assembly(BaseModel):
-    """Assembly configuration that defines how to process documents of a specific type.
+    """Assembly configuration that defines how to assemble documents of a specific type.
 
     An Assembly represents a type of document output (like "meeting minutes",
     "project report", etc.) and defines which extractors should be used to
     collect the necessary data from source documents.
 
-    The Assembly does not contain the template itself - templates are handled
-    separately during the assembly rendering phase. This separation allows
-    the same Assembly definition to be used with different templates over time.
+    The Assembly does not contain the template itself - templates will be
+    handled separately during the assembly rendering (or publishing?) phase.
+    This separation allows the same Assembly definition to be used with
+    different templates over time.
     """
 
     # Core assembly identification
     assembly_id: str = Field(description="Unique identifier for this assembly")
     name: str = Field(description="Human-readable name like 'meeting minutes'")
     applicability: str = Field(
-        description="Text description of what this assembly applies to, "
-                   "used by knowledge service for document-assembly matching"
+        description="Text description identifying to what type of information this "
+                   "assembly applies, such as an online transcript of a video meeting. "
+                   "This information may be used by knowledge service for "
+                   "document-assembly matching"
     )
 
     # Assembly configuration
     status: AssemblyStatus = AssemblyStatus.ACTIVE
     extractor_ids: List[str] = Field(
         default_factory=list,
-        description="List of top-level extractor IDs needed for this assembly"
+        description="List of top-level extractor IDs required for this assembly"
     )
 
     # Assembly metadata
-    version: str = Field(default="1.0.0", description="Assembly definition version")
-    description: Optional[str] = Field(
-        default=None,
-        description="Detailed description of the assembly purpose and usage"
-    )
-
-    # Timestamps
+    version: str = Field(default="0.1.0", description="Assembly definition version")
     created_at: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
     updated_at: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
+    # May later add a detailed description, change log, additional metadata etc.
+    # Timestamps
 
-    # Additional configuration
-    additional_metadata: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional assembly-specific configuration"
-    )
 
     @field_validator("assembly_id")
     @classmethod

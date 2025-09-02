@@ -22,5 +22,4 @@ __all__ = [
     "AssemblyStatus",
     "Extractor",
     "ExtractorStatus",
-    "ExtractorType",
 ]

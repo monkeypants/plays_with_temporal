@@ -26,15 +26,6 @@ class ExtractorStatus(str, Enum):
     DEPRECATED = "deprecated"
 
 
-class ExtractorType(str, Enum):
-    """Type of data extraction to perform."""
-
-    METADATA = "metadata"  # Document metadata extraction
-    STRUCTURED = "structured"  # Structured data extraction (e.g., tables, forms)
-    SEMANTIC = "semantic"  # Semantic content extraction (e.g., topics, entities)
-    COMPOSITE = "composite"  # Complex extraction that may use multiple approaches
-
-
 class Extractor(BaseModel):
     """Extractor configuration that defines how to extract specific data from documents.
 
@@ -47,7 +38,6 @@ class Extractor(BaseModel):
     # Core extractor identification
     extractor_id: str = Field(description="Unique identifier for this extractor")
     name: str = Field(description="Human-readable name like 'meeting metadata'")
-    extractor_type: ExtractorType = Field(description="Type of extraction to perform")
 
     # Extractor configuration
     status: ExtractorStatus = ExtractorStatus.ACTIVE
@@ -57,7 +47,7 @@ class Extractor(BaseModel):
     )
 
     # Version and compatibility
-    version: str = Field(default="1.0.0", description="Extractor version")
+    version: str = Field(default="0.1.0", description="Extractor version")
 
     # Timestamps
     created_at: Optional[datetime] = Field(
@@ -65,12 +55,6 @@ class Extractor(BaseModel):
     )
     updated_at: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc)
-    )
-
-    # Additional configuration for future expansion
-    additional_metadata: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional extractor-specific configuration"
     )
 
     @field_validator("extractor_id")
