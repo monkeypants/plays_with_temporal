@@ -11,9 +11,16 @@ and type safety, following the patterns established in the sample project.
 
 from .document import Document, DocumentStatus
 from .custom_fields import ContentStream
+from .assembly import Assembly, AssemblyStatus
+from .extractor import Extractor, ExtractorStatus, ExtractorType
 
 __all__ = [
     "Document",
     "DocumentStatus",
     "ContentStream",
+    "Assembly",
+    "AssemblyStatus",
+    "Extractor",
+    "ExtractorStatus",
+    "ExtractorType",
 ]
