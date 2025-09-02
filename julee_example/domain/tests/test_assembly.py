@@ -10,7 +10,8 @@ model using table-based tests. It covers:
 - Field validation for required fields
 
 Design decisions documented:
-- Assemblies must have all required fields (id, name, applicability, prompt, jsonschema)
+- Assemblies must have all required fields (id, name, applicability, prompt,
+  jsonschema)
 - JSON Schema field must be a valid JSON Schema dictionary
 - All text fields must be non-empty and non-whitespace
 - Version field has a default but can be customized
@@ -37,7 +38,10 @@ class TestAssemblyInstantiation:
                 "Meeting Minutes",
                 "Corporate meeting recordings and transcripts",
                 "Extract meeting information according to the schema",
-                {"type": "object", "properties": {"title": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"title": {"type": "string"}},
+                },
                 True,
             ),
             (
@@ -49,13 +53,16 @@ class TestAssemblyInstantiation:
                     "type": "object",
                     "properties": {
                         "project_name": {"type": "string"},
-                        "status": {"type": "string", "enum": ["active", "completed"]},
+                        "status": {
+                            "type": "string",
+                            "enum": ["active", "completed"],
+                        },
                         "milestones": {
                             "type": "array",
-                            "items": {"type": "string"}
-                        }
+                            "items": {"type": "string"},
+                        },
                     },
-                    "required": ["project_name"]
+                    "required": ["project_name"],
                 },
                 True,
             ),
@@ -65,7 +72,10 @@ class TestAssemblyInstantiation:
                 "Test Assembly",
                 "Test applicability",
                 "Test prompt",
-                {"type": "object", "properties": {"test": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
                 False,
             ),  # Empty assembly_id
             (
@@ -73,7 +83,10 @@ class TestAssemblyInstantiation:
                 "",
                 "Test applicability",
                 "Test prompt",
-                {"type": "object", "properties": {"test": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
                 False,
             ),  # Empty name
             (
@@ -81,7 +94,10 @@ class TestAssemblyInstantiation:
                 "Test Assembly",
                 "",
                 "Test prompt",
-                {"type": "object", "properties": {"test": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
                 False,
             ),  # Empty applicability
             (
@@ -89,7 +105,10 @@ class TestAssemblyInstantiation:
                 "Test Assembly",
                 "Test applicability",
                 "",
-                {"type": "object", "properties": {"test": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
                 False,
             ),  # Empty prompt
             # Invalid cases - whitespace only
@@ -98,7 +117,10 @@ class TestAssemblyInstantiation:
                 "Test Assembly",
                 "Test applicability",
                 "Test prompt",
-                {"type": "object", "properties": {"test": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
                 False,
             ),  # Whitespace assembly_id
             (
@@ -106,7 +128,10 @@ class TestAssemblyInstantiation:
                 "   ",
                 "Test applicability",
                 "Test prompt",
-                {"type": "object", "properties": {"test": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
                 False,
             ),  # Whitespace name
             (
@@ -114,7 +139,10 @@ class TestAssemblyInstantiation:
                 "Test Assembly",
                 "   ",
                 "Test prompt",
-                {"type": "object", "properties": {"test": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
                 False,
             ),  # Whitespace applicability
             (
@@ -122,7 +150,10 @@ class TestAssemblyInstantiation:
                 "Test Assembly",
                 "Test applicability",
                 "   ",
-                {"type": "object", "properties": {"test": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
                 False,
             ),  # Whitespace prompt
         ],
@@ -155,7 +186,9 @@ class TestAssemblyInstantiation:
             assert assembly.version == "0.1.0"  # Default
         else:
             # Should raise validation error
-            with pytest.raises(Exception):  # Could be ValueError or ValidationError
+            with pytest.raises(
+                Exception
+            ):  # Could be ValueError or ValidationError
                 Assembly(
                     assembly_id=assembly_id,
                     name=name,
@@ -173,15 +206,14 @@ class TestAssemblyJsonSchemaValidation:
         [
             # Valid JSON Schemas
             (
-                {"type": "object", "properties": {"name": {"type": "string"}}},
+                {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"}},
+                },
                 None,
             ),
             (
-                {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 1
-                },
+                {"type": "array", "items": {"type": "string"}, "minItems": 1},
                 None,
             ),
             (
@@ -196,12 +228,12 @@ class TestAssemblyJsonSchemaValidation:
                             "type": "object",
                             "properties": {
                                 "name": {"type": "string"},
-                                "age": {"type": "integer", "minimum": 0}
+                                "age": {"type": "integer", "minimum": 0},
                             },
-                            "required": ["name"]
+                            "required": ["name"],
                         }
                     },
-                    "required": ["user"]
+                    "required": ["user"],
                 },
                 None,
             ),
@@ -223,12 +255,15 @@ class TestAssemblyJsonSchemaValidation:
             (
                 {
                     "type": "object",
-                    "properties": {"invalid_prop": {"type": "invalid_type"}}
+                    "properties": {"invalid_prop": {"type": "invalid_type"}},
                 },
                 "Invalid JSON Schema",
             ),
             (
-                {"type": "object", "additionalProperties": "invalid"},  # additionalProperties must be boolean or object
+                {
+                    "type": "object",
+                    "additionalProperties": "invalid",
+                },  # additionalProperties must be boolean or object
                 "Invalid JSON Schema",
             ),
         ],
@@ -278,10 +313,10 @@ class TestAssemblySerialization:
                         "date": {"type": "string", "format": "date"},
                         "participants": {
                             "type": "array",
-                            "items": {"type": "string"}
-                        }
+                            "items": {"type": "string"},
+                        },
                     },
-                    "required": ["title", "date"]
+                    "required": ["title", "date"],
                 },
                 "action_items": {
                     "type": "array",
@@ -290,13 +325,13 @@ class TestAssemblySerialization:
                         "properties": {
                             "description": {"type": "string"},
                             "assignee": {"type": "string"},
-                            "due_date": {"type": "string", "format": "date"}
+                            "due_date": {"type": "string", "format": "date"},
                         },
-                        "required": ["description"]
-                    }
-                }
+                        "required": ["description"],
+                    },
+                },
             },
-            "required": ["meeting_info"]
+            "required": ["meeting_info"],
         }
 
         assembly = AssemblyFactory.build(
@@ -325,7 +360,8 @@ class TestAssemblySerialization:
         assert "action_items" in json_data["jsonschema"]["properties"]
 
     def test_assembly_json_roundtrip(self) -> None:
-        """Test that Assembly can be serialized to JSON and deserialized back."""
+        """Test that Assembly can be serialized to JSON and deserialized
+        back."""
         original_assembly = AssemblyFactory.build()
 
         # Serialize to JSON
@@ -336,11 +372,19 @@ class TestAssemblySerialization:
         reconstructed_assembly = Assembly(**json_data)
 
         # Should be equivalent
-        assert reconstructed_assembly.assembly_id == original_assembly.assembly_id
+        assert (
+            reconstructed_assembly.assembly_id
+            == original_assembly.assembly_id
+        )
         assert reconstructed_assembly.name == original_assembly.name
-        assert reconstructed_assembly.applicability == original_assembly.applicability
+        assert (
+            reconstructed_assembly.applicability
+            == original_assembly.applicability
+        )
         assert reconstructed_assembly.prompt == original_assembly.prompt
-        assert reconstructed_assembly.jsonschema == original_assembly.jsonschema
+        assert (
+            reconstructed_assembly.jsonschema == original_assembly.jsonschema
+        )
         assert reconstructed_assembly.status == original_assembly.status
         assert reconstructed_assembly.version == original_assembly.version
 
@@ -355,7 +399,10 @@ class TestAssemblyDefaults:
             name="Test Assembly",
             applicability="Test applicability",
             prompt="Test prompt",
-            jsonschema={"type": "object", "properties": {"test": {"type": "string"}}},
+            jsonschema={
+                "type": "object",
+                "properties": {"test": {"type": "string"}},
+            },
         )
 
         assert minimal_assembly.status == AssemblyStatus.ACTIVE
@@ -407,7 +454,9 @@ class TestAssemblyVersionValidation:
             ("   ", False),  # Whitespace only
         ],
     )
-    def test_version_validation(self, version: str, expected_success: bool) -> None:
+    def test_version_validation(
+        self, version: str, expected_success: bool
+    ) -> None:
         """Test version field validation - we can add semver checks later, not
         needed yet (if at all)."""
         if expected_success:

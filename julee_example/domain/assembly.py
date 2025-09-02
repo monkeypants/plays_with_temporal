@@ -4,7 +4,8 @@ Assembly domain models for the Capture, Extract, Assemble, Publish workflow.
 This module contains the Assembly domain object that represents
 assembly configurations in the CEAP workflow system.
 
-An Assembly defines a type of document output (like "meeting minutes"), includes
+An Assembly defines a type of document output (like "meeting minutes"),
+includes
 information about its applicability and and specifies which extractors are
 needed to collect the data for that output.
 
@@ -13,7 +14,7 @@ and type safety, following the patterns established in the sample project.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
 import jsonschema
@@ -29,7 +30,8 @@ class AssemblyStatus(str, Enum):
 
 
 class Assembly(BaseModel):
-    """Assembly configuration that defines how to assemble documents of a specific type.
+    """Assembly configuration that defines how to assemble documents of a
+    specific type.
 
     An Assembly represents a type of document output (like "meeting minutes",
     "project report", etc.) and defines which extractors should be used to
@@ -42,36 +44,43 @@ class Assembly(BaseModel):
     """
 
     # Core assembly identification
-    assembly_id: str = Field(description="Unique identifier for this assembly")
-    name: str = Field(description="Human-readable name like 'meeting minutes'")
+    assembly_id: str = Field(
+        description="Unique identifier for this assembly"
+    )
+    name: str = Field(
+        description="Human-readable name like 'meeting minutes'"
+    )
     applicability: str = Field(
-        description="Text description identifying to what type of information this "
-                   "assembly applies, such as an online transcript of a video meeting. "
-                   "This information may be used by knowledge service for "
-                   "document-assembly matching"
+        description="Text description identifying to what type of "
+        "information this assembly applies, such as an online transcript "
+        "of a video meeting. This information may be used by knowledge "
+        "service for document-assembly matching"
     )
     prompt: str = Field(
-        description="The main prompt that will be given as the instruction to the LLM "
-                   "to be used together with the jsonschema, for extracting the data for the assembly"
+        description="The main prompt that will be given as the instruction "
+        "to the LLM to be used together with the jsonschema, for extracting "
+        "the data for the assembly"
     )
     jsonschema: Dict[str, Any] = Field(
-        description="JSON Schema defining the structure of data to be extracted for this assembly"
+        description="JSON Schema defining the structure of data to be "
+        "extracted for this assembly"
     )
 
     # Assembly configuration
     status: AssemblyStatus = AssemblyStatus.ACTIVE
 
     # Assembly metadata
-    version: str = Field(default="0.1.0", description="Assembly definition version")
+    version: str = Field(
+        default="0.1.0", description="Assembly definition version"
+    )
     created_at: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
     updated_at: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
-    # May later add a detailed description, change log, additional metadata etc.
+    # May later add a detailed description, change log, additional metadata
     # Timestamps
-
 
     @field_validator("assembly_id")
     @classmethod

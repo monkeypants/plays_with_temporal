@@ -20,7 +20,13 @@ from factory.base import Factory
 from factory.faker import Faker
 from factory.declarations import LazyAttribute, LazyFunction
 
-from julee_example.domain import Document, DocumentStatus, ContentStream, Assembly, AssemblyStatus
+from julee_example.domain import (
+    Document,
+    DocumentStatus,
+    ContentStream,
+    Assembly,
+    AssemblyStatus,
+)
 
 
 # Helper functions to generate content bytes consistently
@@ -95,7 +101,10 @@ class AssemblyFactory(Factory):
     assembly_id = Faker("uuid4")
     name = "Test Assembly"
     applicability = "Test documents for automated testing purposes"
-    prompt = "Extract test data from the document according to the provided JSON schema"
+    prompt = (
+        "Extract test data from the document according to the provided "
+        "JSON schema"
+    )
 
     # Valid JSON Schema for testing
     @LazyAttribute
@@ -109,11 +118,11 @@ class AssemblyFactory(Factory):
                     "type": "object",
                     "properties": {
                         "author": {"type": "string"},
-                        "created_date": {"type": "string", "format": "date"}
-                    }
-                }
+                        "created_date": {"type": "string", "format": "date"},
+                    },
+                },
             },
-            "required": ["title"]
+            "required": ["title"],
         }
 
     # Assembly configuration
