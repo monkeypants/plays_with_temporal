@@ -198,6 +198,70 @@ class TestAssemblyInstantiation:
                 )
 
 
+class TestAssemblyKnowledgeServiceQueriesValidation:
+    """Test knowledge_service_queries field validation."""
+
+    @pytest.mark.parametrize(
+        "knowledge_service_queries,expected_success",
+        [
+            # Valid cases - empty dict
+            ({}, True),
+            # Valid cases - valid JSON pointers that exist in schema
+            ({"/properties/test": "query-1"}, True),
+            ({"": "root-query"}, True),  # Empty string for root
+            ({"/properties/test": "query-1", "": "root-query"}, True),
+            # Invalid cases - malformed pointers
+            ({"invalid-pointer": "query-1"}, False),
+            ({"test": "query-1"}, False),  # Missing /properties/
+            # Invalid cases - pointers that don't exist in schema
+            ({"/properties/nonexistent": "query-1"}, False),
+            # Invalid cases - wrong types
+            ("not-a-dict", False),
+            (["/properties/test", "query-1"], False),
+            # Invalid cases - invalid query IDs
+            ({"/properties/test": ""}, False),  # Empty query ID
+            ({"/properties/test": 123}, False),  # Non-string query ID
+        ],
+    )
+    def test_knowledge_service_queries_validation(
+        self,
+        knowledge_service_queries: Any,
+        expected_success: bool,
+    ) -> None:
+        """Test knowledge_service_queries field validation."""
+        if expected_success:
+            # Should create successfully
+            assembly = Assembly(
+                assembly_id="test-id",
+                name="Test Assembly",
+                applicability="Test applicability",
+                prompt="Test prompt",
+                jsonschema={
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
+                knowledge_service_queries=knowledge_service_queries,
+            )
+            assert (
+                assembly.knowledge_service_queries
+                == knowledge_service_queries
+            )
+        else:
+            # Should raise validation error
+            with pytest.raises(Exception):
+                Assembly(
+                    assembly_id="test-id",
+                    name="Test Assembly",
+                    applicability="Test applicability",
+                    prompt="Test prompt",
+                    jsonschema={
+                        "type": "object",
+                        "properties": {"test": {"type": "string"}},
+                    },
+                    knowledge_service_queries=knowledge_service_queries,
+                )
+
+
 class TestAssemblyJsonSchemaValidation:
     """Test JSON Schema field validation."""
 
@@ -417,13 +481,22 @@ class TestAssemblyDefaults:
             name="Custom Assembly",
             applicability="Custom applicability",
             prompt="Custom prompt",
-            jsonschema={"type": "string"},
+            jsonschema={
+                "type": "object",
+                "properties": {"custom": {"type": "string"}},
+            },
             status=AssemblyStatus.DRAFT,
             version="2.0.0",
+            knowledge_service_queries={
+                "/properties/custom": "custom-query-1"
+            },
         )
 
         assert custom_assembly.status == AssemblyStatus.DRAFT
         assert custom_assembly.version == "2.0.0"
+        assert custom_assembly.knowledge_service_queries == {
+            "/properties/custom": "custom-query-1"
+        }
 
     @pytest.mark.parametrize(
         "status",

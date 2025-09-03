@@ -26,6 +26,7 @@ from julee_example.domain import (
     ContentStream,
     Assembly,
     AssemblyStatus,
+    KnowledgeServiceQuery,
 )
 
 
@@ -128,6 +129,28 @@ class AssemblyFactory(Factory):
     # Assembly configuration
     status = AssemblyStatus.ACTIVE
     version = "0.1.0"
+
+    # Timestamps
+    created_at = LazyFunction(lambda: datetime.now(timezone.utc))
+    updated_at = LazyFunction(lambda: datetime.now(timezone.utc))
+
+
+class KnowledgeServiceQueryFactory(Factory):
+    """Factory for creating KnowledgeServiceQuery instances with sensible
+    test defaults."""
+
+    class Meta:
+        model = KnowledgeServiceQuery
+
+    # Core query identification
+    query_id = Faker("uuid4")
+    name = "Test Knowledge Service Query"
+
+    # Knowledge service configuration
+    knowledge_service_id = "test-knowledge-service"
+    prompt = "Extract test data from the document"
+
+    # Query configuration
 
     # Timestamps
     created_at = LazyFunction(lambda: datetime.now(timezone.utc))

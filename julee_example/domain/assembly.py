@@ -18,6 +18,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
 import jsonschema
+import jsonpointer  # type: ignore
 
 
 class AssemblyStatus(str, Enum):
@@ -68,6 +69,13 @@ class Assembly(BaseModel):
 
     # Assembly configuration
     status: AssemblyStatus = AssemblyStatus.ACTIVE
+    knowledge_service_queries: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping from JSON Pointer paths to "
+        "KnowledgeServiceQuery IDs. Keys are JSON Pointer strings "
+        "(e.g., '/properties/attendees', '') and values are query IDs "
+        "for extracting data for that schema section",
+    )
 
     # Assembly metadata
     version: str = Field(
@@ -127,6 +135,54 @@ class Assembly(BaseModel):
             raise ValueError(f"Invalid JSON Schema: {e.message}")
 
         return v
+
+    @field_validator("knowledge_service_queries")
+    @classmethod
+    def knowledge_service_queries_must_be_valid(
+        cls, v: Dict[str, str], info: Any
+    ) -> Dict[str, str]:
+        if not isinstance(v, dict):
+            raise ValueError("Knowledge service queries must be a dictionary")
+
+        # Get the jsonschema field value to validate pointers against it
+        jsonschema_value = info.data.get("jsonschema")
+        if not jsonschema_value:
+            raise ValueError(
+                "Cannot validate schema pointers without jsonschema field"
+            )
+
+        cleaned_queries = {}
+        for schema_pointer, query_id in v.items():
+            # Validate schema pointer keys are strings
+            if not isinstance(schema_pointer, str):
+                raise ValueError("Schema pointer keys must be strings")
+
+            # Validate JSON Pointer format and that it exists in the schema
+            try:
+                if schema_pointer == "":
+                    # Empty string is valid - refers to root of schema
+                    pass
+                else:
+                    # Use jsonpointer to validate format and existence
+                    ptr = jsonpointer.JsonPointer(schema_pointer)
+                    ptr.resolve(jsonschema_value)
+            except jsonpointer.JsonPointerException as e:
+                raise ValueError(
+                    f"Invalid JSON Pointer '{schema_pointer}': {e}"
+                )
+            except (KeyError, IndexError, TypeError):
+                raise ValueError(
+                    f"JSON Pointer '{schema_pointer}' does not exist in "
+                    f"schema"
+                )
+
+            # Validate query ID values
+            if not isinstance(query_id, str) or not query_id.strip():
+                raise ValueError("Query ID values must be non-empty strings")
+
+            cleaned_queries[schema_pointer] = query_id.strip()
+
+        return cleaned_queries
 
     @field_validator("version")
     @classmethod
