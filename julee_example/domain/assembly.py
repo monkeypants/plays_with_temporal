@@ -57,11 +57,7 @@ class Assembly(BaseModel):
         "of a video meeting. This information may be used by knowledge "
         "service for document-assembly matching"
     )
-    prompt: str = Field(
-        description="The main prompt that will be given as the instruction "
-        "to the LLM to be used together with the jsonschema, for extracting "
-        "the data for the assembly"
-    )
+
     jsonschema: Dict[str, Any] = Field(
         description="JSON Schema defining the structure of data to be "
         "extracted for this assembly"
@@ -109,13 +105,6 @@ class Assembly(BaseModel):
     def applicability_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("Assembly applicability cannot be empty")
-        return v.strip()
-
-    @field_validator("prompt")
-    @classmethod
-    def prompt_must_not_be_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Assembly prompt cannot be empty")
         return v.strip()
 
     @field_validator("jsonschema")

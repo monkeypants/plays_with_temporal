@@ -102,10 +102,6 @@ class AssemblyFactory(Factory):
     assembly_id = Faker("uuid4")
     name = "Test Assembly"
     applicability = "Test documents for automated testing purposes"
-    prompt = (
-        "Extract test data from the document according to the provided "
-        "JSON schema"
-    )
 
     # Valid JSON Schema for testing
     @LazyAttribute

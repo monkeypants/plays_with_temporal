@@ -30,14 +30,13 @@ class TestAssemblyInstantiation:
     """Test Assembly creation with various field combinations."""
 
     @pytest.mark.parametrize(
-        "assembly_id,name,applicability,prompt,jsonschema,expected_success",
+        "assembly_id,name,applicability,jsonschema,expected_success",
         [
             # Valid cases
             (
                 "assembly-1",
                 "Meeting Minutes",
                 "Corporate meeting recordings and transcripts",
-                "Extract meeting information according to the schema",
                 {
                     "type": "object",
                     "properties": {"title": {"type": "string"}},
@@ -48,7 +47,6 @@ class TestAssemblyInstantiation:
                 "assembly-2",
                 "Project Report",
                 "Technical project documentation and status reports",
-                "Extract project details and milestones from the document",
                 {
                     "type": "object",
                     "properties": {
@@ -71,7 +69,6 @@ class TestAssemblyInstantiation:
                 "",
                 "Test Assembly",
                 "Test applicability",
-                "Test prompt",
                 {
                     "type": "object",
                     "properties": {"test": {"type": "string"}},
@@ -82,7 +79,6 @@ class TestAssemblyInstantiation:
                 "assembly-3",
                 "",
                 "Test applicability",
-                "Test prompt",
                 {
                     "type": "object",
                     "properties": {"test": {"type": "string"}},
@@ -93,30 +89,17 @@ class TestAssemblyInstantiation:
                 "assembly-4",
                 "Test Assembly",
                 "",
-                "Test prompt",
                 {
                     "type": "object",
                     "properties": {"test": {"type": "string"}},
                 },
                 False,
             ),  # Empty applicability
-            (
-                "assembly-5",
-                "Test Assembly",
-                "Test applicability",
-                "",
-                {
-                    "type": "object",
-                    "properties": {"test": {"type": "string"}},
-                },
-                False,
-            ),  # Empty prompt
             # Invalid cases - whitespace only
             (
                 "   ",
                 "Test Assembly",
                 "Test applicability",
-                "Test prompt",
                 {
                     "type": "object",
                     "properties": {"test": {"type": "string"}},
@@ -127,7 +110,6 @@ class TestAssemblyInstantiation:
                 "assembly-6",
                 "   ",
                 "Test applicability",
-                "Test prompt",
                 {
                     "type": "object",
                     "properties": {"test": {"type": "string"}},
@@ -138,24 +120,12 @@ class TestAssemblyInstantiation:
                 "assembly-7",
                 "Test Assembly",
                 "   ",
-                "Test prompt",
                 {
                     "type": "object",
                     "properties": {"test": {"type": "string"}},
                 },
                 False,
             ),  # Whitespace applicability
-            (
-                "assembly-8",
-                "Test Assembly",
-                "Test applicability",
-                "   ",
-                {
-                    "type": "object",
-                    "properties": {"test": {"type": "string"}},
-                },
-                False,
-            ),  # Whitespace prompt
         ],
     )
     def test_assembly_creation_validation(
@@ -163,7 +133,6 @@ class TestAssemblyInstantiation:
         assembly_id: str,
         name: str,
         applicability: str,
-        prompt: str,
         jsonschema: Dict[str, Any],
         expected_success: bool,
     ) -> None:
@@ -174,13 +143,11 @@ class TestAssemblyInstantiation:
                 assembly_id=assembly_id,
                 name=name,
                 applicability=applicability,
-                prompt=prompt,
                 jsonschema=jsonschema,
             )
             assert assembly.assembly_id == assembly_id.strip()
             assert assembly.name == name.strip()
             assert assembly.applicability == applicability.strip()
-            assert assembly.prompt == prompt.strip()
             assert assembly.jsonschema == jsonschema
             assert assembly.status == AssemblyStatus.ACTIVE  # Default
             assert assembly.version == "0.1.0"  # Default
@@ -193,7 +160,6 @@ class TestAssemblyInstantiation:
                     assembly_id=assembly_id,
                     name=name,
                     applicability=applicability,
-                    prompt=prompt,
                     jsonschema=jsonschema,
                 )
 
@@ -235,7 +201,6 @@ class TestAssemblyKnowledgeServiceQueriesValidation:
                 assembly_id="test-id",
                 name="Test Assembly",
                 applicability="Test applicability",
-                prompt="Test prompt",
                 jsonschema={
                     "type": "object",
                     "properties": {"test": {"type": "string"}},
@@ -253,7 +218,6 @@ class TestAssemblyKnowledgeServiceQueriesValidation:
                     assembly_id="test-id",
                     name="Test Assembly",
                     applicability="Test applicability",
-                    prompt="Test prompt",
                     jsonschema={
                         "type": "object",
                         "properties": {"test": {"type": "string"}},
@@ -344,7 +308,6 @@ class TestAssemblyJsonSchemaValidation:
                 assembly_id="test-id",
                 name="Test Assembly",
                 applicability="Test applicability",
-                prompt="Test prompt",
                 jsonschema=jsonschema,
             )
             assert assembly.jsonschema == jsonschema
@@ -355,7 +318,6 @@ class TestAssemblyJsonSchemaValidation:
                     assembly_id="test-id",
                     name="Test Assembly",
                     applicability="Test applicability",
-                    prompt="Test prompt",
                     jsonschema=jsonschema,
                 )
 
@@ -402,7 +364,6 @@ class TestAssemblySerialization:
             assembly_id="meeting-minutes-v1",
             name="Meeting Minutes",
             applicability="Corporate meeting recordings",
-            prompt="Extract meeting data according to schema",
             jsonschema=complex_schema,
         )
 
@@ -413,7 +374,6 @@ class TestAssemblySerialization:
         assert json_data["assembly_id"] == assembly.assembly_id
         assert json_data["name"] == assembly.name
         assert json_data["applicability"] == assembly.applicability
-        assert json_data["prompt"] == assembly.prompt
         assert json_data["status"] == assembly.status.value
         assert json_data["version"] == assembly.version
 
@@ -445,7 +405,6 @@ class TestAssemblySerialization:
             reconstructed_assembly.applicability
             == original_assembly.applicability
         )
-        assert reconstructed_assembly.prompt == original_assembly.prompt
         assert (
             reconstructed_assembly.jsonschema == original_assembly.jsonschema
         )
@@ -462,7 +421,6 @@ class TestAssemblyDefaults:
             assembly_id="test-id",
             name="Test Assembly",
             applicability="Test applicability",
-            prompt="Test prompt",
             jsonschema={
                 "type": "object",
                 "properties": {"test": {"type": "string"}},
@@ -480,7 +438,6 @@ class TestAssemblyDefaults:
             assembly_id="custom-id",
             name="Custom Assembly",
             applicability="Custom applicability",
-            prompt="Custom prompt",
             jsonschema={
                 "type": "object",
                 "properties": {"custom": {"type": "string"}},
