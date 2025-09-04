@@ -2,7 +2,7 @@
 Assembly domain package for the Capture, Extract, Assemble, Publish workflow.
 
 This package contains the Assembly and KnowledgeServiceQuery domain objects
-that work together to define assembly configurations in the CEAP workflow system.
+that work together to define assembly configurations in the CEAP workflow.
 
 Assembly defines document output types (like "meeting minutes") with their
 JSON schemas and applicability rules. KnowledgeServiceQuery defines specific
