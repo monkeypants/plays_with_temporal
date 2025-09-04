@@ -16,7 +16,7 @@ import pytest
 import io
 from typing import Any
 
-from julee_example.domain.custom_fields import ContentStream
+from julee_example.domain.custom_fields.content_stream import ContentStream
 
 
 @pytest.mark.parametrize(

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Callable, Optional, List, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
-from .custom_fields import ContentStream
+from ..custom_fields.content_stream import ContentStream
 
 
 def delegate_to_content(*method_names: str) -> Callable[[type], type]:
