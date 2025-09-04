@@ -10,7 +10,7 @@ and type safety, following the patterns established in the sample project.
 """
 
 from .document import Document, DocumentStatus
-from .custom_fields import ContentStream
+from .custom_fields.content_stream import ContentStream
 from .assembly import Assembly, AssemblyStatus
 from .knowledge_service_query import KnowledgeServiceQuery
 
