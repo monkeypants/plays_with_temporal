@@ -26,3 +26,6 @@ asyncpg
 bandit
 python-magic>=0.4.27
 multihash>=0.1.1
+jsonschema>=4.0.0
+jsonpointer>=3.0.0
+types-jsonschema>=4.0.0
