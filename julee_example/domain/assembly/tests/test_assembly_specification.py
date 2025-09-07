@@ -1,17 +1,17 @@
 """
-Comprehensive tests for Assembly domain model.
+Comprehensive tests for AssemblySpecification domain model.
 
-This test module documents the design decisions made for the Assembly domain
-model using table-based tests. It covers:
+This test module documents the design decisions made for the
+AssemblySpecification domain model using table-based tests. It covers:
 
-- Assembly instantiation with various field combinations
+- AssemblySpecification instantiation with various field combinations
 - JSON Schema validation rules and error conditions
 - JSON serialization behavior
 - Field validation for required fields
 
 Design decisions documented:
-- Assemblies must have all required fields (id, name, applicability, prompt,
-  jsonschema)
+- AssemblySpecifications must have all required fields (id, name,
+  applicability, prompt, jsonschema)
 - JSON Schema field must be a valid JSON Schema dictionary
 - All text fields must be non-empty and non-whitespace
 - Version field has a default but can be customized
@@ -22,19 +22,22 @@ import pytest
 import json
 from typing import Dict, Any
 
-from julee_example.domain import Assembly, AssemblyStatus
+from julee_example.domain import (
+    AssemblySpecification,
+    AssemblySpecificationStatus,
+)
 from .factories import AssemblyFactory
 
 
 class TestAssemblyInstantiation:
-    """Test Assembly creation with various field combinations."""
+    """Test AssemblySpecification creation with various field combinations."""
 
     @pytest.mark.parametrize(
-        "assembly_id,name,applicability,jsonschema,expected_success",
+        "assembly_specification_id,name,applicability,jsonschema,expected_success",
         [
             # Valid cases
             (
-                "assembly-1",
+                "assembly-specification-1",
                 "Meeting Minutes",
                 "Corporate meeting recordings and transcripts",
                 {
@@ -44,7 +47,7 @@ class TestAssemblyInstantiation:
                 True,
             ),
             (
-                "assembly-2",
+                "assembly-specification-2",
                 "Project Report",
                 "Technical project documentation and status reports",
                 {
@@ -74,9 +77,9 @@ class TestAssemblyInstantiation:
                     "properties": {"test": {"type": "string"}},
                 },
                 False,
-            ),  # Empty assembly_id
+            ),  # Empty assembly_specification_id
             (
-                "assembly-3",
+                "assembly-specification-3",
                 "",
                 "Test applicability",
                 {
@@ -86,7 +89,7 @@ class TestAssemblyInstantiation:
                 False,
             ),  # Empty name
             (
-                "assembly-4",
+                "assembly-specification-4",
                 "Test Assembly",
                 "",
                 {
@@ -105,9 +108,9 @@ class TestAssemblyInstantiation:
                     "properties": {"test": {"type": "string"}},
                 },
                 False,
-            ),  # Whitespace assembly_id
+            ),  # Whitespace assembly_specification_id
             (
-                "assembly-6",
+                "assembly-specification-6",
                 "   ",
                 "Test applicability",
                 {
@@ -117,7 +120,7 @@ class TestAssemblyInstantiation:
                 False,
             ),  # Whitespace name
             (
-                "assembly-7",
+                "assembly-specification-7",
                 "Test Assembly",
                 "   ",
                 {
@@ -130,7 +133,7 @@ class TestAssemblyInstantiation:
     )
     def test_assembly_creation_validation(
         self,
-        assembly_id: str,
+        assembly_specification_id: str,
         name: str,
         applicability: str,
         jsonschema: Dict[str, Any],
@@ -139,25 +142,30 @@ class TestAssemblyInstantiation:
         """Test assembly creation with various field validation scenarios."""
         if expected_success:
             # Should create successfully
-            assembly = Assembly(
-                assembly_id=assembly_id,
+            assembly = AssemblySpecification(
+                assembly_specification_id=assembly_specification_id,
                 name=name,
                 applicability=applicability,
                 jsonschema=jsonschema,
             )
-            assert assembly.assembly_id == assembly_id.strip()
+            assert (
+                assembly.assembly_specification_id
+                == assembly_specification_id.strip()
+            )
             assert assembly.name == name.strip()
             assert assembly.applicability == applicability.strip()
             assert assembly.jsonschema == jsonschema
-            assert assembly.status == AssemblyStatus.ACTIVE  # Default
+            assert (
+                assembly.status == AssemblySpecificationStatus.ACTIVE
+            )  # Default
             assert assembly.version == "0.1.0"  # Default
         else:
             # Should raise validation error
             with pytest.raises(
                 Exception
             ):  # Could be ValueError or ValidationError
-                Assembly(
-                    assembly_id=assembly_id,
+                AssemblySpecification(
+                    assembly_specification_id=assembly_specification_id,
                     name=name,
                     applicability=applicability,
                     jsonschema=jsonschema,
@@ -197,8 +205,8 @@ class TestAssemblyKnowledgeServiceQueriesValidation:
         """Test knowledge_service_queries field validation."""
         if expected_success:
             # Should create successfully
-            assembly = Assembly(
-                assembly_id="test-id",
+            assembly = AssemblySpecification(
+                assembly_specification_id="test-id",
                 name="Test Assembly",
                 applicability="Test applicability",
                 jsonschema={
@@ -214,8 +222,8 @@ class TestAssemblyKnowledgeServiceQueriesValidation:
         else:
             # Should raise validation error
             with pytest.raises(Exception):
-                Assembly(
-                    assembly_id="test-id",
+                AssemblySpecification(
+                    assembly_specification_id="test-id",
                     name="Test Assembly",
                     applicability="Test applicability",
                     jsonschema={
@@ -304,8 +312,8 @@ class TestAssemblyJsonSchemaValidation:
         """Test JSON Schema field validation with various schemas."""
         if error_message_contains is None:
             # Should create successfully
-            assembly = Assembly(
-                assembly_id="test-id",
+            assembly = AssemblySpecification(
+                assembly_specification_id="test-id",
                 name="Test Assembly",
                 applicability="Test applicability",
                 jsonschema=jsonschema,
@@ -314,8 +322,8 @@ class TestAssemblyJsonSchemaValidation:
         else:
             # Should raise validation error
             with pytest.raises(Exception) as exc_info:
-                Assembly(
-                    assembly_id="test-id",
+                AssemblySpecification(
+                    assembly_specification_id="test-id",
                     name="Test Assembly",
                     applicability="Test applicability",
                     jsonschema=jsonschema,
@@ -325,10 +333,10 @@ class TestAssemblyJsonSchemaValidation:
 
 
 class TestAssemblySerialization:
-    """Test Assembly JSON serialization behavior."""
+    """Test AssemblySpecification JSON serialization behavior."""
 
     def test_assembly_json_serialization(self) -> None:
-        """Test that Assembly serializes to JSON correctly."""
+        """Test that AssemblySpecification serializes to JSON correctly."""
         complex_schema = {
             "type": "object",
             "properties": {
@@ -361,7 +369,7 @@ class TestAssemblySerialization:
         }
 
         assembly = AssemblyFactory.build(
-            assembly_id="meeting-minutes-v1",
+            assembly_specification_id="meeting-minutes-v1",
             name="Meeting Minutes",
             applicability="Corporate meeting recordings",
             jsonschema=complex_schema,
@@ -371,7 +379,10 @@ class TestAssemblySerialization:
         json_data = json.loads(json_str)
 
         # All fields should be present in JSON
-        assert json_data["assembly_id"] == assembly.assembly_id
+        assert (
+            json_data["assembly_specification_id"]
+            == assembly.assembly_specification_id
+        )
         assert json_data["name"] == assembly.name
         assert json_data["applicability"] == assembly.applicability
         assert json_data["status"] == assembly.status.value
@@ -384,21 +395,21 @@ class TestAssemblySerialization:
         assert "action_items" in json_data["jsonschema"]["properties"]
 
     def test_assembly_json_roundtrip(self) -> None:
-        """Test that Assembly can be serialized to JSON and deserialized
-        back."""
+        """Test that AssemblySpecification can be serialized to JSON and
+        deserialized back."""
         original_assembly = AssemblyFactory.build()
 
         # Serialize to JSON
         json_str = original_assembly.model_dump_json()
         json_data = json.loads(json_str)
 
-        # Deserialize back to Assembly
-        reconstructed_assembly = Assembly(**json_data)
+        # Deserialize back to AssemblySpecification
+        reconstructed_assembly = AssemblySpecification(**json_data)
 
         # Should be equivalent
         assert (
-            reconstructed_assembly.assembly_id
-            == original_assembly.assembly_id
+            reconstructed_assembly.assembly_specification_id
+            == original_assembly.assembly_specification_id
         )
         assert reconstructed_assembly.name == original_assembly.name
         assert (
@@ -413,12 +424,12 @@ class TestAssemblySerialization:
 
 
 class TestAssemblyDefaults:
-    """Test Assembly default values and behavior."""
+    """Test AssemblySpecification default values and behavior."""
 
     def test_assembly_default_values(self) -> None:
-        """Test that Assembly has correct default values."""
-        minimal_assembly = Assembly(
-            assembly_id="test-id",
+        """Test that AssemblySpecification has correct default values."""
+        minimal_assembly = AssemblySpecification(
+            assembly_specification_id="test-id",
             name="Test Assembly",
             applicability="Test applicability",
             jsonschema={
@@ -427,29 +438,29 @@ class TestAssemblyDefaults:
             },
         )
 
-        assert minimal_assembly.status == AssemblyStatus.ACTIVE
+        assert minimal_assembly.status == AssemblySpecificationStatus.ACTIVE
         assert minimal_assembly.version == "0.1.0"
         assert minimal_assembly.created_at is not None
         assert minimal_assembly.updated_at is not None
 
     def test_assembly_custom_values(self) -> None:
-        """Test Assembly with custom non-default values."""
-        custom_assembly = Assembly(
-            assembly_id="custom-id",
+        """Test AssemblySpecification with custom non-default values."""
+        custom_assembly = AssemblySpecification(
+            assembly_specification_id="custom-id",
             name="Custom Assembly",
             applicability="Custom applicability",
             jsonschema={
                 "type": "object",
                 "properties": {"custom": {"type": "string"}},
             },
-            status=AssemblyStatus.DRAFT,
+            status=AssemblySpecificationStatus.DRAFT,
             version="2.0.0",
             knowledge_service_queries={
                 "/properties/custom": "custom-query-1"
             },
         )
 
-        assert custom_assembly.status == AssemblyStatus.DRAFT
+        assert custom_assembly.status == AssemblySpecificationStatus.DRAFT
         assert custom_assembly.version == "2.0.0"
         assert custom_assembly.knowledge_service_queries == {
             "/properties/custom": "custom-query-1"
@@ -458,20 +469,22 @@ class TestAssemblyDefaults:
     @pytest.mark.parametrize(
         "status",
         [
-            AssemblyStatus.ACTIVE,
-            AssemblyStatus.INACTIVE,
-            AssemblyStatus.DRAFT,
-            AssemblyStatus.DEPRECATED,
+            AssemblySpecificationStatus.ACTIVE,
+            AssemblySpecificationStatus.INACTIVE,
+            AssemblySpecificationStatus.DRAFT,
+            AssemblySpecificationStatus.DEPRECATED,
         ],
     )
-    def test_assembly_status_values(self, status: AssemblyStatus) -> None:
-        """Test Assembly with different status values."""
+    def test_assembly_status_values(
+        self, status: AssemblySpecificationStatus
+    ) -> None:
+        """Test AssemblySpecification with different status values."""
         assembly = AssemblyFactory.build(status=status)
         assert assembly.status == status
 
 
 class TestAssemblyVersionValidation:
-    """Test Assembly version field validation."""
+    """Test AssemblySpecification version field validation."""
 
     @pytest.mark.parametrize(
         "version,expected_success",

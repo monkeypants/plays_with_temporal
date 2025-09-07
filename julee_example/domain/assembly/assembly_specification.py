@@ -1,13 +1,13 @@
 """
-Assembly domain models for the Capture, Extract, Assemble, Publish workflow.
+AssemblySpecification domain models for the Capture, Extract, Assemble,
+Publish workflow.
 
-This module contains the Assembly domain object that represents
+This module contains the AssemblySpecification domain object that represents
 assembly configurations in the CEAP workflow system.
 
-An Assembly defines a type of document output (like "meeting minutes"),
-includes
-information about its applicability and and specifies which extractors are
-needed to collect the data for that output.
+An AssemblySpecification defines a type of document output (like "meeting
+minutes"), includes information about its applicability and and specifies
+which extractors are needed to collect the data for that output.
 
 All domain models use Pydantic BaseModel for validation, serialization,
 and type safety, following the patterns established in the sample project.
@@ -21,8 +21,8 @@ import jsonschema
 import jsonpointer  # type: ignore
 
 
-class AssemblyStatus(str, Enum):
-    """Status of an assembly configuration."""
+class AssemblySpecificationStatus(str, Enum):
+    """Status of an assembly specification configuration."""
 
     ACTIVE = "active"
     INACTIVE = "inactive"
@@ -30,23 +30,23 @@ class AssemblyStatus(str, Enum):
     DEPRECATED = "deprecated"
 
 
-class Assembly(BaseModel):
-    """Assembly configuration that defines how to assemble documents of a
-    specific type.
+class AssemblySpecification(BaseModel):
+    """Assembly specification configuration that defines how to assemble
+    documents of a specific type.
 
-    An Assembly represents a type of document output (like "meeting minutes",
-    "project report", etc.) and defines which extractors should be used to
-    collect the necessary data from source documents.
+    An AssemblySpecification represents a type of document output (like
+    "meeting minutes", "project report", etc.) and defines which extractors
+    should be used to collect the necessary data from source documents.
 
-    The Assembly does not contain the template itself - templates will be
-    handled separately during the assembly rendering (or publishing?) phase.
-    This separation allows the same Assembly definition to be used with
-    different templates over time.
+    The AssemblySpecification does not contain the template itself - templates
+    will be handled separately during the assembly rendering (or publishing?)
+    phase. This separation allows the same AssemblySpecification definition to
+    be used with different templates over time.
     """
 
     # Core assembly identification
-    assembly_id: str = Field(
-        description="Unique identifier for this assembly"
+    assembly_specification_id: str = Field(
+        description="Unique identifier for this assembly specification"
     )
     name: str = Field(
         description="Human-readable name like 'meeting minutes'"
@@ -63,8 +63,8 @@ class Assembly(BaseModel):
         "extracted for this assembly"
     )
 
-    # Assembly configuration
-    status: AssemblyStatus = AssemblyStatus.ACTIVE
+    # AssemblySpecification configuration
+    status: AssemblySpecificationStatus = AssemblySpecificationStatus.ACTIVE
     knowledge_service_queries: Dict[str, str] = Field(
         default_factory=dict,
         description="Mapping from JSON Pointer paths to "
@@ -73,7 +73,7 @@ class Assembly(BaseModel):
         "for extracting data for that schema section",
     )
 
-    # Assembly metadata
+    # AssemblySpecification metadata
     version: str = Field(
         default="0.1.0", description="Assembly definition version"
     )
@@ -86,25 +86,27 @@ class Assembly(BaseModel):
     # May later add a detailed description, change log, additional metadata
     # Timestamps
 
-    @field_validator("assembly_id")
+    @field_validator("assembly_specification_id")
     @classmethod
-    def assembly_id_must_not_be_empty(cls, v: str) -> str:
+    def assembly_specification_id_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("Assembly ID cannot be empty")
+            raise ValueError("AssemblySpecification ID cannot be empty")
         return v.strip()
 
     @field_validator("name")
     @classmethod
     def name_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("Assembly name cannot be empty")
+            raise ValueError("AssemblySpecification name cannot be empty")
         return v.strip()
 
     @field_validator("applicability")
     @classmethod
     def applicability_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("Assembly applicability cannot be empty")
+            raise ValueError(
+                "AssemblySpecification applicability cannot be empty"
+            )
         return v.strip()
 
     @field_validator("jsonschema")
@@ -177,5 +179,5 @@ class Assembly(BaseModel):
     @classmethod
     def version_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("Assembly version cannot be empty")
+            raise ValueError("AssemblySpecification version cannot be empty")
         return v.strip()
