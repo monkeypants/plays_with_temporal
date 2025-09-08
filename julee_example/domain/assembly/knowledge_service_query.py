@@ -9,7 +9,7 @@ workflow system.
 
 A KnowledgeServiceQuery defines a specific extraction operation that can be
 performed against a knowledge service to extract data for a particular part
-of an Assembly's JSON schema.
+of an AssemblySpecification's JSON schema.
 
 All domain models use Pydantic BaseModel for validation, serialization,
 and type safety, following the patterns established in the sample project.
@@ -27,12 +27,13 @@ class KnowledgeServiceQuery(BaseModel):
     can be performed against a knowledge service. It defines which knowledge
     service to use and what prompt to send for data extraction.
 
-    When executed, the relevant section of the Assembly's JSON schema will be
+    When executed, the relevant section of the AssemblySpecification's JSON
+    schema will be
     passed along with the prompt to ensure the knowledge service response
     conforms to the expected structure and validation requirements.
 
     The mapping between queries and schema sections is handled by the
-    Assembly's knowledge_service_queries field.
+    AssemblySpecification's knowledge_service_queries field.
     """
 
     # Core query identification

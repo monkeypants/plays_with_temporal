@@ -1,8 +1,8 @@
 """
-Test factories for Assembly domain objects using factory_boy.
+Test factories for AssemblySpecification domain objects using factory_boy.
 
 This module provides factory_boy factories for creating test instances of
-Assembly domain objects with sensible defaults.
+AssemblySpecification domain objects with sensible defaults.
 """
 
 from datetime import datetime, timezone
@@ -12,20 +12,21 @@ from factory.faker import Faker
 from factory.declarations import LazyAttribute, LazyFunction
 
 from julee_example.domain.assembly import (
-    Assembly,
-    AssemblyStatus,
+    AssemblySpecification,
+    AssemblySpecificationStatus,
     KnowledgeServiceQuery,
 )
 
 
 class AssemblyFactory(Factory):
-    """Factory for creating Assembly instances with sensible test defaults."""
+    """Factory for creating AssemblySpecification instances with sensible
+    test defaults."""
 
     class Meta:
-        model = Assembly
+        model = AssemblySpecification
 
     # Core assembly identification
-    assembly_id = Faker("uuid4")
+    assembly_specification_id = Faker("uuid4")
     name = "Test Assembly"
     applicability = "Test documents for automated testing purposes"
 
@@ -49,7 +50,7 @@ class AssemblyFactory(Factory):
         }
 
     # Assembly configuration
-    status = AssemblyStatus.ACTIVE
+    status = AssemblySpecificationStatus.ACTIVE
     version = "0.1.0"
 
     # Timestamps

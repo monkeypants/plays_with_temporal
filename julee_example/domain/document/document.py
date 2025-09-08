@@ -45,7 +45,8 @@ class DocumentStatus(str, Enum):
 
     CAPTURED = "captured"
     REGISTERED = "registered"  # Registered with knowledge service
-    ASSEMBLY_IDENTIFIED = "assembly_identified"  # Assembly types determined
+    # Assembly specification types determined
+    ASSEMBLY_SPECIFICATION_IDENTIFIED = "assembly_specification_identified"
     EXTRACTED = "extracted"  # Extractions completed
     ASSEMBLED = "assembled"  # Template rendered and policies applied
     PUBLISHED = "published"
