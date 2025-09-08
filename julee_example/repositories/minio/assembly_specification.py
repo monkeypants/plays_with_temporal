@@ -3,14 +3,14 @@ Minio implementation of AssemblySpecificationRepository.
 
 This module provides a Minio-based implementation of the
 AssemblySpecificationRepository protocol that follows the Clean Architecture
-patterns defined in the Fun-Police Framework. It handles assembly specification
-storage with complete JSON schemas and knowledge service query configurations,
-ensuring idempotency and proper error handling.
+patterns defined in the Fun-Police Framework. It handles assembly
+specification storage with complete JSON schemas and knowledge service query
+configurations, ensuring idempotency and proper error handling.
 
 The implementation stores assembly specifications as JSON objects in Minio,
-following the large payload handling pattern from the architectural guidelines.
-Each specification is stored as a complete JSON document with its schema and
-query mappings.
+following the large payload handling pattern from the architectural
+guidelines. Each specification is stored as a complete JSON document with its
+schema and query mappings.
 """
 
 import json
@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 
 class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
     """
-    Minio implementation of AssemblySpecificationRepository using Minio for persistence.
+    Minio implementation of AssemblySpecificationRepository using Minio for
+    persistence.
 
     This implementation stores assembly specifications as JSON objects in the
     "assembly-specifications" bucket. Each specification includes its complete
@@ -80,7 +81,8 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
     ) -> Optional[AssemblySpecification]:
         """Retrieve an assembly specification by ID."""
         logger.debug(
-            "MinioAssemblySpecificationRepository: Attempting to retrieve specification",
+            "MinioAssemblySpecificationRepository: Attempting to retrieve "
+            "specification",
             extra={
                 "assembly_specification_id": assembly_specification_id,
                 "bucket": self.specifications_bucket,
@@ -100,10 +102,11 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
             specification_dict = json.loads(specification_json)
 
             logger.info(
-                "MinioAssemblySpecificationRepository: Specification retrieved successfully",
+                "MinioAssemblySpecificationRepository: Specification "
+                "retrieved successfully",
                 extra={
                     "assembly_specification_id": assembly_specification_id,
-                    "name": specification_dict.get("name"),
+                    "spec_name": specification_dict.get("name"),
                     "status": specification_dict.get("status"),
                     "version": specification_dict.get("version"),
                     "retrieved_at": datetime.now(timezone.utc).isoformat(),
@@ -115,7 +118,8 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
         except S3Error as e:
             if getattr(e, "code", None) == "NoSuchKey":
                 logger.debug(
-                    "MinioAssemblySpecificationRepository: Specification not found",
+                    "MinioAssemblySpecificationRepository: Specification not "
+                    "found",
                     extra={
                         "assembly_specification_id": assembly_specification_id
                     },
@@ -123,9 +127,12 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
                 return None
             else:
                 logger.error(
-                    "MinioAssemblySpecificationRepository: Error retrieving specification",
+                    "MinioAssemblySpecificationRepository: Error retrieving "
+                    "specification",
                     extra={
-                        "assembly_specification_id": assembly_specification_id,
+                        "assembly_specification_id": (
+                            assembly_specification_id
+                        ),
                         "error": str(e),
                     },
                 )
@@ -138,8 +145,10 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
         logger.debug(
             "MinioAssemblySpecificationRepository: Saving specification",
             extra={
-                "assembly_specification_id": assembly_specification.assembly_specification_id,
-                "name": assembly_specification.name,
+                "assembly_specification_id": (
+                    assembly_specification.assembly_specification_id
+                ),
+                "spec_name": assembly_specification.name,
                 "status": assembly_specification.status.value,
             },
         )
@@ -160,21 +169,29 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
             )
 
             logger.info(
-                "MinioAssemblySpecificationRepository: Specification saved successfully",
+                "MinioAssemblySpecificationRepository: Specification saved "
+                "successfully",
                 extra={
-                    "assembly_specification_id": assembly_specification.assembly_specification_id,
-                    "name": assembly_specification.name,
+                    "assembly_specification_id": (
+                        assembly_specification.assembly_specification_id
+                    ),
+                    "spec_name": assembly_specification.name,
                     "status": assembly_specification.status.value,
                     "version": assembly_specification.version,
-                    "updated_at": assembly_specification.updated_at.isoformat(),
+                    "updated_at": (
+                        assembly_specification.updated_at.isoformat()
+                    ),
                 },
             )
 
         except S3Error as e:
             logger.error(
-                "MinioAssemblySpecificationRepository: Error saving specification",
+                "MinioAssemblySpecificationRepository: Error saving "
+                "specification",
                 extra={
-                    "assembly_specification_id": assembly_specification.assembly_specification_id,
+                    "assembly_specification_id": (
+                        assembly_specification.assembly_specification_id
+                    ),
                     "error": str(e),
                 },
             )
@@ -185,7 +202,8 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
         specification_id = str(uuid.uuid4())
 
         logger.debug(
-            "MinioAssemblySpecificationRepository: Generated specification ID",
+            "MinioAssemblySpecificationRepository: Generated specification "
+            "ID",
             extra={"assembly_specification_id": specification_id},
         )
 

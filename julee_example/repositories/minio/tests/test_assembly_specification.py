@@ -210,7 +210,8 @@ class TestMinioAssemblySpecificationRepositoryComplexScenarios:
     async def test_complete_specification_lifecycle(
         self, specification_repo: MinioAssemblySpecificationRepository
     ) -> None:
-        """Test complete specification lifecycle from creation to deprecation."""
+        """Test complete specification lifecycle from creation to
+        deprecation."""
         # Generate new specification
         spec_id = await specification_repo.generate_id()
 
@@ -324,8 +325,12 @@ class TestMinioAssemblySpecificationRepositoryComplexScenarios:
 
         complex_queries = {
             "/properties/metadata/properties/title": "extract-title",
-            "/properties/metadata/properties/participants": "extract-participants",
-            "/properties/content/properties/action_items": "extract-action-items",
+            "/properties/metadata/properties/participants": (
+                "extract-participants"
+            ),
+            "/properties/content/properties/action_items": (
+                "extract-action-items"
+            ),
             "/properties/content/properties/summary": "extract-summary",
         }
 
