@@ -100,3 +100,18 @@ class MinioClient(Protocol):
             S3Error: If object doesn't exist (NoSuchKey) or other errors
         """
         ...
+
+    def list_objects(self, bucket_name: str, prefix: str = "") -> Any:
+        """List objects in a bucket with optional prefix filter.
+
+        Args:
+            bucket_name: Name of the bucket
+            prefix: Optional prefix to filter objects
+
+        Returns:
+            Iterator or list of objects matching the prefix
+
+        Raises:
+            S3Error: If bucket doesn't exist or other errors
+        """
+        ...
