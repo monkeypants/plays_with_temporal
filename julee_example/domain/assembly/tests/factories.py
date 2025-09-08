@@ -29,7 +29,6 @@ class AssemblyIterationFactory(Factory):
     iteration_id = Sequence(
         lambda n: n + 1
     )  # Sequential integers: 1, 2, 3, ...
-    assembly_id = Faker("uuid4")
     document_id = Faker("uuid4")
 
     # Timestamps

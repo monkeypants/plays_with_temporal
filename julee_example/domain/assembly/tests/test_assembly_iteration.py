@@ -10,7 +10,7 @@ AssemblyIteration domain model using table-based tests. It covers:
 
 Design decisions documented:
 - AssemblyIterations must have all required fields (iteration_id,
-  assembly_id, document_id)
+  document_id)
 - All ID fields must be non-empty and non-whitespace
 - Timestamps are automatically set with timezone-aware defaults
 """
@@ -27,26 +27,23 @@ class TestAssemblyIterationInstantiation:
     """Test AssemblyIteration creation with various field combinations."""
 
     @pytest.mark.parametrize(
-        "iteration_id,assembly_id,document_id,expected_success",
+        "iteration_id,document_id,expected_success",
         [
             # Valid cases
-            (1, "asm-123", "doc-123", True),
-            (2, "assembly-789", "output-doc-789", True),
-            (10, "asm_def", "doc_def", True),
+            (1, "doc-123", True),
+            (2, "output-doc-789", True),
+            (10, "doc_def", True),
             # Invalid cases - zero or negative iteration_id
-            (0, "asm-123", "doc-123", False),  # Zero iteration_id
-            (-1, "asm-123", "doc-123", False),  # Negative iteration_id
-            (1, "", "doc-123", False),  # Empty assembly_id
-            (1, "asm-123", "", False),  # Empty document_id
+            (0, "doc-123", False),  # Zero iteration_id
+            (-1, "doc-123", False),  # Negative iteration_id
+            (1, "", False),  # Empty document_id
             # Invalid cases - whitespace only
-            (1, "   ", "doc-123", False),  # Whitespace assembly_id
-            (1, "asm-123", "   ", False),  # Whitespace document_id
+            (1, "   ", False),  # Whitespace document_id
         ],
     )
     def test_assembly_iteration_creation_validation(
         self,
         iteration_id: int,
-        assembly_id: str,
         document_id: str,
         expected_success: bool,
     ) -> None:
@@ -55,11 +52,9 @@ class TestAssemblyIterationInstantiation:
             # Should create successfully
             iteration = AssemblyIteration(
                 iteration_id=iteration_id,
-                assembly_id=assembly_id,
                 document_id=document_id,
             )
             assert iteration.iteration_id == iteration_id
-            assert iteration.assembly_id == assembly_id.strip()
             assert iteration.document_id == document_id.strip()
             assert iteration.created_at is not None
             assert iteration.updated_at is not None
@@ -72,7 +67,6 @@ class TestAssemblyIterationInstantiation:
             ):  # Could be ValueError or ValidationError
                 AssemblyIteration(
                     iteration_id=iteration_id,
-                    assembly_id=assembly_id,
                     document_id=document_id,
                 )
 
@@ -84,7 +78,6 @@ class TestAssemblyIterationSerialization:
         """Test that AssemblyIteration serializes to JSON correctly."""
         iteration = AssemblyIterationFactory.build(
             iteration_id=1,
-            assembly_id="asm-test-789",
             document_id="doc-output-456",
         )
 
@@ -93,7 +86,6 @@ class TestAssemblyIterationSerialization:
 
         # All fields should be present in JSON
         assert json_data["iteration_id"] == iteration.iteration_id
-        assert json_data["assembly_id"] == iteration.assembly_id
         assert json_data["document_id"] == iteration.document_id
         assert "created_at" in json_data
         assert "updated_at" in json_data
@@ -116,10 +108,6 @@ class TestAssemblyIterationSerialization:
             == original_iteration.iteration_id
         )
         assert (
-            reconstructed_iteration.assembly_id
-            == original_iteration.assembly_id
-        )
-        assert (
             reconstructed_iteration.document_id
             == original_iteration.document_id
         )
@@ -136,7 +124,6 @@ class TestAssemblyIterationDefaults:
         """Test that AssemblyIteration has correct default values."""
         minimal_iteration = AssemblyIteration(
             iteration_id=1,
-            assembly_id="test-asm",
             document_id="test-doc",
         )
 
@@ -159,14 +146,12 @@ class TestAssemblyIterationDefaults:
 
         custom_iteration = AssemblyIteration(
             iteration_id=5,
-            assembly_id="custom-asm",
             document_id="custom-doc",
             created_at=custom_created_at,
             updated_at=custom_updated_at,
         )
 
         assert custom_iteration.iteration_id == 5
-        assert custom_iteration.assembly_id == "custom-asm"
         assert custom_iteration.document_id == "custom-doc"
         assert custom_iteration.created_at == custom_created_at
         assert custom_iteration.updated_at == custom_updated_at
@@ -180,7 +165,6 @@ class TestAssemblyIterationFieldValidation:
         # Valid cases
         valid_iteration = AssemblyIteration(
             iteration_id=1,
-            assembly_id="asm-id",
             document_id="doc-id",
         )
         assert valid_iteration.iteration_id == 1
@@ -189,39 +173,12 @@ class TestAssemblyIterationFieldValidation:
         with pytest.raises(Exception):
             AssemblyIteration(
                 iteration_id=0,
-                assembly_id="asm-id",
                 document_id="doc-id",
             )
 
         with pytest.raises(Exception):
             AssemblyIteration(
                 iteration_id=-1,
-                assembly_id="asm-id",
-                document_id="doc-id",
-            )
-
-    def test_assembly_id_validation(self) -> None:
-        """Test assembly_id field validation."""
-        # Valid cases
-        valid_iteration = AssemblyIteration(
-            iteration_id=1,
-            assembly_id="valid-asm-id",
-            document_id="doc-id",
-        )
-        assert valid_iteration.assembly_id == "valid-asm-id"
-
-        # Invalid cases
-        with pytest.raises(Exception):
-            AssemblyIteration(
-                iteration_id=1,
-                assembly_id="",
-                document_id="doc-id",
-            )
-
-        with pytest.raises(Exception):
-            AssemblyIteration(
-                iteration_id=1,
-                assembly_id="   ",
                 document_id="doc-id",
             )
 
@@ -230,7 +187,6 @@ class TestAssemblyIterationFieldValidation:
         # Valid cases
         valid_iteration = AssemblyIteration(
             iteration_id=1,
-            assembly_id="asm-id",
             document_id="valid-doc-id",
         )
         assert valid_iteration.document_id == "valid-doc-id"
@@ -239,14 +195,12 @@ class TestAssemblyIterationFieldValidation:
         with pytest.raises(Exception):
             AssemblyIteration(
                 iteration_id=1,
-                assembly_id="asm-id",
                 document_id="",
             )
 
         with pytest.raises(Exception):
             AssemblyIteration(
                 iteration_id=1,
-                assembly_id="asm-id",
                 document_id="   ",
             )
 
@@ -254,10 +208,8 @@ class TestAssemblyIterationFieldValidation:
         """Test that string fields are properly trimmed."""
         iteration = AssemblyIteration(
             iteration_id=1,
-            assembly_id="  trim-asm  ",
             document_id="  trim-doc  ",
         )
 
         assert iteration.iteration_id == 1
-        assert iteration.assembly_id == "trim-asm"
         assert iteration.document_id == "trim-doc"

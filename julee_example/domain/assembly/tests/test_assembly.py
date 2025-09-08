@@ -351,19 +351,12 @@ class TestAssemblyIterationManagement:
 
     def test_multiple_iterations(self) -> None:
         """Test Assembly with multiple iterations."""
-        iteration1 = AssemblyIterationFactory.build(
-            iteration_id=1, assembly_id="asm-id"
-        )
-        iteration2 = AssemblyIterationFactory.build(
-            iteration_id=2, assembly_id="asm-id"
-        )
-        iteration3 = AssemblyIterationFactory.build(
-            iteration_id=3, assembly_id="asm-id"
-        )
+        iteration1 = AssemblyIterationFactory.build(iteration_id=1)
+        iteration2 = AssemblyIterationFactory.build(iteration_id=2)
+        iteration3 = AssemblyIterationFactory.build(iteration_id=3)
 
         assembly = AssemblyFactory.build(
-            assembly_id="asm-id",
-            iterations=[iteration1, iteration2, iteration3],
+            iterations=[iteration1, iteration2, iteration3]
         )
 
         assert len(assembly.iterations) == 3

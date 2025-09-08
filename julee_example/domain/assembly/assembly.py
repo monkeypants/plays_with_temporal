@@ -42,8 +42,7 @@ class Assembly(BaseModel):
 
     This allows for iterative refinement of assembled documents, where each
     iteration can build upon previous attempts or incorporate new information
-    or feedback. The iterations list is populated by finding all
-    AssemblyIterations that reference this Assembly's ID.
+    or feedback.
     """
 
     # Core assembly identification

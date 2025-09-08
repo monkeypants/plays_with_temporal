@@ -38,9 +38,6 @@ class AssemblyIteration(BaseModel):
         description="Sequential iteration number within this assembly "
         "(1, 2, 3, ...)"
     )
-    assembly_id: str = Field(
-        description="ID of the Assembly this iteration belongs to"
-    )
     document_id: str = Field(
         description="ID of the output document produced by this iteration"
     )
@@ -59,13 +56,6 @@ class AssemblyIteration(BaseModel):
         if v <= 0:
             raise ValueError("Iteration ID must be a positive integer")
         return v
-
-    @field_validator("assembly_id")
-    @classmethod
-    def assembly_id_must_not_be_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Assembly ID cannot be empty")
-        return v.strip()
 
     @field_validator("document_id")
     @classmethod
