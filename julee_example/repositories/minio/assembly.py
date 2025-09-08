@@ -1,0 +1,316 @@
+"""
+Minio implementation of AssemblyRepository.
+
+This module provides a Minio-based implementation of the AssemblyRepository
+protocol that follows the Clean Architecture patterns defined in the
+Fun-Police Framework. It handles assembly storage with both assembly metadata
+and iteration data, ensuring idempotency and proper error handling.
+
+The implementation stores assembly metadata and iterations as JSON objects
+in Minio, following the large payload handling pattern from the architectural
+guidelines. Each assembly and its iterations are stored separately for
+efficient queries and updates.
+"""
+
+import json
+import logging
+import uuid
+from datetime import datetime, timezone
+from typing import Optional
+
+from minio.error import S3Error  # type: ignore[import-untyped]
+
+from julee_example.domain import Assembly, AssemblyIteration
+from julee_example.repositories.assembly import AssemblyRepository
+from .client import MinioClient
+
+logger = logging.getLogger(__name__)
+
+
+class MinioAssemblyRepository(AssemblyRepository):
+    """
+    Minio implementation of AssemblyRepository using Minio for persistence.
+
+    This implementation stores assembly metadata and iterations separately:
+    - Assembly metadata: JSON objects in the "assemblies" bucket
+    - Iterations: JSON objects in the "assembly-iterations" bucket
+
+    This separation allows for efficient metadata queries and supports the
+    aggregate pattern where assemblies contain their iterations.
+    """
+
+    def __init__(self, client: MinioClient) -> None:
+        """Initialize repository with Minio client.
+
+        Args:
+            client: MinioClient protocol implementation (real or fake)
+        """
+        logger.debug("Initializing MinioAssemblyRepository")
+
+        self.client = client
+        self.assembly_bucket = "assemblies"
+        self.iterations_bucket = "assembly-iterations"
+        self._ensure_buckets_exist()
+
+    def _ensure_buckets_exist(self) -> None:
+        """Ensure both assembly and iterations buckets exist."""
+        for bucket_name in [self.assembly_bucket, self.iterations_bucket]:
+            try:
+                if not self.client.bucket_exists(bucket_name):
+                    logger.info(
+                        "Creating assembly bucket",
+                        extra={"bucket_name": bucket_name},
+                    )
+                    self.client.make_bucket(bucket_name)
+                else:
+                    logger.debug(
+                        "Assembly bucket already exists",
+                        extra={"bucket_name": bucket_name},
+                    )
+            except S3Error as e:
+                logger.error(
+                    "Failed to create assembly bucket",
+                    extra={"bucket_name": bucket_name, "error": str(e)},
+                )
+                raise
+
+    async def get(self, assembly_id: str) -> Optional[Assembly]:
+        """Retrieve an assembly with all its iterations."""
+        logger.debug(
+            "MinioAssemblyRepository: Attempting to retrieve assembly",
+            extra={
+                "assembly_id": assembly_id,
+                "assembly_bucket": self.assembly_bucket,
+                "iterations_bucket": self.iterations_bucket,
+            },
+        )
+
+        try:
+            # First, get the assembly metadata
+            assembly_response = self.client.get_object(
+                bucket_name=self.assembly_bucket, object_name=assembly_id
+            )
+            assembly_data = assembly_response.read()
+            assembly_response.close()
+            assembly_response.release_conn()
+
+            assembly_json = assembly_data.decode("utf-8")
+            assembly_dict = json.loads(assembly_json)
+
+            # Now get all iterations for this assembly
+            iterations = []
+            try:
+                # List all objects in iterations bucket with assembly_id
+                # prefix
+                objects = self.client.list_objects(
+                    bucket_name=self.iterations_bucket,
+                    prefix=f"{assembly_id}/",
+                )
+
+                for obj in objects:
+                    iteration_response = self.client.get_object(
+                        bucket_name=self.iterations_bucket,
+                        object_name=obj.object_name,
+                    )
+                    iteration_data = iteration_response.read()
+                    iteration_response.close()
+                    iteration_response.release_conn()
+
+                    iteration_json = iteration_data.decode("utf-8")
+                    iteration_dict = json.loads(iteration_json)
+                    iterations.append(AssemblyIteration(**iteration_dict))
+
+                # Sort iterations by iteration_id
+                iterations.sort(key=lambda x: x.iteration_id)
+                assembly_dict["iterations"] = iterations
+
+                logger.info(
+                    "MinioAssemblyRepository: Assembly retrieved "
+                    "successfully",
+                    extra={
+                        "assembly_id": assembly_id,
+                        "status": assembly_dict.get("status"),
+                        "iteration_count": len(iterations),
+                        "retrieved_at": datetime.now(
+                            timezone.utc
+                        ).isoformat(),
+                    },
+                )
+
+                return Assembly(**assembly_dict)
+
+            except S3Error as iterations_error:
+                # If no iterations found, return assembly with empty
+                # iterations list
+                if getattr(iterations_error, "code", None) == "NoSuchKey":
+                    logger.debug(
+                        "MinioAssemblyRepository: No iterations found "
+                        "for assembly",
+                        extra={"assembly_id": assembly_id},
+                    )
+                    assembly_dict["iterations"] = []
+                    return Assembly(**assembly_dict)
+                raise
+
+        except S3Error as e:
+            if getattr(e, "code", None) == "NoSuchKey":
+                logger.debug(
+                    "MinioAssemblyRepository: Assembly not found",
+                    extra={"assembly_id": assembly_id},
+                )
+                return None
+            else:
+                logger.error(
+                    "MinioAssemblyRepository: Error retrieving assembly",
+                    extra={"assembly_id": assembly_id, "error": str(e)},
+                )
+                raise
+
+    async def add_iteration(
+        self, assembly_id: str, document_id: str
+    ) -> Assembly:
+        """Add a new iteration to an assembly and persist it immediately."""
+        logger.debug(
+            "MinioAssemblyRepository: Adding iteration",
+            extra={
+                "assembly_id": assembly_id,
+                "document_id": document_id,
+            },
+        )
+
+        # Get current assembly to check for existing iterations
+        assembly = await self.get(assembly_id)
+        if not assembly:
+            raise ValueError(f"Assembly not found: {assembly_id}")
+
+        # Check idempotency - if document_id already exists, return unchanged
+        for iteration in assembly.iterations:
+            if iteration.document_id == document_id:
+                logger.debug(
+                    "MinioAssemblyRepository: Iteration with document_id "
+                    "already exists",
+                    extra={
+                        "assembly_id": assembly_id,
+                        "document_id": document_id,
+                        "existing_iteration_id": iteration.iteration_id,
+                    },
+                )
+                return assembly
+
+        # Create new iteration with next sequential ID
+        new_iteration = AssemblyIteration(
+            iteration_id=len(assembly.iterations) + 1,
+            document_id=document_id,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        # Persist the iteration
+        iteration_key = f"{assembly_id}/{new_iteration.iteration_id}"
+        iteration_json = new_iteration.model_dump_json()
+
+        try:
+            self.client.put_object(
+                bucket_name=self.iterations_bucket,
+                object_name=iteration_key,
+                data=iteration_json.encode("utf-8"),
+                length=len(iteration_json.encode("utf-8")),
+                content_type="application/json",
+            )
+
+            # Update assembly's updated_at timestamp and save
+            assembly.updated_at = datetime.now(timezone.utc)
+            assembly.iterations.append(new_iteration)
+            await self.save(assembly)
+
+            # Assert for mypy - we explicitly set created_at above
+            assert new_iteration.created_at is not None
+
+            logger.info(
+                "MinioAssemblyRepository: Iteration added successfully",
+                extra={
+                    "assembly_id": assembly_id,
+                    "iteration_id": new_iteration.iteration_id,
+                    "document_id": document_id,
+                    "created_at": new_iteration.created_at.isoformat(),
+                },
+            )
+
+            return assembly
+
+        except S3Error as e:
+            logger.error(
+                "MinioAssemblyRepository: Error adding iteration",
+                extra={
+                    "assembly_id": assembly_id,
+                    "document_id": document_id,
+                    "error": str(e),
+                },
+            )
+            raise
+
+    async def save(self, assembly: Assembly) -> None:
+        """Save assembly metadata (status, updated_at, etc.)."""
+        logger.debug(
+            "MinioAssemblyRepository: Saving assembly",
+            extra={
+                "assembly_id": assembly.assembly_id,
+                "status": assembly.status.value,
+            },
+        )
+
+        try:
+            # Update timestamp
+            assembly.updated_at = datetime.now(timezone.utc)
+
+            # Use Pydantic's JSON serialization for proper datetime handling
+            # Create a temporary assembly without iterations for metadata
+            # storage
+            assembly_for_storage = Assembly(
+                assembly_id=assembly.assembly_id,
+                assembly_specification_id=assembly.assembly_specification_id,
+                input_document_id=assembly.input_document_id,
+                status=assembly.status,
+                iterations=[],  # Empty iterations - stored separately
+                created_at=assembly.created_at,
+                updated_at=assembly.updated_at,
+            )
+            assembly_json = assembly_for_storage.model_dump_json()
+
+            self.client.put_object(
+                bucket_name=self.assembly_bucket,
+                object_name=assembly.assembly_id,
+                data=assembly_json.encode("utf-8"),
+                length=len(assembly_json.encode("utf-8")),
+                content_type="application/json",
+            )
+
+            logger.info(
+                "MinioAssemblyRepository: Assembly saved successfully",
+                extra={
+                    "assembly_id": assembly.assembly_id,
+                    "status": assembly.status.value,
+                    "updated_at": assembly.updated_at.isoformat(),
+                },
+            )
+
+        except S3Error as e:
+            logger.error(
+                "MinioAssemblyRepository: Error saving assembly",
+                extra={
+                    "assembly_id": assembly.assembly_id,
+                    "error": str(e),
+                },
+            )
+            raise
+
+    async def generate_id(self) -> str:
+        """Generate a unique assembly identifier."""
+        assembly_id = str(uuid.uuid4())
+
+        logger.debug(
+            "MinioAssemblyRepository: Generated assembly ID",
+            extra={"assembly_id": assembly_id},
+        )
+
+        return assembly_id

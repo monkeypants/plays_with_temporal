@@ -54,12 +54,15 @@ class AssemblyRepository(Protocol):
         Implementation Notes:
         - Must be idempotent: multiple calls return same result
         - Should handle missing assemblies gracefully (return None)
-        - Must load complete aggregate including all AssemblyIteration entities
+        - Must load complete aggregate including all AssemblyIteration
+          entities
         - Iterations should be ordered by iteration_id
         """
         ...
 
-    async def add_iteration(self, assembly_id: str, document_id: str) -> Assembly:
+    async def add_iteration(
+        self, assembly_id: str, document_id: str
+    ) -> Assembly:
         """Add a new iteration to an assembly and persist it immediately.
 
         Args:
@@ -74,7 +77,6 @@ class AssemblyRepository(Protocol):
           used in an iteration
         - If document_id is same as another iteration, returns assembly
           unchanged
-        - If different (or no iterations exist), creates new iteration
         - Automatically assigns sequential iteration_id (1, 2, 3...)
         - Persists the iteration immediately, not on assembly save
         - Updates assembly's updated_at timestamp
