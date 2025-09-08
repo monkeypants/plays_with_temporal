@@ -1,0 +1,53 @@
+#+TITLE: Code Formatting Standards
+#+STARTUP: overview
+
+* Code Formatting Standards
+
+** Line Length Limit
+
+*78 characters maximum* - enforced by Black and Ruff
+
+Configuration in `pyproject.toml`:
+#+BEGIN_SRC toml
+[tool.black]
+line-length = 78
+
+[tool.ruff]
+line-length = 78
+#+END_SRC
+
+** Handling Long Lines
+
+1. *Extract variables*:
+   #+BEGIN_SRC python
+   args = (argument1, argument2, argument3)
+   result = some_long_function_name(*args)
+   #+END_SRC
+
+2. *Use parentheses for line breaks*:
+   #+BEGIN_SRC python
+   message = (
+       "Long message that exceeds line limit "
+       "split across multiple lines"
+   )
+   #+END_SRC
+
+3. *Logging messages*:
+   #+BEGIN_SRC python
+   logger.info(
+       "Operation completed successfully",
+       extra={"entity_id": entity.id},
+   )
+   #+END_SRC
+
+*Important*: Don't use `"name"` in logging `extra` - it conflicts with LogRecord.
+Use `"spec_name"`, `"entity_name"`, etc.
+
+** Enforcement
+
+- `make format` - Auto-format code
+- `make quality-fast` - Validate formatting
+- All enforced automatically in CI/CD
+
+*Principle*: If you consistently hit line length limits,
+consider whether your code violates Single Responsibility Principle.
