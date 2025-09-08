@@ -22,7 +22,7 @@ import pytest
 import json
 from typing import Dict, Any
 
-from julee_example.domain import (
+from julee_example.domain.assembly_specification import (
     AssemblySpecification,
     AssemblySpecificationStatus,
 )
