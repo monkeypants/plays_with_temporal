@@ -82,5 +82,7 @@ class KnowledgeServiceConfig(BaseModel):
     @classmethod
     def service_api_must_be_valid(cls, v: ServiceApi) -> ServiceApi:
         if v not in ServiceApi:
-            raise ValueError(f"Invalid service API: {v}. Must be one of {list(ServiceApi)}")
+            raise ValueError(
+                f"Invalid service API: {v}. Must be one of {list(ServiceApi)}"
+            )
         return v

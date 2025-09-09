@@ -30,14 +30,16 @@ def ensure_knowledge_service(service: object) -> KnowledgeService:
         service: The service implementation to validate
 
     Returns:
-        The validated service (type checker knows it satisfies KnowledgeService)
+        The validated service (type checker knows it satisfies
+        KnowledgeService)
 
     Raises:
         TypeError: If the service doesn't satisfy the protocol
     """
     if not isinstance(service, KnowledgeService):
         raise TypeError(
-            f"Service {type(service).__name__} does not satisfy KnowledgeService protocol"
+            f"Service {type(service).__name__} does not satisfy "
+            f"KnowledgeService protocol"
         )
 
     return service
