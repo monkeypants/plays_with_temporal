@@ -23,6 +23,26 @@ from julee_example.domain.knowledge_service_config import ServiceApi
 logger = logging.getLogger(__name__)
 
 
+def ensure_knowledge_service(service: object) -> KnowledgeService:
+    """Ensure an object satisfies the KnowledgeService protocol.
+
+    Args:
+        service: The service implementation to validate
+
+    Returns:
+        The validated service (type checker knows it satisfies KnowledgeService)
+
+    Raises:
+        TypeError: If the service doesn't satisfy the protocol
+    """
+    if not isinstance(service, KnowledgeService):
+        raise TypeError(
+            f"Service {type(service).__name__} does not satisfy KnowledgeService protocol"
+        )
+
+    return service
+
+
 def knowledge_service_factory(
     knowledge_service_config: "KnowledgeServiceConfig",
 ) -> KnowledgeService:
@@ -74,6 +94,9 @@ def knowledge_service_factory(
             f"Unsupported service API: {knowledge_service_config.service_api}"
         )
 
+    # Validate that the service satisfies the protocol
+    validated_service = ensure_knowledge_service(service)
+
     logger.info(
         "KnowledgeService created successfully",
         extra={
@@ -81,16 +104,17 @@ def knowledge_service_factory(
                 knowledge_service_config.knowledge_service_id
             ),
             "service_api": knowledge_service_config.service_api.value,
-            "implementation": type(service).__name__,
+            "implementation": type(validated_service).__name__,
         },
     )
 
-    return service
+    return validated_service
 
 
 __all__ = [
     "KnowledgeService",
     "knowledge_service_factory",
+    "ensure_knowledge_service",
     "QueryResult",
     "FileRegistrationResult",
 ]

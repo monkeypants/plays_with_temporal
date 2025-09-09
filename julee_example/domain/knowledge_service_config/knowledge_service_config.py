@@ -77,3 +77,10 @@ class KnowledgeServiceConfig(BaseModel):
         if not v or not v.strip():
             raise ValueError("Knowledge service description cannot be empty")
         return v.strip()
+
+    @field_validator("service_api")
+    @classmethod
+    def service_api_must_be_valid(cls, v: ServiceApi) -> ServiceApi:
+        if v not in ServiceApi:
+            raise ValueError(f"Invalid service API: {v}. Must be one of {list(ServiceApi)}")
+        return v
