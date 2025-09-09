@@ -68,7 +68,9 @@ def knowledge_service_factory(
 
     Example:
         >>> from julee_example.domain import KnowledgeServiceConfig
-        >>> from julee_example.domain.knowledge_service_config import ServiceApi
+        >>> from julee_example.domain.knowledge_service_config import (
+        ...     ServiceApi
+        ... )
         >>> config = KnowledgeServiceConfig(
         ...     knowledge_service_id="ks-123",
         ...     name="My Anthropic Service",
