@@ -9,9 +9,11 @@ patterns established in the Fun-Police framework.
 from .document import DocumentRepository
 from .assembly import AssemblyRepository
 from .assembly_specification import AssemblySpecificationRepository
+from .knowledge_service_config import KnowledgeServiceConfigRepository
 
 __all__ = [
     "DocumentRepository",
     "AssemblyRepository",
     "AssemblySpecificationRepository",
+    "KnowledgeServiceConfigRepository",
 ]
