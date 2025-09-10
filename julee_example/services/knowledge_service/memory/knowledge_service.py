@@ -1,0 +1,252 @@
+"""
+Memory implementation of KnowledgeService for testing and development.
+
+This module provides an in-memory implementation of the KnowledgeService
+protocol that stores file registrations in a dictionary and returns
+configurable canned query responses. Useful for testing and development
+scenarios where external service dependencies should be avoided.
+"""
+
+import logging
+from typing import Optional, List, Dict, Deque
+from datetime import datetime, timezone
+from collections import deque
+
+from julee_example.domain import KnowledgeServiceConfig
+from julee_example.repositories import DocumentRepository
+from ..knowledge_service import (
+    KnowledgeService,
+    QueryResult,
+    FileRegistrationResult,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class MemoryKnowledgeService(KnowledgeService):
+    """
+    In-memory implementation of the KnowledgeService protocol.
+
+    This class stores file registrations in memory using a dictionary
+    keyed by knowledge_service_file_id. Query results are returned from
+    a configurable queue of canned responses.
+
+    Useful for testing and development scenarios where you want to avoid
+    external service dependencies while still exercising the full
+    knowledge service workflow.
+    """
+
+    def __init__(
+        self,
+        config: KnowledgeServiceConfig,
+        document_repo: DocumentRepository,
+    ) -> None:
+        """Initialize memory knowledge service.
+
+        Args:
+            config: KnowledgeServiceConfig domain object containing metadata
+                   and service configuration
+            document_repo: Repository for accessing document data
+        """
+        logger.debug(
+            "Initializing MemoryKnowledgeService",
+            extra={
+                "knowledge_service_id": config.knowledge_service_id,
+                "service_name": config.name,
+            },
+        )
+
+        self.config = config
+        self.document_repo = document_repo
+
+        # Storage for file registrations, keyed by knowledge_service_file_id
+        self._registered_files: Dict[str, FileRegistrationResult] = {}
+
+        # Queue of canned query results to return
+        self._canned_query_results: Deque[QueryResult] = deque()
+
+    def add_canned_query_result(self, query_result: QueryResult) -> None:
+        """Add a canned query result to be returned by execute_query.
+
+        Args:
+            query_result: QueryResult to return from future execute_query
+                         calls
+        """
+        logger.debug(
+            "Adding canned query result",
+            extra={
+                "knowledge_service_id": self.config.knowledge_service_id,
+                "query_id": query_result.query_id,
+            },
+        )
+        self._canned_query_results.append(query_result)
+
+    def clear_canned_query_results(self) -> None:
+        """Clear all canned query results."""
+        logger.debug(
+            "Clearing canned query results",
+            extra={
+                "knowledge_service_id": self.config.knowledge_service_id,
+                "count": len(self._canned_query_results),
+            },
+        )
+        self._canned_query_results.clear()
+
+    def get_registered_file(
+        self, knowledge_service_file_id: str
+    ) -> Optional[FileRegistrationResult]:
+        """Get a registered file by its knowledge service file ID.
+
+        Args:
+            knowledge_service_file_id: The file ID assigned by this service
+
+        Returns:
+            FileRegistrationResult if found, None otherwise
+        """
+        return self._registered_files.get(knowledge_service_file_id)
+
+    def get_all_registered_files(self) -> Dict[str, FileRegistrationResult]:
+        """Get all registered files.
+
+        Returns:
+            Dictionary mapping knowledge_service_file_id to
+            FileRegistrationResult
+        """
+        return self._registered_files.copy()
+
+    async def register_file(self, document_id: str) -> FileRegistrationResult:
+        """Register a document file in memory storage.
+
+        Args:
+            document_id: ID of the document to register
+
+        Returns:
+            FileRegistrationResult with memory-specific details
+        """
+        logger.debug(
+            "Registering file with MemoryKnowledgeService",
+            extra={
+                "knowledge_service_id": self.config.knowledge_service_id,
+                "document_id": document_id,
+            },
+        )
+
+        # Check if already registered
+        for existing_result in self._registered_files.values():
+            if existing_result.document_id == document_id:
+                logger.debug(
+                    "Document already registered, returning existing result",
+                    extra={
+                        "knowledge_service_id": (
+                            self.config.knowledge_service_id
+                        ),
+                        "document_id": document_id,
+                        "knowledge_service_file_id": (
+                            existing_result.knowledge_service_file_id
+                        ),
+                    },
+                )
+                return existing_result
+
+        # Generate a unique file ID for this service
+        memory_file_id = (
+            f"memory_{document_id}_{int(datetime.now().timestamp())}"
+        )
+
+        # Create registration result
+        result = FileRegistrationResult(
+            document_id=document_id,
+            knowledge_service_file_id=memory_file_id,
+            registration_metadata={
+                "service": "memory",
+                "registered_via": "in_memory_storage",
+                "knowledge_service_id": self.config.knowledge_service_id,
+            },
+            created_at=datetime.now(timezone.utc),
+        )
+
+        # Store in memory dictionary keyed by knowledge_service_file_id
+        self._registered_files[memory_file_id] = result
+
+        logger.info(
+            "File registered with MemoryKnowledgeService",
+            extra={
+                "knowledge_service_id": self.config.knowledge_service_id,
+                "document_id": document_id,
+                "knowledge_service_file_id": memory_file_id,
+                "total_registered": len(self._registered_files),
+            },
+        )
+
+        return result
+
+    async def execute_query(
+        self,
+        query_text: str,
+        document_ids: Optional[List[str]] = None,
+    ) -> QueryResult:
+        """Execute a query by returning a canned response.
+
+        Args:
+            query_text: The query to execute
+            document_ids: Optional list of document IDs to scope query to
+
+        Returns:
+            QueryResult from the queue of canned responses
+
+        Raises:
+            ValueError: If no canned query results are available
+        """
+        logger.debug(
+            "Executing query with MemoryKnowledgeService",
+            extra={
+                "knowledge_service_id": self.config.knowledge_service_id,
+                "query_text": query_text,
+                "document_count": len(document_ids) if document_ids else 0,
+                "canned_results_available": len(self._canned_query_results),
+            },
+        )
+
+        # Check if we have canned results available
+        if not self._canned_query_results:
+            error_msg = (
+                "No canned query results available. Use "
+                "add_canned_query_result() to configure responses."
+            )
+            logger.error(
+                error_msg,
+                extra={
+                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "query_text": query_text,
+                },
+            )
+            raise ValueError(error_msg)
+
+        # Pop and return the next canned result
+        result = self._canned_query_results.popleft()
+
+        # Update the result to reflect the actual query parameters
+        updated_result = QueryResult(
+            query_id=result.query_id,
+            query_text=query_text,  # Use actual query text
+            result_data={
+                **result.result_data,
+                "queried_documents": document_ids or [],
+                "service": "memory",
+                "knowledge_service_id": self.config.knowledge_service_id,
+            },
+            execution_time_ms=result.execution_time_ms,
+            created_at=datetime.now(timezone.utc),
+        )
+
+        logger.info(
+            "Query executed with MemoryKnowledgeService",
+            extra={
+                "knowledge_service_id": self.config.knowledge_service_id,
+                "query_id": updated_result.query_id,
+                "execution_time_ms": updated_result.execution_time_ms,
+                "remaining_canned_results": len(self._canned_query_results),
+            },
+        )
+
+        return updated_result
