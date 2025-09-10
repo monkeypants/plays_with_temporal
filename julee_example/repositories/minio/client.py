@@ -1,15 +1,26 @@
 """
-MinioClient protocol definition.
+MinioClient protocol definition and repository utilities.
 
 This module defines the protocol interface that both the real Minio client
 and our fake test client must implement. This follows Clean Architecture
 dependency inversion principles by depending on abstractions rather than
 concrete implementations.
+
+It also provides MinioRepositoryClient, a composition wrapper that encapsulates
+common patterns used across all Minio repository implementations to reduce
+code duplication and ensure consistent error handling and logging.
 """
 
-from typing import Protocol, Any, Dict, Optional, runtime_checkable
+import json
+import logging
+from datetime import datetime, timezone
+from typing import Protocol, Any, Dict, Optional, runtime_checkable, List, Union, TypeVar
 from urllib3.response import HTTPResponse
 from minio.datatypes import Object
+from minio.error import S3Error  # type: ignore[import-untyped]
+from pydantic import BaseModel
+
+T = TypeVar('T', bound=BaseModel)
 
 
 @runtime_checkable
@@ -115,3 +126,209 @@ class MinioClient(Protocol):
             S3Error: If bucket doesn't exist or other errors
         """
         ...
+
+
+class MinioRepositoryClient:
+    """
+    Composition wrapper for MinioClient that provides common repository patterns.
+
+    This class encapsulates common functionality used across all Minio repository
+    implementations, including:
+    - Bucket creation and management
+    - JSON serialization/deserialization with proper error handling
+    - Standardized S3Error handling for NoSuchKey cases
+    - Consistent logging patterns
+    - Response cleanup
+
+    By using composition, repositories can delegate common operations to this
+    client while maintaining clean, focused domain logic.
+    """
+
+    def __init__(self, client: MinioClient, logger_name: str) -> None:
+        """Initialize the repository client.
+
+        Args:
+            client: MinioClient protocol implementation (real or fake)
+            logger_name: Name for the logger (e.g., 'MinioAssemblyRepository')
+        """
+        self.client = client
+        self.logger = logging.getLogger(logger_name)
+
+    def ensure_buckets_exist(self, bucket_names: Union[str, List[str]]) -> None:
+        """Ensure one or more buckets exist, creating them if necessary.
+
+        Args:
+            bucket_names: Single bucket name or list of bucket names
+
+        Raises:
+            S3Error: If bucket creation fails
+        """
+        if isinstance(bucket_names, str):
+            bucket_names = [bucket_names]
+
+        for bucket_name in bucket_names:
+            try:
+                if not self.client.bucket_exists(bucket_name):
+                    self.logger.info(
+                        "Creating bucket",
+                        extra={"bucket_name": bucket_name},
+                    )
+                    self.client.make_bucket(bucket_name)
+                else:
+                    self.logger.debug(
+                        "Bucket already exists",
+                        extra={"bucket_name": bucket_name},
+                    )
+            except S3Error as e:
+                self.logger.error(
+                    "Failed to create bucket",
+                    extra={"bucket_name": bucket_name, "error": str(e)},
+                )
+                raise
+
+    def get_json_object(
+        self,
+        bucket_name: str,
+        object_name: str,
+        model_class: type[T],
+        not_found_log_message: str,
+        error_log_message: str,
+        extra_log_data: Optional[Dict[str, Any]] = None
+    ) -> Optional[T]:
+        """Get a JSON object from Minio and deserialize it to a Pydantic model.
+
+        Args:
+            bucket_name: Name of the bucket
+            object_name: Name of the object
+            model_class: Pydantic model class to deserialize to
+            not_found_log_message: Message to log when object is not found
+            error_log_message: Message to log on other errors
+            extra_log_data: Additional data to include in log entries
+
+        Returns:
+            Deserialized Pydantic model instance, or None if not found
+
+        Raises:
+            S3Error: For non-NoSuchKey errors
+        """
+        extra_log_data = extra_log_data or {}
+
+        try:
+            response = self.client.get_object(
+                bucket_name=bucket_name,
+                object_name=object_name
+            )
+
+            # Read and clean up response
+            data = response.read()
+            response.close()
+            response.release_conn()
+
+            # Deserialize JSON to Pydantic model
+            json_str = data.decode("utf-8")
+            json_dict = json.loads(json_str)
+
+            return model_class(**json_dict)
+
+        except S3Error as e:
+            if getattr(e, "code", None) == "NoSuchKey":
+                self.logger.debug(
+                    not_found_log_message,
+                    extra=extra_log_data,
+                )
+                return None
+            else:
+                self.logger.error(
+                    error_log_message,
+                    extra={**extra_log_data, "error": str(e)},
+                )
+                raise
+
+    def put_json_object(
+        self,
+        bucket_name: str,
+        object_name: str,
+        model: BaseModel,
+        success_log_message: str,
+        error_log_message: str,
+        extra_log_data: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Store a Pydantic model as a JSON object in Minio.
+
+        Args:
+            bucket_name: Name of the bucket
+            object_name: Name of the object
+            model: Pydantic model instance to serialize
+            success_log_message: Message to log on successful storage
+            error_log_message: Message to log on error
+            extra_log_data: Additional data to include in log entries
+
+        Raises:
+            S3Error: If object storage fails
+        """
+        extra_log_data = extra_log_data or {}
+
+        try:
+            # Serialize using Pydantic's JSON serialization
+            json_data = model.model_dump_json()
+
+            self.client.put_object(
+                bucket_name=bucket_name,
+                object_name=object_name,
+                data=json_data.encode("utf-8"),
+                length=len(json_data.encode("utf-8")),
+                content_type="application/json",
+            )
+
+            self.logger.info(
+                success_log_message,
+                extra=extra_log_data,
+            )
+
+        except S3Error as e:
+            self.logger.error(
+                error_log_message,
+                extra={**extra_log_data, "error": str(e)},
+            )
+            raise
+
+    def update_timestamps(self, model: Any) -> None:
+        """Update timestamps on a model (created_at if None, always updated_at).
+
+        Args:
+            model: Pydantic model with created_at and updated_at fields
+        """
+        now = datetime.now(timezone.utc)
+
+        # Set created_at if it's None (for new objects)
+        if hasattr(model, 'created_at') and getattr(model, 'created_at', None) is None:
+            setattr(model, 'created_at', now)
+
+        # Always update updated_at
+        if hasattr(model, 'updated_at'):
+            setattr(model, 'updated_at', now)
+
+    def generate_id_with_prefix(self, prefix: str) -> str:
+        """Generate a unique ID with the given prefix and log the generation.
+
+        Args:
+            prefix: Prefix for the generated ID (e.g., "ks", "doc")
+
+        Returns:
+            Unique ID string in format "{prefix}-{uuid}"
+        """
+        import uuid
+        from datetime import datetime, timezone
+
+        generated_id = f"{prefix}-{uuid.uuid4()}"
+
+        self.logger.debug(
+            "Generated ID",
+            extra={
+                "generated_id": generated_id,
+                "prefix": prefix,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+        return generated_id

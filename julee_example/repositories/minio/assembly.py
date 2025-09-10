@@ -13,8 +13,6 @@ efficient queries and updates.
 """
 
 import json
-import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -22,9 +20,7 @@ from minio.error import S3Error  # type: ignore[import-untyped]
 
 from julee_example.domain import Assembly, AssemblyIteration
 from julee_example.repositories.assembly import AssemblyRepository
-from .client import MinioClient
-
-logger = logging.getLogger(__name__)
+from .client import MinioClient, MinioRepositoryClient
 
 
 class MinioAssemblyRepository(AssemblyRepository):
@@ -45,138 +41,65 @@ class MinioAssemblyRepository(AssemblyRepository):
         Args:
             client: MinioClient protocol implementation (real or fake)
         """
-        logger.debug("Initializing MinioAssemblyRepository")
-
-        self.client = client
+        self.repo_client = MinioRepositoryClient(client, "MinioAssemblyRepository")
         self.assembly_bucket = "assemblies"
         self.iterations_bucket = "assembly-iterations"
-        self._ensure_buckets_exist()
-
-    def _ensure_buckets_exist(self) -> None:
-        """Ensure both assembly and iterations buckets exist."""
-        for bucket_name in [self.assembly_bucket, self.iterations_bucket]:
-            try:
-                if not self.client.bucket_exists(bucket_name):
-                    logger.info(
-                        "Creating assembly bucket",
-                        extra={"bucket_name": bucket_name},
-                    )
-                    self.client.make_bucket(bucket_name)
-                else:
-                    logger.debug(
-                        "Assembly bucket already exists",
-                        extra={"bucket_name": bucket_name},
-                    )
-            except S3Error as e:
-                logger.error(
-                    "Failed to create assembly bucket",
-                    extra={"bucket_name": bucket_name, "error": str(e)},
-                )
-                raise
+        self.repo_client.ensure_buckets_exist([self.assembly_bucket, self.iterations_bucket])
 
     async def get(self, assembly_id: str) -> Optional[Assembly]:
         """Retrieve an assembly with all its iterations."""
-        logger.debug(
-            "MinioAssemblyRepository: Attempting to retrieve assembly",
-            extra={
-                "assembly_id": assembly_id,
-                "assembly_bucket": self.assembly_bucket,
-                "iterations_bucket": self.iterations_bucket,
-            },
+        # Get the assembly metadata using repo_client
+        assembly = self.repo_client.get_json_object(
+            bucket_name=self.assembly_bucket,
+            object_name=assembly_id,
+            model_class=Assembly,
+            not_found_log_message="Assembly not found",
+            error_log_message="Error retrieving assembly",
+            extra_log_data={"assembly_id": assembly_id}
         )
 
+        if assembly is None:
+            return None
+
+        # Get all iterations for this assembly
+        iterations = []
         try:
-            # First, get the assembly metadata
-            assembly_response = self.client.get_object(
-                bucket_name=self.assembly_bucket, object_name=assembly_id
+            # List all objects in iterations bucket with assembly_id prefix
+            objects = self.repo_client.client.list_objects(
+                bucket_name=self.iterations_bucket,
+                prefix=f"{assembly_id}/",
             )
-            assembly_data = assembly_response.read()
-            assembly_response.close()
-            assembly_response.release_conn()
 
-            assembly_json = assembly_data.decode("utf-8")
-            assembly_dict = json.loads(assembly_json)
-
-            # Now get all iterations for this assembly
-            iterations = []
-            try:
-                # List all objects in iterations bucket with assembly_id
-                # prefix
-                objects = self.client.list_objects(
+            for obj in objects:
+                iteration_response = self.repo_client.client.get_object(
                     bucket_name=self.iterations_bucket,
-                    prefix=f"{assembly_id}/",
+                    object_name=obj.object_name,
                 )
+                iteration_data = iteration_response.read()
+                iteration_response.close()
+                iteration_response.release_conn()
 
-                for obj in objects:
-                    iteration_response = self.client.get_object(
-                        bucket_name=self.iterations_bucket,
-                        object_name=obj.object_name,
-                    )
-                    iteration_data = iteration_response.read()
-                    iteration_response.close()
-                    iteration_response.release_conn()
+                iteration_json = iteration_data.decode("utf-8")
+                iteration_dict = json.loads(iteration_json)
+                iterations.append(AssemblyIteration(**iteration_dict))
 
-                    iteration_json = iteration_data.decode("utf-8")
-                    iteration_dict = json.loads(iteration_json)
-                    iterations.append(AssemblyIteration(**iteration_dict))
+            # Sort iterations by iteration_id
+            iterations.sort(key=lambda x: x.iteration_id)
+            assembly.iterations = iterations
 
-                # Sort iterations by iteration_id
-                iterations.sort(key=lambda x: x.iteration_id)
-                assembly_dict["iterations"] = iterations
-
-                logger.info(
-                    "MinioAssemblyRepository: Assembly retrieved "
-                    "successfully",
-                    extra={
-                        "assembly_id": assembly_id,
-                        "status": assembly_dict.get("status"),
-                        "iteration_count": len(iterations),
-                        "retrieved_at": datetime.now(
-                            timezone.utc
-                        ).isoformat(),
-                    },
-                )
-
-                return Assembly(**assembly_dict)
-
-            except S3Error as iterations_error:
-                # If no iterations found, return assembly with empty
-                # iterations list
-                if getattr(iterations_error, "code", None) == "NoSuchKey":
-                    logger.debug(
-                        "MinioAssemblyRepository: No iterations found "
-                        "for assembly",
-                        extra={"assembly_id": assembly_id},
-                    )
-                    assembly_dict["iterations"] = []
-                    return Assembly(**assembly_dict)
-                raise
-
-        except S3Error as e:
-            if getattr(e, "code", None) == "NoSuchKey":
-                logger.debug(
-                    "MinioAssemblyRepository: Assembly not found",
-                    extra={"assembly_id": assembly_id},
-                )
-                return None
+        except S3Error as iterations_error:
+            # If no iterations found, assembly has empty iterations list
+            if getattr(iterations_error, "code", None) == "NoSuchKey":
+                assembly.iterations = []
             else:
-                logger.error(
-                    "MinioAssemblyRepository: Error retrieving assembly",
-                    extra={"assembly_id": assembly_id, "error": str(e)},
-                )
                 raise
+
+        return assembly
 
     async def add_iteration(
         self, assembly_id: str, document_id: str
     ) -> Assembly:
         """Add a new iteration to an assembly and persist it immediately."""
-        logger.debug(
-            "MinioAssemblyRepository: Adding iteration",
-            extra={
-                "assembly_id": assembly_id,
-                "document_id": document_id,
-            },
-        )
 
         # Get current assembly to check for existing iterations
         assembly = await self.get(assembly_id)
@@ -186,15 +109,7 @@ class MinioAssemblyRepository(AssemblyRepository):
         # Check idempotency - if document_id already exists, return unchanged
         for iteration in assembly.iterations:
             if iteration.document_id == document_id:
-                logger.debug(
-                    "MinioAssemblyRepository: Iteration with document_id "
-                    "already exists",
-                    extra={
-                        "assembly_id": assembly_id,
-                        "document_id": document_id,
-                        "existing_iteration_id": iteration.iteration_id,
-                    },
-                )
+
                 return assembly
 
         # Create new iteration with next sequential ID
@@ -207,110 +122,54 @@ class MinioAssemblyRepository(AssemblyRepository):
 
         # Persist the iteration
         iteration_key = f"{assembly_id}/{new_iteration.iteration_id}"
-        iteration_json = new_iteration.model_dump_json()
 
-        try:
-            self.client.put_object(
-                bucket_name=self.iterations_bucket,
-                object_name=iteration_key,
-                data=iteration_json.encode("utf-8"),
-                length=len(iteration_json.encode("utf-8")),
-                content_type="application/json",
-            )
+        self.repo_client.put_json_object(
+            bucket_name=self.iterations_bucket,
+            object_name=iteration_key,
+            model=new_iteration,
+            success_log_message="Iteration added successfully",
+            error_log_message="Error adding iteration",
+            extra_log_data={
+                "assembly_id": assembly_id,
+                "iteration_id": new_iteration.iteration_id,
+                "document_id": document_id,
+            }
+        )
 
-            # Update assembly's updated_at timestamp and save
-            assembly.updated_at = datetime.now(timezone.utc)
-            assembly.iterations.append(new_iteration)
-            await self.save(assembly)
+        # Update assembly's updated_at timestamp and save
+        assembly.iterations.append(new_iteration)
+        await self.save(assembly)
 
-            # Assert for mypy - we explicitly set created_at above
-            assert new_iteration.created_at is not None
-
-            logger.info(
-                "MinioAssemblyRepository: Iteration added successfully",
-                extra={
-                    "assembly_id": assembly_id,
-                    "iteration_id": new_iteration.iteration_id,
-                    "document_id": document_id,
-                    "created_at": new_iteration.created_at.isoformat(),
-                },
-            )
-
-            return assembly
-
-        except S3Error as e:
-            logger.error(
-                "MinioAssemblyRepository: Error adding iteration",
-                extra={
-                    "assembly_id": assembly_id,
-                    "document_id": document_id,
-                    "error": str(e),
-                },
-            )
-            raise
+        return assembly
 
     async def save(self, assembly: Assembly) -> None:
         """Save assembly metadata (status, updated_at, etc.)."""
-        logger.debug(
-            "MinioAssemblyRepository: Saving assembly",
-            extra={
-                "assembly_id": assembly.assembly_id,
-                "status": assembly.status.value,
-            },
+        # Update timestamp
+        self.repo_client.update_timestamps(assembly)
+
+        # Create a temporary assembly without iterations for metadata storage
+        assembly_for_storage = Assembly(
+            assembly_id=assembly.assembly_id,
+            assembly_specification_id=assembly.assembly_specification_id,
+            input_document_id=assembly.input_document_id,
+            status=assembly.status,
+            iterations=[],  # Empty iterations - stored separately
+            created_at=assembly.created_at,
+            updated_at=assembly.updated_at,
         )
 
-        try:
-            # Update timestamp
-            assembly.updated_at = datetime.now(timezone.utc)
-
-            # Use Pydantic's JSON serialization for proper datetime handling
-            # Create a temporary assembly without iterations for metadata
-            # storage
-            assembly_for_storage = Assembly(
-                assembly_id=assembly.assembly_id,
-                assembly_specification_id=assembly.assembly_specification_id,
-                input_document_id=assembly.input_document_id,
-                status=assembly.status,
-                iterations=[],  # Empty iterations - stored separately
-                created_at=assembly.created_at,
-                updated_at=assembly.updated_at,
-            )
-            assembly_json = assembly_for_storage.model_dump_json()
-
-            self.client.put_object(
-                bucket_name=self.assembly_bucket,
-                object_name=assembly.assembly_id,
-                data=assembly_json.encode("utf-8"),
-                length=len(assembly_json.encode("utf-8")),
-                content_type="application/json",
-            )
-
-            logger.info(
-                "MinioAssemblyRepository: Assembly saved successfully",
-                extra={
-                    "assembly_id": assembly.assembly_id,
-                    "status": assembly.status.value,
-                    "updated_at": assembly.updated_at.isoformat(),
-                },
-            )
-
-        except S3Error as e:
-            logger.error(
-                "MinioAssemblyRepository: Error saving assembly",
-                extra={
-                    "assembly_id": assembly.assembly_id,
-                    "error": str(e),
-                },
-            )
-            raise
+        self.repo_client.put_json_object(
+            bucket_name=self.assembly_bucket,
+            object_name=assembly.assembly_id,
+            model=assembly_for_storage,
+            success_log_message="Assembly saved successfully",
+            error_log_message="Error saving assembly",
+            extra_log_data={
+                "assembly_id": assembly.assembly_id,
+                "status": assembly.status.value,
+            }
+        )
 
     async def generate_id(self) -> str:
         """Generate a unique assembly identifier."""
-        assembly_id = str(uuid.uuid4())
-
-        logger.debug(
-            "MinioAssemblyRepository: Generated assembly ID",
-            extra={"assembly_id": assembly_id},
-        )
-
-        return assembly_id
+        return self.repo_client.generate_id_with_prefix("assembly")
