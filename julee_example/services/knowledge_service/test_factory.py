@@ -45,10 +45,14 @@ class TestKnowledgeServiceFactory:
         document_repo: MemoryDocumentRepository,
     ) -> None:
         """Test factory creates AnthropicKnowledgeService for ANTHROPIC."""
-        service = knowledge_service_factory(anthropic_config, document_repo)
+        with pytest.MonkeyPatch.context() as m:
+            m.setenv("ANTHROPIC_API_KEY", "test-key")
+            service = knowledge_service_factory(
+                anthropic_config, document_repo
+            )
 
-        assert isinstance(service, AnthropicKnowledgeService)
-        assert service.config == anthropic_config
+            assert isinstance(service, AnthropicKnowledgeService)
+            assert service.config == anthropic_config
 
     def test_factory_returns_validated_service(
         self,
@@ -56,11 +60,15 @@ class TestKnowledgeServiceFactory:
         document_repo: MemoryDocumentRepository,
     ) -> None:
         """Test factory returns service that passes protocol validation."""
-        service = knowledge_service_factory(anthropic_config, document_repo)
+        with pytest.MonkeyPatch.context() as m:
+            m.setenv("ANTHROPIC_API_KEY", "test-key")
+            service = knowledge_service_factory(
+                anthropic_config, document_repo
+            )
 
-        # Should not raise an error when validating the service
-        validated_service = ensure_knowledge_service(service)
-        assert validated_service == service
+            # Should not raise an error when validating the service
+            validated_service = ensure_knowledge_service(service)
+            assert validated_service == service
 
 
 class TestEnsureKnowledgeService:
@@ -75,7 +83,9 @@ class TestEnsureKnowledgeService:
         # Mock the anthropic import to avoid dependency issues in tests
         with pytest.MonkeyPatch.context() as m:
             m.setenv("ANTHROPIC_API_KEY", "test-key")
-            service = AnthropicKnowledgeService(anthropic_config, document_repo)
+            service = AnthropicKnowledgeService(
+                anthropic_config, document_repo
+            )
 
             validated_service = ensure_knowledge_service(service)
             assert validated_service == service

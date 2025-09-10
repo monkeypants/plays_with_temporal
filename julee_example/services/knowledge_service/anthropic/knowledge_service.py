@@ -13,6 +13,8 @@ Dependencies:
 
 import os
 import logging
+import time
+import uuid
 from typing import Optional, List
 from datetime import datetime, timezone
 
@@ -41,7 +43,7 @@ class AnthropicKnowledgeService(KnowledgeService):
     def __init__(
         self,
         config: KnowledgeServiceConfig,
-        document_repo: DocumentRepository
+        document_repo: DocumentRepository,
     ) -> None:
         """Initialize Anthropic knowledge service with configuration.
 
@@ -69,7 +71,10 @@ class AnthropicKnowledgeService(KnowledgeService):
                 "AnthropicKnowledgeService"
             )
 
-        self.client = AsyncAnthropic(api_key=api_key)
+        self.client = AsyncAnthropic(
+            api_key=api_key,
+            default_headers={"anthropic-beta": "files-api-2025-04-14"},
+        )
 
     async def register_file(self, document_id: str) -> FileRegistrationResult:
         """Register a document file with Anthropic.
@@ -103,7 +108,7 @@ class AnthropicKnowledgeService(KnowledgeService):
                 file=(
                     document.original_filename,
                     document.content.stream,
-                    document.content_type
+                    document.content_type,
                 )
             )
 
@@ -149,18 +154,17 @@ class AnthropicKnowledgeService(KnowledgeService):
             )
             raise
 
-
-
     async def execute_query(
         self,
         query_text: str,
-        document_ids: Optional[List[str]] = None,
+        service_file_ids: Optional[List[str]] = None,
     ) -> QueryResult:
         """Execute a query against Anthropic.
 
         Args:
             query_text: The query to execute
-            document_ids: Optional list of document IDs to scope query to
+            service_file_ids: Optional list of Anthropic file IDs to provide
+                             as context for the query
 
         Returns:
             QueryResult with Anthropic query results
@@ -170,42 +174,103 @@ class AnthropicKnowledgeService(KnowledgeService):
             extra={
                 "knowledge_service_id": self.config.knowledge_service_id,
                 "query_text": query_text,
-                "document_count": len(document_ids) if document_ids else 0,
+                "document_count": (
+                    len(service_file_ids) if service_file_ids else 0
+                ),
             },
         )
 
-        # TODO: Implement Anthropic-specific query execution
-        # This would involve:
-        # 1. Translating document_ids to Anthropic file IDs
-        # 2. Constructing Anthropic API request with context
-        # 3. Executing query against Anthropic API
-        # 4. Processing Anthropic response format
-        # 5. Structuring results into QueryResult format
+        start_time = time.time()
+        query_id = f"anthropic_{uuid.uuid4().hex[:12]}"
 
-        # For now, return a stub result
-        query_id = f"anthropic_query_{int(datetime.now().timestamp())}"
+        try:
+            # Prepare the message content with file attachments if provided
+            content_parts = []
 
-        result = QueryResult(
-            query_id=query_id,
-            query_text=query_text,
-            result_data={
-                "response": "This is a stub response from Anthropic",
-                "confidence": 0.95,
-                "sources": document_ids or [],
-                "service": "anthropic",
-                "model": "claude-sonnet-4",  # Would be configurable
-            },
-            execution_time_ms=250,  # Stub execution time
-            created_at=datetime.now(timezone.utc),
-        )
+            # Add file attachments if service_file_ids are provided
+            if service_file_ids:
+                for file_id in service_file_ids:
+                    content_parts.append(
+                        {
+                            "type": "document",
+                            "source": {"type": "file", "file_id": file_id},
+                        }
+                    )
 
-        logger.info(
-            "Query executed with Anthropic (stub)",
-            extra={
-                "knowledge_service_id": self.config.knowledge_service_id,
-                "query_id": query_id,
-                "execution_time_ms": result.execution_time_ms,
-            },
-        )
+            # Add the text query
+            content_parts.append({"type": "text", "text": query_text})
 
-        return result
+            # Execute the query using Anthropic's Messages API
+            response = await self.client.messages.create(
+                model="claude-sonnet-4-20250514",  # TODO: make configurable.
+                max_tokens=4000,
+                messages=[{"role": "user", "content": content_parts}],
+            )
+
+            # Calculate execution time
+            execution_time_ms = int((time.time() - start_time) * 1000)
+
+            # Extract response content safely
+            response_text = ""
+            for content_block in response.content:
+                try:
+                    # Try to access text attribute if it exists
+                    text_content = getattr(content_block, "text", None)
+                    if text_content:
+                        response_text += str(text_content)
+                except AttributeError:
+                    # Skip content blocks that don't have text
+                    continue
+
+            # Structure the result
+            result = QueryResult(
+                query_id=query_id,
+                query_text=query_text,
+                result_data={
+                    "response": response_text,
+                    "model": "claude-sonnet-4-20250514",
+                    "service": "anthropic",
+                    "sources": service_file_ids or [],
+                    "usage": {
+                        "input_tokens": response.usage.input_tokens,
+                        "output_tokens": response.usage.output_tokens,
+                    },
+                    "stop_reason": response.stop_reason,
+                },
+                execution_time_ms=execution_time_ms,
+                created_at=datetime.now(timezone.utc),
+            )
+
+            logger.info(
+                "Query executed with Anthropic successfully",
+                extra={
+                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "query_id": query_id,
+                    "execution_time_ms": execution_time_ms,
+                    "input_tokens": response.usage.input_tokens,
+                    "output_tokens": response.usage.output_tokens,
+                    "file_count": (
+                        len(service_file_ids) if service_file_ids else 0
+                    ),
+                },
+            )
+
+            return result
+
+        except Exception as e:
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            logger.error(
+                "Failed to execute query with Anthropic",
+                extra={
+                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "query_id": query_id,
+                    "query_text": query_text,
+                    "execution_time_ms": execution_time_ms,
+                    "file_count": (
+                        len(service_file_ids) if service_file_ids else 0
+                    ),
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
+            raise

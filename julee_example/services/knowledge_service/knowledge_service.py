@@ -97,7 +97,7 @@ class KnowledgeService(Protocol):
     async def execute_query(
         self,
         query_text: str,
-        document_ids: Optional[List[str]] = None,
+        service_file_ids: Optional[List[str]] = None,
     ) -> QueryResult:
         """Execute a query against the external knowledge service.
 
@@ -107,22 +107,25 @@ class KnowledgeService(Protocol):
 
         Args:
             query_text: The query to execute (natural language or structured)
-            document_ids: Optional list of document IDs to scope the query to.
-                         If None, query runs against all registered documents.
+            service_file_ids: Optional list of service file IDs to provide as
+                             context for the query. These are the IDs returned
+                             by the knowledge service from register_file
+                             operations, and are included in the query to give
+                             the service access to specific documents.
 
         Returns:
             QueryResult containing query results and execution metadata
 
         Implementation Notes:
         - Must be idempotent: same query returns consistent results
-        - Document IDs are translated to service's internal file identifiers
+        - Service file IDs are provided as context to enhance query responses
         - Should handle service unavailability gracefully
         - Query results should be structured as domain objects
         - Should track execution time and metadata
         - Must handle various query formats (natural language, structured,
           etc.)
-        - Should validate that document_ids have been registered before
-          querying
+        - Should validate that service_file_ids exist in the service before
+          including them in the query context
 
         Workflow Context:
         In Temporal workflows, this method is implemented as an activity
