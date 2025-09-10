@@ -13,6 +13,7 @@ efficient queries and updates.
 """
 
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -20,10 +21,10 @@ from minio.error import S3Error  # type: ignore[import-untyped]
 
 from julee_example.domain import Assembly, AssemblyIteration
 from julee_example.repositories.assembly import AssemblyRepository
-from .client import MinioClient, MinioRepositoryClient
+from .client import MinioClient, MinioRepositoryMixin
 
 
-class MinioAssemblyRepository(AssemblyRepository):
+class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
     """
     Minio implementation of AssemblyRepository using Minio for persistence.
 
@@ -41,15 +42,16 @@ class MinioAssemblyRepository(AssemblyRepository):
         Args:
             client: MinioClient protocol implementation (real or fake)
         """
-        self.repo_client = MinioRepositoryClient(client, "MinioAssemblyRepository")
+        self.client = client
+        self.logger = logging.getLogger("MinioAssemblyRepository")
         self.assembly_bucket = "assemblies"
         self.iterations_bucket = "assembly-iterations"
-        self.repo_client.ensure_buckets_exist([self.assembly_bucket, self.iterations_bucket])
+        self.ensure_buckets_exist([self.assembly_bucket, self.iterations_bucket])
 
     async def get(self, assembly_id: str) -> Optional[Assembly]:
         """Retrieve an assembly with all its iterations."""
-        # Get the assembly metadata using repo_client
-        assembly = self.repo_client.get_json_object(
+        # Get the assembly metadata using mixin methods
+        assembly = self.get_json_object(
             bucket_name=self.assembly_bucket,
             object_name=assembly_id,
             model_class=Assembly,
@@ -65,13 +67,13 @@ class MinioAssemblyRepository(AssemblyRepository):
         iterations = []
         try:
             # List all objects in iterations bucket with assembly_id prefix
-            objects = self.repo_client.client.list_objects(
+            objects = self.client.list_objects(
                 bucket_name=self.iterations_bucket,
                 prefix=f"{assembly_id}/",
             )
 
             for obj in objects:
-                iteration_response = self.repo_client.client.get_object(
+                iteration_response = self.client.get_object(
                     bucket_name=self.iterations_bucket,
                     object_name=obj.object_name,
                 )
@@ -123,7 +125,7 @@ class MinioAssemblyRepository(AssemblyRepository):
         # Persist the iteration
         iteration_key = f"{assembly_id}/{new_iteration.iteration_id}"
 
-        self.repo_client.put_json_object(
+        self.put_json_object(
             bucket_name=self.iterations_bucket,
             object_name=iteration_key,
             model=new_iteration,
@@ -145,7 +147,7 @@ class MinioAssemblyRepository(AssemblyRepository):
     async def save(self, assembly: Assembly) -> None:
         """Save assembly metadata (status, updated_at, etc.)."""
         # Update timestamp
-        self.repo_client.update_timestamps(assembly)
+        self.update_timestamps(assembly)
 
         # Create a temporary assembly without iterations for metadata storage
         assembly_for_storage = Assembly(
@@ -158,7 +160,7 @@ class MinioAssemblyRepository(AssemblyRepository):
             updated_at=assembly.updated_at,
         )
 
-        self.repo_client.put_json_object(
+        self.put_json_object(
             bucket_name=self.assembly_bucket,
             object_name=assembly.assembly_id,
             model=assembly_for_storage,
@@ -172,4 +174,4 @@ class MinioAssemblyRepository(AssemblyRepository):
 
     async def generate_id(self) -> str:
         """Generate a unique assembly identifier."""
-        return self.repo_client.generate_id_with_prefix("assembly")
+        return self.generate_id_with_prefix("assembly")

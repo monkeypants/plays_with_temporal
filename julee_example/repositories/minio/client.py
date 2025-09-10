@@ -12,7 +12,6 @@ code duplication and ensure consistent error handling and logging.
 """
 
 import json
-import logging
 from datetime import datetime, timezone
 from typing import Protocol, Any, Dict, Optional, runtime_checkable, List, Union, TypeVar
 from urllib3.response import HTTPResponse
@@ -128,31 +127,27 @@ class MinioClient(Protocol):
         ...
 
 
-class MinioRepositoryClient:
+class MinioRepositoryMixin:
     """
-    Composition wrapper for MinioClient that provides common repository patterns.
+    Mixin that provides common repository patterns for Minio implementations.
 
-    This class encapsulates common functionality used across all Minio repository
+    This mixin encapsulates common functionality used across all Minio repository
     implementations, including:
     - Bucket creation and management
     - JSON serialization/deserialization with proper error handling
     - Standardized S3Error handling for NoSuchKey cases
     - Consistent logging patterns
     - Response cleanup
+    - ID generation with logging
 
-    By using composition, repositories can delegate common operations to this
-    client while maintaining clean, focused domain logic.
+    Classes using this mixin must provide:
+    - self.client: MinioClient instance
+    - self.logger: logging.Logger instance (typically set in __init__)
     """
 
-    def __init__(self, client: MinioClient, logger_name: str) -> None:
-        """Initialize the repository client.
-
-        Args:
-            client: MinioClient protocol implementation (real or fake)
-            logger_name: Name for the logger (e.g., 'MinioAssemblyRepository')
-        """
-        self.client = client
-        self.logger = logging.getLogger(logger_name)
+    # Type annotations for attributes that implementing classes must provide
+    client: MinioClient
+    logger: Any  # logging.Logger, but avoiding import
 
     def ensure_buckets_exist(self, bucket_names: Union[str, List[str]]) -> None:
         """Ensure one or more buckets exist, creating them if necessary.

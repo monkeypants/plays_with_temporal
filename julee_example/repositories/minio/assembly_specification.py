@@ -13,16 +13,17 @@ guidelines. Each specification is stored as a complete JSON document with its
 schema and query mappings.
 """
 
+import logging
 from typing import Optional
 
 from julee_example.domain import AssemblySpecification
 from julee_example.repositories.assembly_specification import (
     AssemblySpecificationRepository,
 )
-from .client import MinioClient, MinioRepositoryClient
+from .client import MinioClient, MinioRepositoryMixin
 
 
-class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
+class MinioAssemblySpecificationRepository(AssemblySpecificationRepository, MinioRepositoryMixin):
     """
     Minio implementation of AssemblySpecificationRepository using Minio for
     persistence.
@@ -38,15 +39,16 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
         Args:
             client: MinioClient protocol implementation (real or fake)
         """
-        self.repo_client = MinioRepositoryClient(client, "MinioAssemblySpecificationRepository")
+        self.client = client
+        self.logger = logging.getLogger("MinioAssemblySpecificationRepository")
         self.specifications_bucket = "assembly-specifications"
-        self.repo_client.ensure_buckets_exist(self.specifications_bucket)
+        self.ensure_buckets_exist(self.specifications_bucket)
 
     async def get(
         self, assembly_specification_id: str
     ) -> Optional[AssemblySpecification]:
         """Retrieve an assembly specification by ID."""
-        return self.repo_client.get_json_object(
+        return self.get_json_object(
             bucket_name=self.specifications_bucket,
             object_name=assembly_specification_id,
             model_class=AssemblySpecification,
@@ -60,9 +62,9 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
     ) -> None:
         """Save an assembly specification to Minio."""
         # Update timestamps
-        self.repo_client.update_timestamps(assembly_specification)
+        self.update_timestamps(assembly_specification)
 
-        self.repo_client.put_json_object(
+        self.put_json_object(
             bucket_name=self.specifications_bucket,
             object_name=assembly_specification.assembly_specification_id,
             model=assembly_specification,
@@ -78,4 +80,4 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository):
 
     async def generate_id(self) -> str:
         """Generate a unique assembly specification identifier."""
-        return self.repo_client.generate_id_with_prefix("spec")
+        return self.generate_id_with_prefix("spec")

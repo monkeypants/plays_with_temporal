@@ -11,14 +11,15 @@ in Minio, following the large payload handling pattern from the architectural
 guidelines. Each configuration is stored with its knowledge_service_id as the key.
 """
 
+import logging
 from typing import Optional
 
 from julee_example.domain import KnowledgeServiceConfig
 from julee_example.repositories.knowledge_service_config import KnowledgeServiceConfigRepository
-from .client import MinioClient, MinioRepositoryClient
+from .client import MinioClient, MinioRepositoryMixin
 
 
-class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
+class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository, MinioRepositoryMixin):
     """
     Minio implementation of KnowledgeServiceConfigRepository using Minio for persistence.
 
@@ -35,9 +36,10 @@ class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
         Args:
             client: MinioClient protocol implementation (real or fake)
         """
-        self.repo_client = MinioRepositoryClient(client, "MinioKnowledgeServiceConfigRepository")
+        self.client = client
+        self.logger = logging.getLogger("MinioKnowledgeServiceConfigRepository")
         self.bucket_name = "knowledge-service-configs"
-        self.repo_client.ensure_buckets_exist(self.bucket_name)
+        self.ensure_buckets_exist(self.bucket_name)
 
     async def get(
         self, knowledge_service_id: str
@@ -50,7 +52,7 @@ class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
         Returns:
             KnowledgeServiceConfig object if found, None otherwise
         """
-        return self.repo_client.get_json_object(
+        return self.get_json_object(
             bucket_name=self.bucket_name,
             object_name=knowledge_service_id,
             model_class=KnowledgeServiceConfig,
@@ -66,9 +68,9 @@ class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
             knowledge_service: Complete KnowledgeServiceConfig to save
         """
         # Update timestamps
-        self.repo_client.update_timestamps(knowledge_service)
+        self.update_timestamps(knowledge_service)
 
-        self.repo_client.put_json_object(
+        self.put_json_object(
             bucket_name=self.bucket_name,
             object_name=knowledge_service.knowledge_service_id,
             model=knowledge_service,
@@ -87,4 +89,4 @@ class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
         Returns:
             Unique knowledge service ID string
         """
-        return self.repo_client.generate_id_with_prefix("ks")
+        return self.generate_id_with_prefix("ks")
