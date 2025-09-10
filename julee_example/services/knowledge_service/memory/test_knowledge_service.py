@@ -8,19 +8,17 @@ canned query response functionality.
 
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock
-
 from julee_example.domain import KnowledgeServiceConfig
 from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.repositories import DocumentRepository
+from julee_example.repositories.memory import MemoryDocumentRepository
 from ..knowledge_service import QueryResult
 from .knowledge_service import MemoryKnowledgeService
 
 
 @pytest.fixture
-def mock_document_repo() -> AsyncMock:
-    """Create a mock DocumentRepository for testing."""
-    return AsyncMock(spec=DocumentRepository)
+def document_repo() -> MemoryDocumentRepository:
+    """Create a MemoryDocumentRepository for testing."""
+    return MemoryDocumentRepository()
 
 
 @pytest.fixture
@@ -37,12 +35,10 @@ def knowledge_service_config() -> KnowledgeServiceConfig:
 @pytest.fixture
 def memory_service(
     knowledge_service_config: KnowledgeServiceConfig,
-    mock_document_repo: AsyncMock,
+    document_repo: MemoryDocumentRepository,
 ) -> MemoryKnowledgeService:
     """Create a MemoryKnowledgeService instance for testing."""
-    return MemoryKnowledgeService(
-        knowledge_service_config, mock_document_repo
-    )
+    return MemoryKnowledgeService(knowledge_service_config, document_repo)
 
 
 @pytest.fixture
@@ -278,14 +274,14 @@ class TestMemoryKnowledgeService:
     def test_initialization_with_config_and_repo(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        mock_document_repo: AsyncMock,
+        document_repo: MemoryDocumentRepository,
     ) -> None:
         """Test proper initialization with config and document repo."""
         service = MemoryKnowledgeService(
-            knowledge_service_config, mock_document_repo
+            knowledge_service_config, document_repo
         )
 
         assert service.config == knowledge_service_config
-        assert service.document_repo == mock_document_repo
+        assert service.document_repo == document_repo
         assert service._registered_files == {}
         assert len(service._canned_query_results) == 0

@@ -9,13 +9,20 @@ import pytest
 
 from julee_example.domain import KnowledgeServiceConfig
 from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.services.knowledge_service import (
+from julee_example.repositories.memory import MemoryDocumentRepository
+from julee_example.services.knowledge_service import ensure_knowledge_service
+from julee_example.services.knowledge_service.factory import (
     knowledge_service_factory,
-    ensure_knowledge_service,
 )
 from julee_example.services.knowledge_service.anthropic import (
     AnthropicKnowledgeService,
 )
+
+
+@pytest.fixture
+def document_repo() -> MemoryDocumentRepository:
+    """Create a MemoryDocumentRepository for testing."""
+    return MemoryDocumentRepository()
 
 
 @pytest.fixture
@@ -33,19 +40,23 @@ class TestKnowledgeServiceFactory:
     """Test cases for knowledge_service_factory function."""
 
     def test_factory_creates_anthropic_service(
-        self, anthropic_config: KnowledgeServiceConfig
+        self,
+        anthropic_config: KnowledgeServiceConfig,
+        document_repo: MemoryDocumentRepository,
     ) -> None:
         """Test factory creates AnthropicKnowledgeService for ANTHROPIC."""
-        service = knowledge_service_factory(anthropic_config)
+        service = knowledge_service_factory(anthropic_config, document_repo)
 
         assert isinstance(service, AnthropicKnowledgeService)
         assert service.config == anthropic_config
 
     def test_factory_returns_validated_service(
-        self, anthropic_config: KnowledgeServiceConfig
+        self,
+        anthropic_config: KnowledgeServiceConfig,
+        document_repo: MemoryDocumentRepository,
     ) -> None:
         """Test factory returns service that passes protocol validation."""
-        service = knowledge_service_factory(anthropic_config)
+        service = knowledge_service_factory(anthropic_config, document_repo)
 
         # Should not raise an error when validating the service
         validated_service = ensure_knowledge_service(service)

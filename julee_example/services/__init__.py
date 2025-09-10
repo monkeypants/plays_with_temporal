@@ -10,10 +10,8 @@ into submodules, each with their own protocols and implementations.
 """
 
 # Re-export knowledge service components
-from .knowledge_service import (
-    KnowledgeService,
-    knowledge_service_factory,
-)
+from .knowledge_service import KnowledgeService
+from .knowledge_service.factory import knowledge_service_factory
 
 __all__ = [
     # Knowledge Service
