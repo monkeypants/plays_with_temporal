@@ -1,32 +1,42 @@
 """
 Minio implementation of KnowledgeServiceConfigRepository.
 
-This module provides a Minio-based implementation of the KnowledgeServiceConfigRepository
+This module provides a Minio-based implementation of the
+KnowledgeServiceConfigRepository
 protocol that follows the Clean Architecture patterns defined in the
 Fun-Police Framework. It handles knowledge service configuration storage
 as JSON objects in Minio, ensuring idempotency and proper error handling.
 
 The implementation stores knowledge service configurations as JSON objects
 in Minio, following the large payload handling pattern from the architectural
-guidelines. Each configuration is stored with its knowledge_service_id as the key.
+guidelines. Each configuration is stored with its knowledge_service_id as the
+key.
 """
 
 import logging
 from typing import Optional
 
 from julee_example.domain import KnowledgeServiceConfig
-from julee_example.repositories.knowledge_service_config import KnowledgeServiceConfigRepository
+from julee_example.repositories.knowledge_service_config import (
+    KnowledgeServiceConfigRepository,
+)
 from .client import MinioClient, MinioRepositoryMixin
 
 
-class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository, MinioRepositoryMixin):
+class MinioKnowledgeServiceConfigRepository(
+    KnowledgeServiceConfigRepository, MinioRepositoryMixin
+):
     """
-    Minio implementation of KnowledgeServiceConfigRepository using Minio for persistence.
+    Minio implementation of KnowledgeServiceConfigRepository using Minio for
+    persistence.
 
-    This implementation stores knowledge service configurations as JSON objects:
-    - Knowledge Service Configs: JSON objects in the "knowledge-service-configs" bucket
+    This implementation stores knowledge service configurations as JSON
+    objects:
+    - Knowledge Service Configs: JSON objects in the
+      "knowledge-service-configs" bucket
 
-    Each configuration is stored with its knowledge_service_id as the object name
+    Each configuration is stored with its knowledge_service_id as the object
+    name
     for efficient retrieval and updates.
     """
 
@@ -37,7 +47,9 @@ class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository, Mi
             client: MinioClient protocol implementation (real or fake)
         """
         self.client = client
-        self.logger = logging.getLogger("MinioKnowledgeServiceConfigRepository")
+        self.logger = logging.getLogger(
+            "MinioKnowledgeServiceConfigRepository"
+        )
         self.bucket_name = "knowledge-service-configs"
         self.ensure_buckets_exist(self.bucket_name)
 
@@ -58,7 +70,7 @@ class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository, Mi
             model_class=KnowledgeServiceConfig,
             not_found_log_message="Knowledge service config not found",
             error_log_message="Error retrieving knowledge service config",
-            extra_log_data={"knowledge_service_id": knowledge_service_id}
+            extra_log_data={"knowledge_service_id": knowledge_service_id},
         )
 
     async def save(self, knowledge_service: KnowledgeServiceConfig) -> None:
@@ -77,10 +89,12 @@ class MinioKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository, Mi
             success_log_message="Knowledge service config saved successfully",
             error_log_message="Error saving knowledge service config",
             extra_log_data={
-                "knowledge_service_id": knowledge_service.knowledge_service_id,
-                "name": knowledge_service.name,
+                "knowledge_service_id": (
+                    knowledge_service.knowledge_service_id
+                ),
+                "service_name": knowledge_service.name,
                 "service_api": knowledge_service.service_api.value,
-            }
+            },
         )
 
     async def generate_id(self) -> str:

@@ -23,7 +23,9 @@ from julee_example.repositories.assembly_specification import (
 from .client import MinioClient, MinioRepositoryMixin
 
 
-class MinioAssemblySpecificationRepository(AssemblySpecificationRepository, MinioRepositoryMixin):
+class MinioAssemblySpecificationRepository(
+    AssemblySpecificationRepository, MinioRepositoryMixin
+):
     """
     Minio implementation of AssemblySpecificationRepository using Minio for
     persistence.
@@ -40,7 +42,9 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository, Mini
             client: MinioClient protocol implementation (real or fake)
         """
         self.client = client
-        self.logger = logging.getLogger("MinioAssemblySpecificationRepository")
+        self.logger = logging.getLogger(
+            "MinioAssemblySpecificationRepository"
+        )
         self.specifications_bucket = "assembly-specifications"
         self.ensure_buckets_exist(self.specifications_bucket)
 
@@ -54,7 +58,9 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository, Mini
             model_class=AssemblySpecification,
             not_found_log_message="Specification not found",
             error_log_message="Error retrieving specification",
-            extra_log_data={"assembly_specification_id": assembly_specification_id}
+            extra_log_data={
+                "assembly_specification_id": assembly_specification_id
+            },
         )
 
     async def save(
@@ -71,11 +77,13 @@ class MinioAssemblySpecificationRepository(AssemblySpecificationRepository, Mini
             success_log_message="Specification saved successfully",
             error_log_message="Error saving specification",
             extra_log_data={
-                "assembly_specification_id": assembly_specification.assembly_specification_id,
+                "assembly_specification_id": (
+                    assembly_specification.assembly_specification_id
+                ),
                 "spec_name": assembly_specification.name,
                 "status": assembly_specification.status.value,
                 "version": assembly_specification.version,
-            }
+            },
         )
 
     async def generate_id(self) -> str:

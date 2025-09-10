@@ -6,20 +6,29 @@ and our fake test client must implement. This follows Clean Architecture
 dependency inversion principles by depending on abstractions rather than
 concrete implementations.
 
-It also provides MinioRepositoryClient, a composition wrapper that encapsulates
+It also provides MinioRepositoryMixin, a mixin that encapsulates
 common patterns used across all Minio repository implementations to reduce
 code duplication and ensure consistent error handling and logging.
 """
 
 import json
 from datetime import datetime, timezone
-from typing import Protocol, Any, Dict, Optional, runtime_checkable, List, Union, TypeVar
+from typing import (
+    Protocol,
+    Any,
+    Dict,
+    Optional,
+    runtime_checkable,
+    List,
+    Union,
+    TypeVar,
+)
 from urllib3.response import HTTPResponse
 from minio.datatypes import Object
 from minio.error import S3Error  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
-T = TypeVar('T', bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)
 
 
 @runtime_checkable
@@ -131,7 +140,8 @@ class MinioRepositoryMixin:
     """
     Mixin that provides common repository patterns for Minio implementations.
 
-    This mixin encapsulates common functionality used across all Minio repository
+    This mixin encapsulates common functionality used across all Minio
+    repository
     implementations, including:
     - Bucket creation and management
     - JSON serialization/deserialization with proper error handling
@@ -149,7 +159,9 @@ class MinioRepositoryMixin:
     client: MinioClient
     logger: Any  # logging.Logger, but avoiding import
 
-    def ensure_buckets_exist(self, bucket_names: Union[str, List[str]]) -> None:
+    def ensure_buckets_exist(
+        self, bucket_names: Union[str, List[str]]
+    ) -> None:
         """Ensure one or more buckets exist, creating them if necessary.
 
         Args:
@@ -188,9 +200,10 @@ class MinioRepositoryMixin:
         model_class: type[T],
         not_found_log_message: str,
         error_log_message: str,
-        extra_log_data: Optional[Dict[str, Any]] = None
+        extra_log_data: Optional[Dict[str, Any]] = None,
     ) -> Optional[T]:
-        """Get a JSON object from Minio and deserialize it to a Pydantic model.
+        """Get a JSON object from Minio and deserialize it to a Pydantic
+        model.
 
         Args:
             bucket_name: Name of the bucket
@@ -210,8 +223,7 @@ class MinioRepositoryMixin:
 
         try:
             response = self.client.get_object(
-                bucket_name=bucket_name,
-                object_name=object_name
+                bucket_name=bucket_name, object_name=object_name
             )
 
             # Read and clean up response
@@ -246,7 +258,7 @@ class MinioRepositoryMixin:
         model: BaseModel,
         success_log_message: str,
         error_log_message: str,
-        extra_log_data: Optional[Dict[str, Any]] = None
+        extra_log_data: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Store a Pydantic model as a JSON object in Minio.
 
@@ -288,7 +300,8 @@ class MinioRepositoryMixin:
             raise
 
     def update_timestamps(self, model: Any) -> None:
-        """Update timestamps on a model (created_at if None, always updated_at).
+        """Update timestamps on a model (created_at if None, always
+        updated_at).
 
         Args:
             model: Pydantic model with created_at and updated_at fields
@@ -296,12 +309,15 @@ class MinioRepositoryMixin:
         now = datetime.now(timezone.utc)
 
         # Set created_at if it's None (for new objects)
-        if hasattr(model, 'created_at') and getattr(model, 'created_at', None) is None:
-            setattr(model, 'created_at', now)
+        if (
+            hasattr(model, "created_at")
+            and getattr(model, "created_at", None) is None
+        ):
+            setattr(model, "created_at", now)
 
         # Always update updated_at
-        if hasattr(model, 'updated_at'):
-            setattr(model, 'updated_at', now)
+        if hasattr(model, "updated_at"):
+            setattr(model, "updated_at", now)
 
     def generate_id_with_prefix(self, prefix: str) -> str:
         """Generate a unique ID with the given prefix and log the generation.

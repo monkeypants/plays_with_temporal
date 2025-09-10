@@ -1,7 +1,8 @@
 """
 Memory implementation of KnowledgeServiceConfigRepository.
 
-This module provides an in-memory implementation of the KnowledgeServiceConfigRepository
+This module provides an in-memory implementation of the
+KnowledgeServiceConfigRepository
 protocol that follows the Clean Architecture patterns defined in the
 Fun-Police Framework. It handles knowledge service configuration storage
 in memory dictionaries, ensuring idempotency and proper error handling.
@@ -18,17 +19,23 @@ from datetime import datetime, timezone
 from typing import Optional, Dict
 
 from julee_example.domain import KnowledgeServiceConfig
-from julee_example.repositories.knowledge_service_config import KnowledgeServiceConfigRepository
+from julee_example.repositories.knowledge_service_config import (
+    KnowledgeServiceConfigRepository,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class MemoryKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
+class MemoryKnowledgeServiceConfigRepository(
+    KnowledgeServiceConfigRepository
+):
     """
-    Memory implementation of KnowledgeServiceConfigRepository using Python dictionaries.
+    Memory implementation of KnowledgeServiceConfigRepository using Python
+    dictionaries.
 
     This implementation stores knowledge service configurations in memory:
-    - Knowledge Services: Dictionary keyed by knowledge_service_id containing KnowledgeServiceConfig objects
+    - Knowledge Services: Dictionary keyed by knowledge_service_id containing
+      KnowledgeServiceConfig objects
 
     This provides a lightweight, dependency-free option for testing while
     maintaining the same interface as other implementations.
@@ -53,23 +60,26 @@ class MemoryKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
             KnowledgeServiceConfig object if found, None otherwise
         """
         logger.debug(
-            "MemoryKnowledgeServiceConfigRepository: Attempting to retrieve knowledge service",
+            "MemoryKnowledgeServiceConfigRepository: Attempting to retrieve "
+            "knowledge service",
             extra={"knowledge_service_id": knowledge_service_id},
         )
 
         knowledge_service = self._knowledge_services.get(knowledge_service_id)
         if knowledge_service is None:
             logger.debug(
-                "MemoryKnowledgeServiceConfigRepository: Knowledge service not found",
+                "MemoryKnowledgeServiceConfigRepository: Knowledge service "
+                "not found",
                 extra={"knowledge_service_id": knowledge_service_id},
             )
             return None
 
         logger.info(
-            "MemoryKnowledgeServiceConfigRepository: Knowledge service retrieved successfully",
+            "MemoryKnowledgeServiceConfigRepository: Knowledge service "
+            "retrieved successfully",
             extra={
                 "knowledge_service_id": knowledge_service_id,
-                "name": knowledge_service.name,
+                "service_name": knowledge_service.name,
                 "service_api": knowledge_service.service_api.value,
             },
         )
@@ -83,8 +93,13 @@ class MemoryKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
             knowledge_service: Complete KnowledgeServiceConfig to save
         """
         logger.debug(
-            "MemoryKnowledgeServiceConfigRepository: Saving knowledge service",
-            extra={"knowledge_service_id": knowledge_service.knowledge_service_id},
+            "MemoryKnowledgeServiceConfigRepository: Saving knowledge "
+            "service",
+            extra={
+                "knowledge_service_id": (
+                    knowledge_service.knowledge_service_id
+                )
+            },
         )
 
         # Update timestamp
@@ -95,13 +110,18 @@ class MemoryKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
             knowledge_service.created_at = datetime.now(timezone.utc)
 
         # Store the knowledge service (idempotent - will overwrite if exists)
-        self._knowledge_services[knowledge_service.knowledge_service_id] = knowledge_service
+        self._knowledge_services[knowledge_service.knowledge_service_id] = (
+            knowledge_service
+        )
 
         logger.info(
-            "MemoryKnowledgeServiceConfigRepository: Knowledge service saved successfully",
+            "MemoryKnowledgeServiceConfigRepository: Knowledge service "
+            "saved successfully",
             extra={
-                "knowledge_service_id": knowledge_service.knowledge_service_id,
-                "name": knowledge_service.name,
+                "knowledge_service_id": (
+                    knowledge_service.knowledge_service_id
+                ),
+                "service_name": knowledge_service.name,
                 "service_api": knowledge_service.service_api.value,
             },
         )
@@ -115,7 +135,8 @@ class MemoryKnowledgeServiceConfigRepository(KnowledgeServiceConfigRepository):
         knowledge_service_id = f"ks-{uuid.uuid4()}"
 
         logger.debug(
-            "MemoryKnowledgeServiceConfigRepository: Generated knowledge service ID",
+            "MemoryKnowledgeServiceConfigRepository: Generated knowledge "
+            "service ID",
             extra={"knowledge_service_id": knowledge_service_id},
         )
 

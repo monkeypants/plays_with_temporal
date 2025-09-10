@@ -410,7 +410,7 @@ class TestMinioDocumentRepositoryMultihash:
     ) -> None:
         """Test multihash calculation from stream."""
         content = b"test content for hashing"
-        stream = io.BytesIO(content)
+        stream = ContentStream(io.BytesIO(content))
 
         # Act
         multihash_result = repository._calculate_multihash_from_stream(stream)
@@ -430,7 +430,7 @@ class TestMinioDocumentRepositoryMultihash:
         self, repository: MinioDocumentRepository
     ) -> None:
         """Test multihash calculation from empty stream."""
-        stream = io.BytesIO(b"")
+        stream = ContentStream(io.BytesIO(b""))
 
         # Act
         multihash_result = repository._calculate_multihash_from_stream(stream)

@@ -46,7 +46,9 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
         self.logger = logging.getLogger("MinioAssemblyRepository")
         self.assembly_bucket = "assemblies"
         self.iterations_bucket = "assembly-iterations"
-        self.ensure_buckets_exist([self.assembly_bucket, self.iterations_bucket])
+        self.ensure_buckets_exist(
+            [self.assembly_bucket, self.iterations_bucket]
+        )
 
     async def get(self, assembly_id: str) -> Optional[Assembly]:
         """Retrieve an assembly with all its iterations."""
@@ -57,7 +59,7 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
             model_class=Assembly,
             not_found_log_message="Assembly not found",
             error_log_message="Error retrieving assembly",
-            extra_log_data={"assembly_id": assembly_id}
+            extra_log_data={"assembly_id": assembly_id},
         )
 
         if assembly is None:
@@ -135,7 +137,7 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
                 "assembly_id": assembly_id,
                 "iteration_id": new_iteration.iteration_id,
                 "document_id": document_id,
-            }
+            },
         )
 
         # Update assembly's updated_at timestamp and save
@@ -169,7 +171,7 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
             extra_log_data={
                 "assembly_id": assembly.assembly_id,
                 "status": assembly.status.value,
-            }
+            },
         )
 
     async def generate_id(self) -> str:

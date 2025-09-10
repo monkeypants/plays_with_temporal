@@ -50,8 +50,6 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         self.content_bucket = "documents-content"
         self.ensure_buckets_exist([self.metadata_bucket, self.content_bucket])
 
-
-
     async def get(self, document_id: str) -> Optional[Document]:
         """Retrieve a document with metadata and content."""
         try:
@@ -93,7 +91,9 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
                     extra={
                         "document_id": document_id,
                         "content_multihash": content_multihash,
-                        "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                        "retrieved_at": datetime.now(
+                            timezone.utc
+                        ).isoformat(),
                     },
                 )
 
@@ -108,7 +108,8 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
                             "content_multihash": content_multihash,
                         },
                     )
-                    # Return document without content stream for metadata-only operations
+                    # Return document without content stream for metadata-only
+                    # operations
                     document_dict["content"] = ContentStream(io.BytesIO(b""))
                     return Document(**document_dict)
                 else:
@@ -158,7 +159,8 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
             # Verify and update multihash if needed
             if document.content_multihash != calculated_multihash:
                 self.logger.warning(
-                    "Provided multihash differs from calculated, using calculated",
+                    "Provided multihash differs from calculated, using "
+                    "calculated",
                     extra={
                         "document_id": document.document_id,
                         "provided_multihash": document.content_multihash,
@@ -246,9 +248,12 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         return self.generate_id_with_prefix("doc")
 
     async def _store_content(self, document: Document) -> str:
-        """Store document content to content-addressable storage and return multihash."""
+        """Store document content to content-addressable storage and return
+        multihash."""
         if not document.content:
-            raise ValueError(f"Document {document.document_id} has no content")
+            raise ValueError(
+                f"Document {document.document_id} has no content"
+            )
 
         # Calculate multihash from the content stream
         calculated_multihash = self._calculate_multihash_from_stream(
@@ -286,7 +291,8 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
                 object_name=object_name,
                 data=io.BytesIO(content_data),
                 length=len(content_data),
-                content_type=document.content_type or "application/octet-stream",
+                content_type=document.content_type
+                or "application/octet-stream",
                 metadata={
                     "document_id": document.document_id,
                     "original_filename": document.original_filename or "",
@@ -314,7 +320,9 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
             )
             raise
 
-    def _calculate_multihash_from_stream(self, content_stream: ContentStream) -> str:
+    def _calculate_multihash_from_stream(
+        self, content_stream: ContentStream
+    ) -> str:
         """Calculate multihash from content stream."""
         if not content_stream:
             raise ValueError("Content stream is required")
