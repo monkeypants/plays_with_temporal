@@ -67,13 +67,18 @@ class TestEnsureKnowledgeService:
     """Test cases for ensure_knowledge_service function."""
 
     def test_ensure_knowledge_service_accepts_valid_service(
-        self, anthropic_config: KnowledgeServiceConfig
+        self,
+        anthropic_config: KnowledgeServiceConfig,
+        document_repo: MemoryDocumentRepository,
     ) -> None:
         """Test that ensure_knowledge_service accepts a valid service."""
-        service = AnthropicKnowledgeService(anthropic_config)
+        # Mock the anthropic import to avoid dependency issues in tests
+        with pytest.MonkeyPatch.context() as m:
+            m.setenv("ANTHROPIC_API_KEY", "test-key")
+            service = AnthropicKnowledgeService(anthropic_config, document_repo)
 
-        validated_service = ensure_knowledge_service(service)
-        assert validated_service == service
+            validated_service = ensure_knowledge_service(service)
+            assert validated_service == service
 
     def test_ensure_knowledge_service_rejects_invalid_service(self) -> None:
         """Test that ensure_knowledge_service rejects invalid service."""

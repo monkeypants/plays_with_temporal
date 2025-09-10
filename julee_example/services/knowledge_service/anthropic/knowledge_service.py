@@ -5,13 +5,21 @@ Assemble, Publish workflow.
 This module provides the Anthropic-specific implementation of the
 KnowledgeService protocol. It handles interactions with Anthropic's API
 for document registration and query execution.
+
+Dependencies:
+    - anthropic: Install with `pip install anthropic`
+    - ANTHROPIC_API_KEY environment variable must be set
 """
 
+import os
 import logging
 from typing import Optional, List
 from datetime import datetime, timezone
 
+from anthropic import AsyncAnthropic
+
 from julee_example.domain import KnowledgeServiceConfig
+from julee_example.repositories import DocumentRepository
 from ..knowledge_service import (
     KnowledgeService,
     QueryResult,
@@ -30,12 +38,17 @@ class AnthropicKnowledgeService(KnowledgeService):
     protocol with Anthropic-specific logic.
     """
 
-    def __init__(self, config: KnowledgeServiceConfig) -> None:
+    def __init__(
+        self,
+        config: KnowledgeServiceConfig,
+        document_repo: DocumentRepository
+    ) -> None:
         """Initialize Anthropic knowledge service with configuration.
 
         Args:
             config: KnowledgeServiceConfig domain object containing metadata
                    and service configuration
+            document_repo: Repository for accessing document data
         """
         logger.debug(
             "Initializing AnthropicKnowledgeService",
@@ -46,6 +59,17 @@ class AnthropicKnowledgeService(KnowledgeService):
         )
 
         self.config = config
+        self.document_repo = document_repo
+
+        # Initialize Anthropic client
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "ANTHROPIC_API_KEY environment variable is required for "
+                "AnthropicKnowledgeService"
+            )
+
+        self.client = AsyncAnthropic(api_key=api_key)
 
     async def register_file(self, document_id: str) -> FileRegistrationResult:
         """Register a document file with Anthropic.
@@ -64,38 +88,68 @@ class AnthropicKnowledgeService(KnowledgeService):
             },
         )
 
-        # TODO: Implement Anthropic-specific file registration
-        # This would involve:
-        # 1. Getting document content from document repository
-        # 2. Uploading to Anthropic API (when available)
-        # 3. Storing the Anthropic file ID mapping
-        # 4. Handling Anthropic-specific response format
+        try:
+            # Get the document from the repository
+            document = await self.document_repo.get(document_id)
+            if not document:
+                raise ValueError(f"Document {document_id} not found")
 
-        # For now, return a stub result
-        anthropic_file_id = (
-            f"anthropic_{document_id}_{int(datetime.now().timestamp())}"
-        )
+            # Reset stream position and pass directly to Anthropic
+            document.content.seek(0)
 
-        result = FileRegistrationResult(
-            document_id=document_id,
-            knowledge_service_file_id=anthropic_file_id,
-            registration_metadata={
-                "service": "anthropic",
-                "registered_via": "api_stub",
-            },
-            created_at=datetime.now(timezone.utc),
-        )
+            # Upload file using Anthropic beta Files API
+            # Use tuple format: (filename, file_content, media_type)
+            file_response = await self.client.beta.files.upload(
+                file=(
+                    document.original_filename,
+                    document.content.stream,
+                    document.content_type
+                )
+            )
 
-        logger.info(
-            "File registered with Anthropic (stub)",
-            extra={
-                "knowledge_service_id": self.config.knowledge_service_id,
-                "document_id": document_id,
-                "anthropic_file_id": anthropic_file_id,
-            },
-        )
+            anthropic_file_id = file_response.id
 
-        return result
+            result = FileRegistrationResult(
+                document_id=document_id,
+                knowledge_service_file_id=anthropic_file_id,
+                registration_metadata={
+                    "service": "anthropic",
+                    "registered_via": "beta_files_api",
+                    "filename": document.original_filename,
+                    "content_type": document.content_type,
+                    "size_bytes": document.size_bytes,
+                    "content_multihash": document.content_multihash,
+                    "anthropic_file_id": anthropic_file_id,
+                },
+                created_at=datetime.now(timezone.utc),
+            )
+
+            logger.info(
+                "File registered with Anthropic beta Files API",
+                extra={
+                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "document_id": document_id,
+                    "anthropic_file_id": anthropic_file_id,
+                    "filename": document.original_filename,
+                    "size_bytes": document.size_bytes,
+                },
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(
+                "Failed to register file with Anthropic",
+                extra={
+                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "document_id": document_id,
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
+            raise
+
+
 
     async def execute_query(
         self,
@@ -139,6 +193,7 @@ class AnthropicKnowledgeService(KnowledgeService):
                 "confidence": 0.95,
                 "sources": document_ids or [],
                 "service": "anthropic",
+                "model": "claude-sonnet-4",  # Would be configurable
             },
             execution_time_ms=250,  # Stub execution time
             created_at=datetime.now(timezone.utc),

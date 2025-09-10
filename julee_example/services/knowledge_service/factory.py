@@ -72,7 +72,7 @@ def knowledge_service_factory(
 
     # Route to appropriate implementation based on service_api
     if knowledge_service_config.service_api == ServiceApi.ANTHROPIC:
-        service = AnthropicKnowledgeService(knowledge_service_config)
+        service = AnthropicKnowledgeService(knowledge_service_config, document_repo)
     else:
         raise ValueError(
             f"Unsupported service API: {knowledge_service_config.service_api}"
