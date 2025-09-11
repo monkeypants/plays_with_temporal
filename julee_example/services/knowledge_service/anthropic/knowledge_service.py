@@ -6,8 +6,7 @@ This module provides the Anthropic-specific implementation of the
 KnowledgeService protocol. It handles interactions with Anthropic's API
 for document registration and query execution.
 
-Dependencies:
-    - anthropic: Install with `pip install anthropic`
+Requirements:
     - ANTHROPIC_API_KEY environment variable must be set
 """
 
