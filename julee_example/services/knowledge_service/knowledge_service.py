@@ -15,6 +15,8 @@ from typing import Protocol, Optional, List, runtime_checkable, Dict, Any
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
+from julee_example.domain import Document
+
 
 class QueryResult(BaseModel):
     """Result of a knowledge service query execution."""
@@ -66,7 +68,9 @@ class KnowledgeService(Protocol):
     of different knowledge service APIs (Anthropic, OpenAI, etc.).
     """
 
-    async def register_file(self, document_id: str) -> FileRegistrationResult:
+    async def register_file(
+        self, document: Document
+    ) -> FileRegistrationResult:
         """Register a document file with the external knowledge service.
 
         This method registers a document with the external knowledge service,
@@ -74,7 +78,7 @@ class KnowledgeService(Protocol):
         future queries.
 
         Args:
-            document_id: ID of the document to register
+            document: Document domain object to register
 
         Returns:
             FileRegistrationResult containing registration details and the
@@ -84,7 +88,7 @@ class KnowledgeService(Protocol):
         - Must be idempotent: re-registering same document returns same result
         - Should handle service unavailability gracefully
         - Must return the service's internal file ID for future queries
-        - May involve uploading document content to external service
+        - Document content is accessed directly from the Document object
         - Should handle various document formats and sizes
 
         Workflow Context:

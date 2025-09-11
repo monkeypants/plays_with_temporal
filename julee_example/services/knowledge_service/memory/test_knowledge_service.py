@@ -8,17 +8,38 @@ canned query response functionality.
 
 import pytest
 from datetime import datetime, timezone
-from julee_example.domain import KnowledgeServiceConfig
+from julee_example.domain import (
+    KnowledgeServiceConfig,
+    Document,
+    DocumentStatus,
+)
 from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.repositories.memory import MemoryDocumentRepository
+from julee_example.domain.custom_fields.content_stream import ContentStream
 from ..knowledge_service import QueryResult
 from .knowledge_service import MemoryKnowledgeService
+import io
 
 
 @pytest.fixture
-def document_repo() -> MemoryDocumentRepository:
-    """Create a MemoryDocumentRepository for testing."""
-    return MemoryDocumentRepository()
+def test_document() -> Document:
+    """Create a test Document for testing."""
+    content_text = (
+        "This is test document content for knowledge service testing."
+    )
+    content_bytes = content_text.encode("utf-8")
+    content_stream = ContentStream(io.BytesIO(content_bytes))
+
+    return Document(
+        document_id="test-doc-123",
+        original_filename="test_document.txt",
+        content_type="text/plain",
+        size_bytes=len(content_bytes),
+        content_multihash="test-hash-123",
+        status=DocumentStatus.CAPTURED,
+        content=content_stream,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
 
 
 @pytest.fixture
@@ -35,10 +56,9 @@ def knowledge_service_config() -> KnowledgeServiceConfig:
 @pytest.fixture
 def memory_service(
     knowledge_service_config: KnowledgeServiceConfig,
-    document_repo: MemoryDocumentRepository,
 ) -> MemoryKnowledgeService:
     """Create a MemoryKnowledgeService instance for testing."""
-    return MemoryKnowledgeService(knowledge_service_config, document_repo)
+    return MemoryKnowledgeService(knowledge_service_config)
 
 
 @pytest.fixture
@@ -62,14 +82,15 @@ class TestMemoryKnowledgeService:
         self,
         memory_service: MemoryKnowledgeService,
         knowledge_service_config: KnowledgeServiceConfig,
+        test_document: Document,
     ) -> None:
         """Test that register_file creates a new file registration."""
-        document_id = "doc-123"
+        result = await memory_service.register_file(test_document)
 
-        result = await memory_service.register_file(document_id)
-
-        assert result.document_id == document_id
-        assert result.knowledge_service_file_id.startswith("memory_doc-123_")
+        assert result.document_id == test_document.document_id
+        assert result.knowledge_service_file_id.startswith(
+            f"memory_{test_document.document_id}_"
+        )
         assert result.registration_metadata["service"] == "memory"
         assert result.registration_metadata["registered_via"] == (
             "in_memory_storage"
@@ -80,14 +101,12 @@ class TestMemoryKnowledgeService:
         assert isinstance(result.created_at, datetime)
 
     async def test_register_file_idempotent(
-        self, memory_service: MemoryKnowledgeService
+        self, memory_service: MemoryKnowledgeService, test_document: Document
     ) -> None:
-        """Test that registering the same file twice returns same result."""
-        document_id = "doc-456"
-
-        # Register the file twice
-        result1 = await memory_service.register_file(document_id)
-        result2 = await memory_service.register_file(document_id)
+        """Test that registering the same document returns same result."""
+        # Register twice
+        result1 = await memory_service.register_file(test_document)
+        result2 = await memory_service.register_file(test_document)
 
         # Should get the exact same result
         assert result1 == result2
@@ -95,13 +114,11 @@ class TestMemoryKnowledgeService:
             result2.knowledge_service_file_id
         )
 
-    async def test_register_file_stores_in_memory_dict(
-        self, memory_service: MemoryKnowledgeService
+    async def test_register_file_stores_in_memory(
+        self, memory_service: MemoryKnowledgeService, test_document: Document
     ) -> None:
-        """Test that registered files are stored in memory dictionary."""
-        document_id = "doc-789"
-
-        result = await memory_service.register_file(document_id)
+        """Test that register_file stores the result in memory."""
+        result = await memory_service.register_file(test_document)
         file_id = result.knowledge_service_file_id
 
         # Should be able to retrieve the registration
@@ -123,20 +140,37 @@ class TestMemoryKnowledgeService:
         assert result == {}
 
     async def test_get_all_registered_files_after_registration(
-        self, memory_service: MemoryKnowledgeService
+        self, memory_service: MemoryKnowledgeService, test_document: Document
     ) -> None:
         """Test get_all_registered_files after registering files."""
-        doc1 = "doc-001"
-        doc2 = "doc-002"
+        # Create a second test document
+        content_text = "Second test document content."
+        content_bytes = content_text.encode("utf-8")
+        content_stream = ContentStream(io.BytesIO(content_bytes))
 
-        result1 = await memory_service.register_file(doc1)
+        doc2 = Document(
+            document_id="test-doc-2",
+            original_filename="test_document_2.txt",
+            content_type="text/plain",
+            size_bytes=len(content_bytes),
+            content_multihash="test-hash-2",
+            status=DocumentStatus.CAPTURED,
+            content=content_stream,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        result1 = await memory_service.register_file(test_document)
         result2 = await memory_service.register_file(doc2)
 
         all_files = memory_service.get_all_registered_files()
 
+        # Should have both registrations
         assert len(all_files) == 2
         assert result1.knowledge_service_file_id in all_files
         assert result2.knowledge_service_file_id in all_files
+
+        # Verify the registrations are correct
         assert all_files[result1.knowledge_service_file_id] == result1
         assert all_files[result2.knowledge_service_file_id] == result2
 
@@ -271,17 +305,13 @@ class TestMemoryKnowledgeService:
             datetime.now(timezone.utc) - result.created_at
         ).total_seconds() < 5  # Should be very recent
 
-    def test_initialization_with_config_and_repo(
+    def test_initialization_with_config(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        document_repo: MemoryDocumentRepository,
     ) -> None:
-        """Test proper initialization with config and document repo."""
-        service = MemoryKnowledgeService(
-            knowledge_service_config, document_repo
-        )
+        """Test proper initialization with config."""
+        service = MemoryKnowledgeService(knowledge_service_config)
 
         assert service.config == knowledge_service_config
-        assert service.document_repo == document_repo
         assert service._registered_files == {}
         assert len(service._canned_query_results) == 0

@@ -8,11 +8,16 @@ execution functionality.
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
+from datetime import datetime, timezone
+import io
 
-from julee_example.domain import KnowledgeServiceConfig
+from julee_example.domain import (
+    KnowledgeServiceConfig,
+    Document,
+    DocumentStatus,
+)
 from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.repositories.memory import MemoryDocumentRepository
+from julee_example.domain.custom_fields.content_stream import ContentStream
 from julee_example.services.knowledge_service.anthropic import (
     knowledge_service as anthropic_ks,
 )
@@ -22,9 +27,25 @@ from julee_example.services.knowledge_service.anthropic import (
 
 
 @pytest.fixture
-def document_repo() -> MemoryDocumentRepository:
-    """Create a MemoryDocumentRepository for testing."""
-    return MemoryDocumentRepository()
+def test_document() -> Document:
+    """Create a test Document for testing."""
+    content_text = (
+        "This is test document content for knowledge service testing."
+    )
+    content_bytes = content_text.encode("utf-8")
+    content_stream = ContentStream(io.BytesIO(content_bytes))
+
+    return Document(
+        document_id="test-doc-123",
+        original_filename="test_document.txt",
+        content_type="text/plain",
+        size_bytes=len(content_bytes),
+        content_multihash="test-hash-123",
+        status=DocumentStatus.CAPTURED,
+        content=content_stream,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
 
 
 @pytest.fixture
@@ -63,7 +84,6 @@ class TestAnthropicKnowledgeService:
     async def test_execute_query_without_files(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        document_repo: MemoryDocumentRepository,
         mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query without service file IDs."""
@@ -73,7 +93,7 @@ class TestAnthropicKnowledgeService:
             mock_anthropic.return_value = mock_anthropic_client
 
             service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config, document_repo
+                knowledge_service_config
             )
 
             query_text = "What is machine learning?"
@@ -119,7 +139,6 @@ class TestAnthropicKnowledgeService:
     async def test_execute_query_with_files(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        document_repo: MemoryDocumentRepository,
         mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query with service file IDs."""
@@ -129,7 +148,7 @@ class TestAnthropicKnowledgeService:
             mock_anthropic.return_value = mock_anthropic_client
 
             service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config, document_repo
+                knowledge_service_config
             )
 
             query_text = "What is in these documents?"
@@ -170,7 +189,6 @@ class TestAnthropicKnowledgeService:
     async def test_execute_query_handles_api_error(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        document_repo: MemoryDocumentRepository,
     ) -> None:
         """Test execute_query handles API errors gracefully."""
         mock_client = MagicMock()
@@ -184,7 +202,7 @@ class TestAnthropicKnowledgeService:
             mock_anthropic.return_value = mock_client
 
             service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config, document_repo
+                knowledge_service_config
             )
 
             with pytest.raises(Exception, match="API Error"):
@@ -194,7 +212,6 @@ class TestAnthropicKnowledgeService:
     async def test_query_id_generation(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        document_repo: MemoryDocumentRepository,
         mock_anthropic_client: MagicMock,
     ) -> None:
         """Test that query IDs are unique and properly formatted."""
@@ -204,7 +221,7 @@ class TestAnthropicKnowledgeService:
             mock_anthropic.return_value = mock_anthropic_client
 
             service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config, document_repo
+                knowledge_service_config
             )
 
             # Execute two queries
@@ -224,7 +241,6 @@ class TestAnthropicKnowledgeService:
     async def test_empty_service_file_ids(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        document_repo: MemoryDocumentRepository,
         mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query with empty service_file_ids list."""
@@ -234,7 +250,7 @@ class TestAnthropicKnowledgeService:
             mock_anthropic.return_value = mock_anthropic_client
 
             service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config, document_repo
+                knowledge_service_config
             )
 
             query_text = "Test query"
@@ -255,7 +271,6 @@ class TestAnthropicKnowledgeService:
     async def test_execute_query_with_metadata(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        document_repo: MemoryDocumentRepository,
         mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query with query_metadata configuration."""
@@ -265,7 +280,7 @@ class TestAnthropicKnowledgeService:
             mock_anthropic.return_value = mock_anthropic_client
 
             service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config, document_repo
+                knowledge_service_config
             )
 
             query_text = "Custom query with metadata"
@@ -295,7 +310,6 @@ class TestAnthropicKnowledgeService:
     async def test_execute_query_metadata_defaults(
         self,
         knowledge_service_config: KnowledgeServiceConfig,
-        document_repo: MemoryDocumentRepository,
         mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query uses default values when metadata is None."""
@@ -305,7 +319,7 @@ class TestAnthropicKnowledgeService:
             mock_anthropic.return_value = mock_anthropic_client
 
             service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config, document_repo
+                knowledge_service_config
             )
 
             result = await service.execute_query(

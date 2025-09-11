@@ -19,8 +19,7 @@ from datetime import datetime, timezone
 
 from anthropic import AsyncAnthropic
 
-from julee_example.domain import KnowledgeServiceConfig
-from julee_example.repositories import DocumentRepository
+from julee_example.domain import KnowledgeServiceConfig, Document
 from ..knowledge_service import (
     KnowledgeService,
     QueryResult,
@@ -46,14 +45,12 @@ class AnthropicKnowledgeService(KnowledgeService):
     def __init__(
         self,
         config: KnowledgeServiceConfig,
-        document_repo: DocumentRepository,
     ) -> None:
         """Initialize Anthropic knowledge service with configuration.
 
         Args:
             config: KnowledgeServiceConfig domain object containing metadata
                    and service configuration
-            document_repo: Repository for accessing document data
         """
         logger.debug(
             "Initializing AnthropicKnowledgeService",
@@ -64,7 +61,6 @@ class AnthropicKnowledgeService(KnowledgeService):
         )
 
         self.config = config
-        self.document_repo = document_repo
 
         # Initialize Anthropic client
         api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -79,11 +75,13 @@ class AnthropicKnowledgeService(KnowledgeService):
             default_headers={"anthropic-beta": "files-api-2025-04-14"},
         )
 
-    async def register_file(self, document_id: str) -> FileRegistrationResult:
+    async def register_file(
+        self, document: Document
+    ) -> FileRegistrationResult:
         """Register a document file with Anthropic.
 
         Args:
-            document_id: ID of the document to register
+            document: Document domain object to register
 
         Returns:
             FileRegistrationResult with Anthropic-specific details
@@ -92,15 +90,11 @@ class AnthropicKnowledgeService(KnowledgeService):
             "Registering file with Anthropic",
             extra={
                 "knowledge_service_id": self.config.knowledge_service_id,
-                "document_id": document_id,
+                "document_id": document.document_id,
             },
         )
 
         try:
-            # Get the document from the repository
-            document = await self.document_repo.get(document_id)
-            if not document:
-                raise ValueError(f"Document {document_id} not found")
 
             # Reset stream position and pass stream to Anthropic
             document.content.seek(0)
@@ -118,7 +112,7 @@ class AnthropicKnowledgeService(KnowledgeService):
             anthropic_file_id = file_response.id
 
             result = FileRegistrationResult(
-                document_id=document_id,
+                document_id=document.document_id,
                 knowledge_service_file_id=anthropic_file_id,
                 registration_metadata={
                     "service": "anthropic",
@@ -136,7 +130,7 @@ class AnthropicKnowledgeService(KnowledgeService):
                 "File registered with Anthropic beta Files API",
                 extra={
                     "knowledge_service_id": self.config.knowledge_service_id,
-                    "document_id": document_id,
+                    "document_id": document.document_id,
                     "anthropic_file_id": anthropic_file_id,
                     "filename": document.original_filename,
                     "size_bytes": document.size_bytes,
@@ -150,7 +144,7 @@ class AnthropicKnowledgeService(KnowledgeService):
                 "Failed to register file with Anthropic",
                 extra={
                     "knowledge_service_id": self.config.knowledge_service_id,
-                    "document_id": document_id,
+                    "document_id": document.document_id,
                     "error": str(e),
                 },
                 exc_info=True,
