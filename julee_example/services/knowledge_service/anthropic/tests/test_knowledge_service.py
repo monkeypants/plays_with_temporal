@@ -39,7 +39,7 @@ def knowledge_service_config() -> KnowledgeServiceConfig:
 
 
 @pytest.fixture
-def mock_anthropic_client():
+def mock_anthropic_client() -> MagicMock:
     """Create a mock Anthropic client."""
     mock_client = MagicMock()
 
@@ -64,7 +64,7 @@ class TestAnthropicKnowledgeService:
         self,
         knowledge_service_config: KnowledgeServiceConfig,
         document_repo: MemoryDocumentRepository,
-        mock_anthropic_client,
+        mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query without service file IDs."""
         with patch(
@@ -94,6 +94,7 @@ class TestAnthropicKnowledgeService:
             assert result.result_data["usage"]["input_tokens"] == 150
             assert result.result_data["usage"]["output_tokens"] == 25
             assert result.result_data["stop_reason"] == "end_turn"
+            assert result.execution_time_ms is not None
             assert result.execution_time_ms >= 0
             assert isinstance(result.created_at, datetime)
 
@@ -119,7 +120,7 @@ class TestAnthropicKnowledgeService:
         self,
         knowledge_service_config: KnowledgeServiceConfig,
         document_repo: MemoryDocumentRepository,
-        mock_anthropic_client,
+        mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query with service file IDs."""
         with patch(
@@ -141,6 +142,7 @@ class TestAnthropicKnowledgeService:
             # Verify the result structure
             assert result.query_text == query_text
             assert result.result_data["sources"] == service_file_ids
+            assert result.execution_time_ms is not None
             assert result.execution_time_ms >= 0
 
             # Verify the API call was made with file attachments
@@ -193,7 +195,7 @@ class TestAnthropicKnowledgeService:
         self,
         knowledge_service_config: KnowledgeServiceConfig,
         document_repo: MemoryDocumentRepository,
-        mock_anthropic_client,
+        mock_anthropic_client: MagicMock,
     ) -> None:
         """Test that query IDs are unique and properly formatted."""
         with patch(
@@ -223,7 +225,7 @@ class TestAnthropicKnowledgeService:
         self,
         knowledge_service_config: KnowledgeServiceConfig,
         document_repo: MemoryDocumentRepository,
-        mock_anthropic_client,
+        mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query with empty service_file_ids list."""
         with patch(
@@ -254,7 +256,7 @@ class TestAnthropicKnowledgeService:
         self,
         knowledge_service_config: KnowledgeServiceConfig,
         document_repo: MemoryDocumentRepository,
-        mock_anthropic_client,
+        mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query with query_metadata configuration."""
         with patch(
@@ -279,6 +281,7 @@ class TestAnthropicKnowledgeService:
 
             # Verify the result uses metadata values
             assert result.result_data["model"] == "claude-opus-4-1-20250805"
+            assert result.execution_time_ms is not None
             assert result.execution_time_ms >= 0
 
             # Verify API call used metadata values
@@ -293,7 +296,7 @@ class TestAnthropicKnowledgeService:
         self,
         knowledge_service_config: KnowledgeServiceConfig,
         document_repo: MemoryDocumentRepository,
-        mock_anthropic_client,
+        mock_anthropic_client: MagicMock,
     ) -> None:
         """Test execute_query uses default values when metadata is None."""
         with patch(

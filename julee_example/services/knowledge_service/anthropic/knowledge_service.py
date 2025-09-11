@@ -15,7 +15,7 @@ import os
 import logging
 import time
 import uuid
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast, IO
 from datetime import datetime, timezone
 
 from anthropic import AsyncAnthropic
@@ -103,15 +103,15 @@ class AnthropicKnowledgeService(KnowledgeService):
             if not document:
                 raise ValueError(f"Document {document_id} not found")
 
-            # Reset stream position and pass directly to Anthropic
+            # Reset stream position and pass stream to Anthropic
             document.content.seek(0)
 
             # Upload file using Anthropic beta Files API
-            # Use tuple format: (filename, file_content, media_type)
+            # Use tuple format: (filename, file_stream, media_type)
             file_response = await self.client.beta.files.upload(
                 file=(
                     document.original_filename,
-                    document.content.stream,
+                    cast(IO[bytes], document.content.stream),
                     document.content_type,
                 )
             )
