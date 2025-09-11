@@ -295,9 +295,9 @@ async def test_anthropic_knowledge_service() -> None:
                 schema_result.knowledge_service_file_id,
             ],
             assistant_prompt=(
-                "Looking at the meeting transcript, here's the JSON summary "
-                "that satisfies the provided schema, without surrounding "
-                "```json ... ``` markers:"
+                "Looking at the meeting transcript, here's the formatted "
+                "JSON summary that satisfies the provided schema, without "
+                "surrounding ```json ... ``` markers:"
             ),
         )
 
