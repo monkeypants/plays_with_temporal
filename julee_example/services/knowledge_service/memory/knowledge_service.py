@@ -8,7 +8,7 @@ scenarios where external service dependencies should be avoided.
 """
 
 import logging
-from typing import Optional, List, Dict, Deque
+from typing import Optional, List, Dict, Deque, Any
 from datetime import datetime, timezone
 from collections import deque
 
@@ -183,13 +183,16 @@ class MemoryKnowledgeService(KnowledgeService):
     async def execute_query(
         self,
         query_text: str,
-        document_ids: Optional[List[str]] = None,
+        service_file_ids: Optional[List[str]] = None,
+        query_metadata: Optional[Dict[str, Any]] = None,
     ) -> QueryResult:
         """Execute a query by returning a canned response.
 
         Args:
             query_text: The query to execute
-            document_ids: Optional list of document IDs to scope query to
+            service_file_ids: Optional list of service file IDs for query
+            query_metadata: Optional service-specific metadata (ignored in
+                           memory implementation)
 
         Returns:
             QueryResult from the queue of canned responses
@@ -202,8 +205,9 @@ class MemoryKnowledgeService(KnowledgeService):
             extra={
                 "knowledge_service_id": self.config.knowledge_service_id,
                 "query_text": query_text,
-                "document_count": len(document_ids) if document_ids else 0,
-                "canned_results_available": len(self._canned_query_results),
+                "document_count": (
+                    len(service_file_ids) if service_file_ids else 0
+                ),
             },
         )
 
@@ -231,7 +235,7 @@ class MemoryKnowledgeService(KnowledgeService):
             query_text=query_text,  # Use actual query text
             result_data={
                 **result.result_data,
-                "queried_documents": document_ids or [],
+                "queried_documents": service_file_ids or [],
                 "service": "memory",
                 "knowledge_service_id": self.config.knowledge_service_id,
             },

@@ -16,6 +16,9 @@ from julee_example.repositories.memory import MemoryDocumentRepository
 from julee_example.services.knowledge_service.anthropic import (
     knowledge_service as anthropic_ks,
 )
+from julee_example.services.knowledge_service.anthropic import (
+    knowledge_service as anthropic_ks_module,
+)
 
 
 @pytest.fixture
@@ -82,7 +85,10 @@ class TestAnthropicKnowledgeService:
                 result.result_data["response"]
                 == "This is a test response from Anthropic."
             )
-            assert result.result_data["model"] == "claude-sonnet-4-20250514"
+            assert (
+                result.result_data["model"]
+                == anthropic_ks_module.DEFAULT_MODEL
+            )
             assert result.result_data["service"] == "anthropic"
             assert result.result_data["sources"] == []
             assert result.result_data["usage"]["input_tokens"] == 150
@@ -94,8 +100,11 @@ class TestAnthropicKnowledgeService:
             # Verify the API call was made correctly
             mock_anthropic_client.messages.create.assert_called_once()
             call_args = mock_anthropic_client.messages.create.call_args
-            assert call_args[1]["model"] == "claude-sonnet-4-20250514"
-            assert call_args[1]["max_tokens"] == 4000
+            assert call_args[1]["model"] == anthropic_ks_module.DEFAULT_MODEL
+            assert (
+                call_args[1]["max_tokens"]
+                == anthropic_ks_module.DEFAULT_MAX_TOKENS
+            )
             assert len(call_args[1]["messages"]) == 1
             assert call_args[1]["messages"][0]["role"] == "user"
 
@@ -239,3 +248,78 @@ class TestAnthropicKnowledgeService:
             content_parts = call_args[1]["messages"][0]["content"]
             assert len(content_parts) == 1  # Only text query, no files
             assert content_parts[0]["type"] == "text"
+
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    async def test_execute_query_with_metadata(
+        self,
+        knowledge_service_config: KnowledgeServiceConfig,
+        document_repo: MemoryDocumentRepository,
+        mock_anthropic_client,
+    ) -> None:
+        """Test execute_query with query_metadata configuration."""
+        with patch(
+            "julee_example.services.knowledge_service.anthropic.knowledge_service.AsyncAnthropic"
+        ) as mock_anthropic:
+            mock_anthropic.return_value = mock_anthropic_client
+
+            service = anthropic_ks.AnthropicKnowledgeService(
+                knowledge_service_config, document_repo
+            )
+
+            query_text = "Custom query with metadata"
+            metadata = {
+                "model": "claude-opus-4-1-20250805",
+                "max_tokens": 2000,
+                "temperature": 0.7,
+            }
+
+            result = await service.execute_query(
+                query_text, query_metadata=metadata
+            )
+
+            # Verify the result uses metadata values
+            assert result.result_data["model"] == "claude-opus-4-1-20250805"
+            assert result.execution_time_ms >= 0
+
+            # Verify API call used metadata values
+            mock_anthropic_client.messages.create.assert_called_once()
+            call_args = mock_anthropic_client.messages.create.call_args
+            assert call_args[1]["model"] == "claude-opus-4-1-20250805"
+            assert call_args[1]["max_tokens"] == 2000
+            assert call_args[1]["temperature"] == 0.7
+
+    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+    async def test_execute_query_metadata_defaults(
+        self,
+        knowledge_service_config: KnowledgeServiceConfig,
+        document_repo: MemoryDocumentRepository,
+        mock_anthropic_client,
+    ) -> None:
+        """Test execute_query uses default values when metadata is None."""
+        with patch(
+            "julee_example.services.knowledge_service.anthropic.knowledge_service.AsyncAnthropic"
+        ) as mock_anthropic:
+            mock_anthropic.return_value = mock_anthropic_client
+
+            service = anthropic_ks.AnthropicKnowledgeService(
+                knowledge_service_config, document_repo
+            )
+
+            result = await service.execute_query(
+                "Test query", query_metadata=None
+            )
+
+            # Verify defaults are used
+            assert (
+                result.result_data["model"]
+                == anthropic_ks_module.DEFAULT_MODEL
+            )
+
+            # Verify API call used defaults
+            call_args = mock_anthropic_client.messages.create.call_args
+            assert call_args[1]["model"] == anthropic_ks_module.DEFAULT_MODEL
+            assert (
+                call_args[1]["max_tokens"]
+                == anthropic_ks_module.DEFAULT_MAX_TOKENS
+            )
+            assert "temperature" not in call_args[1]  # Not set by default

@@ -15,7 +15,7 @@ import os
 import logging
 import time
 import uuid
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 
 from anthropic import AsyncAnthropic
@@ -29,6 +29,10 @@ from ..knowledge_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Default configuration constants
+DEFAULT_MODEL = "claude-sonnet-4-20250514"
+DEFAULT_MAX_TOKENS = 4000
 
 
 class AnthropicKnowledgeService(KnowledgeService):
@@ -158,6 +162,7 @@ class AnthropicKnowledgeService(KnowledgeService):
         self,
         query_text: str,
         service_file_ids: Optional[List[str]] = None,
+        query_metadata: Optional[Dict[str, Any]] = None,
     ) -> QueryResult:
         """Execute a query against Anthropic.
 
@@ -165,6 +170,8 @@ class AnthropicKnowledgeService(KnowledgeService):
             query_text: The query to execute
             service_file_ids: Optional list of Anthropic file IDs to provide
                              as context for the query
+            query_metadata: Optional Anthropic-specific configuration such as
+                           model, temperature, max_tokens, etc.
 
         Returns:
             QueryResult with Anthropic query results
@@ -177,11 +184,20 @@ class AnthropicKnowledgeService(KnowledgeService):
                 "document_count": (
                     len(service_file_ids) if service_file_ids else 0
                 ),
+                "file_count": (
+                    len(service_file_ids) if service_file_ids else 0
+                ),
             },
         )
 
         start_time = time.time()
         query_id = f"anthropic_{uuid.uuid4().hex[:12]}"
+
+        # Extract configuration from query_metadata
+        metadata = query_metadata or {}
+        model = metadata.get("model", DEFAULT_MODEL)
+        max_tokens = metadata.get("max_tokens", DEFAULT_MAX_TOKENS)
+        temperature = metadata.get("temperature")
 
         try:
             # Prepare the message content with file attachments if provided
@@ -201,11 +217,17 @@ class AnthropicKnowledgeService(KnowledgeService):
             content_parts.append({"type": "text", "text": query_text})
 
             # Execute the query using Anthropic's Messages API
-            response = await self.client.messages.create(
-                model="claude-sonnet-4-20250514",  # TODO: make configurable.
-                max_tokens=4000,
-                messages=[{"role": "user", "content": content_parts}],
-            )
+            create_params = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "messages": [{"role": "user", "content": content_parts}],
+            }
+
+            # Add temperature if specified
+            if temperature is not None:
+                create_params["temperature"] = temperature
+
+            response = await self.client.messages.create(**create_params)
 
             # Calculate execution time
             execution_time_ms = int((time.time() - start_time) * 1000)
@@ -228,7 +250,7 @@ class AnthropicKnowledgeService(KnowledgeService):
                 query_text=query_text,
                 result_data={
                     "response": response_text,
-                    "model": "claude-sonnet-4-20250514",
+                    "model": model,
                     "service": "anthropic",
                     "sources": service_file_ids or [],
                     "usage": {

@@ -16,7 +16,7 @@ and type safety, following the patterns established in the sample project.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 
 
@@ -34,6 +34,29 @@ class KnowledgeServiceQuery(BaseModel):
 
     The mapping between queries and schema sections is handled by the
     AssemblySpecification's knowledge_service_queries field.
+
+    Examples of query_metadata usage:
+
+    For Anthropic services:
+        query_metadata = {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 4000,
+            "temperature": 0.1
+        }
+
+    For OpenAI services:
+        query_metadata = {
+            "model": "gpt-4",
+            "temperature": 0.2,
+            "top_p": 0.9
+        }
+
+    For custom services:
+        query_metadata = {
+            "endpoint": "custom-model-v2",
+            "timeout": 30,
+            "retries": 3
+        }
     """
 
     # Core query identification
@@ -49,6 +72,14 @@ class KnowledgeServiceQuery(BaseModel):
     prompt: str = Field(
         description="The specific prompt to send to the knowledge service "
         "for this extraction"
+    )
+
+    # Service-specific configuration
+    query_metadata: Optional[Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Service-specific metadata and configuration options "
+        "such as model selection, temperature, max_tokens, etc. "
+        "The structure depends on the specific knowledge service being used.",
     )
 
     created_at: Optional[datetime] = Field(

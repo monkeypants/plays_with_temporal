@@ -98,6 +98,7 @@ class KnowledgeService(Protocol):
         self,
         query_text: str,
         service_file_ids: Optional[List[str]] = None,
+        query_metadata: Optional[Dict[str, Any]] = None,
     ) -> QueryResult:
         """Execute a query against the external knowledge service.
 
@@ -112,6 +113,10 @@ class KnowledgeService(Protocol):
                              by the knowledge service from register_file
                              operations, and are included in the query to give
                              the service access to specific documents.
+            query_metadata: Optional service-specific metadata and
+                           configuration options such as model selection,
+                           temperature, max_tokens, etc. The structure depends
+                           on the specific knowledge service being used.
 
         Returns:
             QueryResult containing query results and execution metadata
