@@ -217,7 +217,9 @@ class AnthropicKnowledgeService(KnowledgeService):
 
             # Add assistant message if provided to constrain response
             if assistant_prompt:
-                messages.append({"role": "assistant", "content": assistant_prompt})
+                messages.append(
+                    {"role": "assistant", "content": assistant_prompt}
+                )
 
             create_params = {
                 "model": model,
@@ -237,14 +239,19 @@ class AnthropicKnowledgeService(KnowledgeService):
             # Validate response has exactly one content block of type 'text'
             if len(response.content) != 1:
                 raise ValueError(
-                    f"Expected exactly 1 content block, got {len(response.content)}"
+                    f"Expected exactly 1 content block, got "
+                    f"{len(response.content)}"
                 )
 
             content_block = response.content[0]
 
-            if not hasattr(content_block, "type") or content_block.type != "text":
+            if (
+                not hasattr(content_block, "type")
+                or content_block.type != "text"
+            ):
+                block_type = getattr(content_block, "type", "unknown")
                 raise ValueError(
-                    f"Expected content block type 'text', got '{getattr(content_block, 'type', 'unknown')}'"
+                    f"Expected content block type 'text', got '{block_type}'"
                 )
 
             if not hasattr(content_block, "text"):
@@ -260,7 +267,7 @@ class AnthropicKnowledgeService(KnowledgeService):
                     "knowledge_service_id": self.config.knowledge_service_id,
                     "query_id": query_id,
                     "response_length": len(response_text),
-                }
+                },
             )
 
             # Structure the result with single text content

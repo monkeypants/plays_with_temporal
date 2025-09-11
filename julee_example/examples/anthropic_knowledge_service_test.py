@@ -32,9 +32,6 @@ from julee_example.domain.custom_fields.content_stream import ContentStream
 from julee_example.services.knowledge_service.anthropic import (
     AnthropicKnowledgeService,
 )
-from julee_example.services.knowledge_service.anthropic import (
-    knowledge_service as ks_module,
-)
 
 
 def setup_logging() -> None:
@@ -66,31 +63,42 @@ async def create_meeting_transcript_document() -> Document:
     content_text = """Meeting Transcript - Q1 Planning Session
 Date: March 15, 2024
 Time: 2:00 PM - 3:30 PM
-Attendees: Sarah Chen (Product Manager), Mike Rodriguez (Engineering Lead), Lisa Wang (Designer)
+Attendees: Sarah Chen (Product Manager), Mike Rodriguez (Engineering Lead),
+Lisa Wang (Designer)
 
-Sarah: Thanks everyone for joining. Let's kick off our Q1 planning. Mike, can you give us an update on the current sprint?
+Sarah: Thanks everyone for joining. Let's kick off our Q1 planning. Mike,
+can you give us an update on the current sprint?
 
-Mike: Sure, we're about 80% through sprint 23. We've completed the user authentication module and are working on the data migration tool. Should be done by Friday.
+Mike: Sure, we're about 80% through sprint 23. We've completed the user
+authentication module and are working on the data migration tool. Should be
+done by Friday.
 
-Lisa: Great! I've finished the mockups for the dashboard redesign. Sarah, have you had a chance to review them?
+Lisa: Great! I've finished the mockups for the dashboard redesign. Sarah,
+have you had a chance to review them?
 
-Sarah: Yes, they look fantastic. I especially like the new navigation structure. When can we start implementation?
+Sarah: Yes, they look fantastic. I especially like the new navigation
+structure. When can we start implementation?
 
-Mike: I'd estimate 2 weeks for the frontend work, plus another week for backend API changes.
+Mike: I'd estimate 2 weeks for the frontend work, plus another week for
+backend API changes.
 
-Lisa: I can start on the component library updates while Mike works on the APIs.
+Lisa: I can start on the component library updates while Mike works on the
+APIs.
 
-Sarah: Perfect. Let's also discuss the customer feedback integration. We had 47 responses to our survey.
+Sarah: Perfect. Let's also discuss the customer feedback integration. We had
+47 responses to our survey.
 
 Mike: The main requests were for better reporting and mobile optimization.
 
-Sarah: Those should be our next priorities then. Lisa, can you start sketching mobile designs?
+Sarah: Those should be our next priorities then. Lisa, can you start
+sketching mobile designs?
 
 Lisa: Absolutely. I'll have initial concepts by next Tuesday.
 
 Sarah: Excellent. Any other items?
 
-Mike: Just a heads up that we'll need to schedule downtime for the database migration, probably next weekend.
+Mike: Just a heads up that we'll need to schedule downtime for the database
+migration, probably next weekend.
 
 Sarah: Noted. I'll coordinate with support. Meeting adjourned at 3:30 PM."""
 
@@ -223,7 +231,7 @@ async def create_json_schema_document() -> Document:
 
 
 async def test_anthropic_knowledge_service() -> None:
-    """Test the AnthropicKnowledgeService with meeting transcript and JSON schema."""
+    """Test the AnthropicKnowledgeService with transcript and JSON schema."""
 
     # Check for API key
     if not os.getenv("ANTHROPIC_API_KEY"):
@@ -232,7 +240,8 @@ async def test_anthropic_knowledge_service() -> None:
         return
 
     print(
-        "🚀 Testing AnthropicKnowledgeService with meeting transcript and JSON schema"
+        "🚀 Testing AnthropicKnowledgeService with meeting transcript and "
+        "JSON schema"
     )
     print("=" * 80)
 
@@ -247,7 +256,8 @@ async def test_anthropic_knowledge_service() -> None:
         config = KnowledgeServiceConfig(
             knowledge_service_id="test-anthropic-meeting-ks",
             name="Test Anthropic Meeting Knowledge Service",
-            description="Testing meeting transcript summarization with JSON schema",
+            description="Testing meeting transcript summarization with JSON "
+            "schema",
             service_api=ServiceApi.ANTHROPIC,
         )
         print("✅ Created KnowledgeServiceConfig")
@@ -258,16 +268,23 @@ async def test_anthropic_knowledge_service() -> None:
 
         # Register both files with Anthropic
         print("\n📤 Registering meeting transcript with Anthropic...")
-        transcript_result = await knowledge_service.register_file(transcript_doc)
-        print(f"✅ Transcript registered - File ID: {transcript_result.knowledge_service_file_id}")
+        transcript_result = await knowledge_service.register_file(
+            transcript_doc
+        )
+        transcript_file_id = transcript_result.knowledge_service_file_id
+        print(f"✅ Transcript registered - File ID: {transcript_file_id}")
 
         print("\n📤 Registering JSON schema with Anthropic...")
         schema_result = await knowledge_service.register_file(schema_doc)
-        print(f"✅ Schema registered - File ID: {schema_result.knowledge_service_file_id}")
+        schema_file_id = schema_result.knowledge_service_file_id
+        print(f"✅ Schema registered - File ID: {schema_file_id}")
 
         # Execute query with both files
         print("\n🔍 Executing query with both files...")
-        query_text = "Please summarise the following meeting transcript into a json file that satisfies the attached json schema"
+        query_text = (
+            "Please summarise the following meeting transcript into a json "
+            "file that satisfies the attached json schema"
+        )
         print(f"   Query: {query_text}")
 
         # Use default model and settings with assistant prompt
@@ -275,9 +292,13 @@ async def test_anthropic_knowledge_service() -> None:
             query_text=query_text,
             service_file_ids=[
                 transcript_result.knowledge_service_file_id,
-                schema_result.knowledge_service_file_id
+                schema_result.knowledge_service_file_id,
             ],
-            assistant_prompt="Looking at the meeting transcript, here's the JSON summary that satisfies the provided schema, without surrounding ```json ... ``` markers:",
+            assistant_prompt=(
+                "Looking at the meeting transcript, here's the JSON summary "
+                "that satisfies the provided schema, without surrounding "
+                "```json ... ``` markers:"
+            ),
         )
 
         print("✅ Query executed successfully!")
@@ -287,11 +308,13 @@ async def test_anthropic_knowledge_service() -> None:
         usage = query_result.result_data.get("usage", {})
         print(f"   Input tokens: {usage.get('input_tokens')}")
         print(f"   Output tokens: {usage.get('output_tokens')}")
-        print(f"   Files provided: {len(query_result.result_data.get('sources', []))}")
+        file_count = len(query_result.result_data.get("sources", []))
+        print(f"   Files provided: {file_count}")
         print("   Response:")
         print(f"   {query_result.result_data.get('response')}")
 
-        print(f"\n📄 Response text ({len(query_result.result_data.get('response', ''))} characters)")
+        response_text = query_result.result_data.get("response", "")
+        print(f"\n📄 Response text ({len(response_text)} characters)")
 
         print("\n🎉 Test completed successfully!")
 
