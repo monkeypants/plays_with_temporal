@@ -103,6 +103,7 @@ class KnowledgeService(Protocol):
         query_text: str,
         service_file_ids: Optional[List[str]] = None,
         query_metadata: Optional[Dict[str, Any]] = None,
+        assistant_prompt: Optional[str] = None,
     ) -> QueryResult:
         """Execute a query against the external knowledge service.
 
@@ -121,6 +122,11 @@ class KnowledgeService(Protocol):
                            configuration options such as model selection,
                            temperature, max_tokens, etc. The structure depends
                            on the specific knowledge service being used.
+            assistant_prompt: Optional assistant message content to constrain
+                             or prime the model's response. This is added as
+                             the final assistant message before the model
+                             generates its response, allowing control over
+                             response format and structure.
 
         Returns:
             QueryResult containing query results and execution metadata

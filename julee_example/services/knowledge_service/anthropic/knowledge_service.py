@@ -132,7 +132,7 @@ class AnthropicKnowledgeService(KnowledgeService):
                     "knowledge_service_id": self.config.knowledge_service_id,
                     "document_id": document.document_id,
                     "anthropic_file_id": anthropic_file_id,
-                    "filename": document.original_filename,
+                    "original_filename": document.original_filename,
                     "size_bytes": document.size_bytes,
                 },
             )
@@ -156,6 +156,7 @@ class AnthropicKnowledgeService(KnowledgeService):
         query_text: str,
         service_file_ids: Optional[List[str]] = None,
         query_metadata: Optional[Dict[str, Any]] = None,
+        assistant_prompt: Optional[str] = None,
     ) -> QueryResult:
         """Execute a query against Anthropic.
 
@@ -165,6 +166,8 @@ class AnthropicKnowledgeService(KnowledgeService):
                              as context for the query
             query_metadata: Optional Anthropic-specific configuration such as
                            model, temperature, max_tokens, etc.
+            assistant_prompt: Optional assistant message content to constrain
+                             or prime the model's response
 
         Returns:
             QueryResult with Anthropic query results
@@ -209,11 +212,17 @@ class AnthropicKnowledgeService(KnowledgeService):
             # Add the text query
             content_parts.append({"type": "text", "text": query_text})
 
-            # Execute the query using Anthropic's Messages API
+            # Prepare messages for the API
+            messages = [{"role": "user", "content": content_parts}]
+
+            # Add assistant message if provided to constrain response
+            if assistant_prompt:
+                messages.append({"role": "assistant", "content": assistant_prompt})
+
             create_params = {
                 "model": model,
                 "max_tokens": max_tokens,
-                "messages": [{"role": "user", "content": content_parts}],
+                "messages": messages,
             }
 
             # Add temperature if specified
@@ -225,33 +234,52 @@ class AnthropicKnowledgeService(KnowledgeService):
             # Calculate execution time
             execution_time_ms = int((time.time() - start_time) * 1000)
 
-            # Extract response content safely
-            response_text = ""
-            for content_block in response.content:
-                try:
-                    # Try to access text attribute if it exists
-                    text_content = getattr(content_block, "text", None)
-                    if text_content:
-                        response_text += str(text_content)
-                except AttributeError:
-                    # Skip content blocks that don't have text
-                    continue
+            # Validate response has exactly one content block of type 'text'
+            if len(response.content) != 1:
+                raise ValueError(
+                    f"Expected exactly 1 content block, got {len(response.content)}"
+                )
 
-            # Structure the result
+            content_block = response.content[0]
+
+            if not hasattr(content_block, "type") or content_block.type != "text":
+                raise ValueError(
+                    f"Expected content block type 'text', got '{getattr(content_block, 'type', 'unknown')}'"
+                )
+
+            if not hasattr(content_block, "text"):
+                raise ValueError(
+                    "Text content block missing 'text' attribute"
+                )
+
+            response_text = str(content_block.text)
+
+            logger.debug(
+                "Single text content block validated and extracted",
+                extra={
+                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "query_id": query_id,
+                    "response_length": len(response_text),
+                }
+            )
+
+            # Structure the result with single text content
+            result_data = {
+                "response": response_text,
+                "model": model,
+                "service": "anthropic",
+                "sources": service_file_ids or [],
+                "usage": {
+                    "input_tokens": response.usage.input_tokens,
+                    "output_tokens": response.usage.output_tokens,
+                },
+                "stop_reason": response.stop_reason,
+            }
+
             result = QueryResult(
                 query_id=query_id,
                 query_text=query_text,
-                result_data={
-                    "response": response_text,
-                    "model": model,
-                    "service": "anthropic",
-                    "sources": service_file_ids or [],
-                    "usage": {
-                        "input_tokens": response.usage.input_tokens,
-                        "output_tokens": response.usage.output_tokens,
-                    },
-                    "stop_reason": response.stop_reason,
-                },
+                result_data=result_data,
                 execution_time_ms=execution_time_ms,
                 created_at=datetime.now(timezone.utc),
             )

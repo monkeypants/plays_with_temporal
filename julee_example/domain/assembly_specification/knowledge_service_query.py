@@ -81,6 +81,13 @@ class KnowledgeServiceQuery(BaseModel):
         "such as model selection, temperature, max_tokens, etc. "
         "The structure depends on the specific knowledge service being used.",
     )
+    assistant_prompt: Optional[str] = Field(
+        default=None,
+        description="Optional assistant message content to constrain "
+        "or prime the model's response. This is added as the final "
+        "assistant message before the model generates its response, "
+        "allowing control over response format and structure.",
+    )
 
     created_at: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc)
