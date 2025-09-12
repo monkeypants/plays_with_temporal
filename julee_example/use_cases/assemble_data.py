@@ -124,9 +124,12 @@ class AssembleDataUseCase:
         1. Generates a unique assembly ID
         2. Retrieves the assembly specification
         3. Stores the initial assembly (without iterations) in the repository
-        4. Registers the document with knowledge services
-        5. Calls _assemble_iteration to perform the actual assembly work
-        6. Returns the assembly with the first iteration
+        4. Retrieves all knowledge service queries needed for the assembly
+        5. Retrieves all knowledge service instances needed for the assembly
+        6. Retrieves the input document and registers it with knowledge
+           services
+        7. Performs the assembly iteration to create the assembled document
+        8. Adds the iteration to the assembly and returns it
 
         Args:
             document_id: ID of the document to assemble
@@ -285,6 +288,8 @@ class AssembleDataUseCase:
         self, assembly_specification: AssemblySpecification
     ) -> Dict[str, KnowledgeServiceQuery]:
         """Retrieve all knowledge service queries needed for this assembly."""
+        # TODO: we should update the interface to take multiple ids (for all
+        # repositories), since most backends will support fetching multiple.
         queries = {}
         for (
             query_id
