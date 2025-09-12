@@ -23,6 +23,7 @@ class ServiceApi(str, Enum):
     """Supported knowledge service APIs."""
 
     ANTHROPIC = "anthropic"
+    MEMORY = "memory"
 
 
 class KnowledgeServiceConfig(BaseModel):

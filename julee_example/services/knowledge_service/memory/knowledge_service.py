@@ -22,6 +22,8 @@ from ..knowledge_service import (
 logger = logging.getLogger(__name__)
 
 
+
+
 class MemoryKnowledgeService(KnowledgeService):
     """
     In-memory implementation of the KnowledgeService protocol.
@@ -76,6 +78,22 @@ class MemoryKnowledgeService(KnowledgeService):
             },
         )
         self._canned_query_results.append(query_result)
+
+    def add_canned_query_results(self, query_results: List[QueryResult]) -> None:
+        """Add multiple canned query results to be returned by execute_query.
+
+        Args:
+            query_results: List of QueryResult objects to return from future
+                          execute_query calls
+        """
+        logger.debug(
+            "Adding multiple canned query results",
+            extra={
+                "knowledge_service_id": self.config.knowledge_service_id,
+                "count": len(query_results),
+            },
+        )
+        self._canned_query_results.extend(query_results)
 
     def clear_canned_query_results(self) -> None:
         """Clear all canned query results."""

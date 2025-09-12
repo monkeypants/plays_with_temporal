@@ -6,17 +6,36 @@ business logic execution and repository interaction patterns following
 the Clean Architecture principles.
 """
 
+import io
+import json
 import pytest
 from unittest.mock import AsyncMock
-from datetime import datetime
+from datetime import datetime, timezone
 
 from julee_example.use_cases.assemble_data import AssembleDataUseCase
-from julee_example.domain import Assembly, AssemblyStatus
+from julee_example.domain import (
+    Assembly,
+    AssemblyStatus,
+    Document,
+    DocumentStatus,
+    ContentStream,
+    AssemblySpecification,
+    AssemblySpecificationStatus,
+    KnowledgeServiceConfig,
+    KnowledgeServiceQuery,
+)
+from julee_example.domain.knowledge_service_config import ServiceApi
 from julee_example.repositories.memory import (
     MemoryDocumentRepository,
     MemoryAssemblyRepository,
     MemoryAssemblySpecificationRepository,
+    MemoryKnowledgeServiceConfigRepository,
+    MemoryKnowledgeServiceQueryRepository,
 )
+from julee_example.services.knowledge_service.memory import MemoryKnowledgeService
+from julee_example.services.knowledge_service import QueryResult
+
+
 
 
 class TestAssembleDataUseCase:
@@ -40,72 +59,65 @@ class TestAssembleDataUseCase:
         return MemoryAssemblySpecificationRepository()
 
     @pytest.fixture
+    def knowledge_service_query_repo(self) -> MemoryKnowledgeServiceQueryRepository:
+        """Create a memory KnowledgeServiceQueryRepository for testing."""
+        return MemoryKnowledgeServiceQueryRepository()
+
+    @pytest.fixture
+    def knowledge_service_config_repo(self) -> MemoryKnowledgeServiceConfigRepository:
+        """Create a memory KnowledgeServiceConfigRepository for testing."""
+        return MemoryKnowledgeServiceConfigRepository()
+
+    @pytest.fixture
     def use_case(
         self,
         document_repo: MemoryDocumentRepository,
         assembly_repo: MemoryAssemblyRepository,
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
+        knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
+        knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
     ) -> AssembleDataUseCase:
         """Create AssembleDataUseCase with memory repository dependencies."""
         return AssembleDataUseCase(
             document_repo=document_repo,
             assembly_repo=assembly_repo,
             assembly_specification_repo=assembly_specification_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
         )
 
     @pytest.mark.asyncio
-    async def test_assemble_data_generates_assembly_id(
+    async def test_assemble_data_fails_without_specification(
         self, use_case: AssembleDataUseCase
     ) -> None:
-        """Test that assemble_data generates a unique assembly ID."""
+        """Test that assemble_data fails when specification doesn't exist."""
         # Arrange
         document_id = "doc-456"
         assembly_specification_id = "spec-789"
 
-        # Act
-        result = await use_case.assemble_data(
-            document_id=document_id,
-            assembly_specification_id=assembly_specification_id,
-        )
-
-        # Assert
-        assert isinstance(result, Assembly)
-        assert result.assembly_id is not None
-        assert result.assembly_id.startswith("assembly-")
-        assert result.assembly_specification_id == assembly_specification_id
-        assert result.input_document_id == document_id
-        assert result.status == AssemblyStatus.PENDING
-        assert result.iterations == []
-        assert isinstance(result.created_at, datetime)
-        assert isinstance(result.updated_at, datetime)
+        # Act & Assert
+        with pytest.raises(ValueError, match="Assembly specification not found"):
+            await use_case.assemble_data(
+                document_id=document_id,
+                assembly_specification_id=assembly_specification_id,
+            )
 
     @pytest.mark.asyncio
-    async def test_assemble_data_multiple_calls_generate_different_ids(
+    async def test_assemble_data_fails_without_document(
         self, use_case: AssembleDataUseCase
     ) -> None:
-        """Test that multiple calls to assemble_data generate different
-        assembly IDs."""
+        """Test that assemble_data fails when document doesn't exist."""
         # Arrange
         document_id_1 = "doc-456"
         document_id_2 = "doc-789"
         assembly_specification_id = "spec-123"
 
-        # Act
-        result_1 = await use_case.assemble_data(
-            document_id=document_id_1,
-            assembly_specification_id=assembly_specification_id,
-        )
-        result_2 = await use_case.assemble_data(
-            document_id=document_id_2,
-            assembly_specification_id=assembly_specification_id,
-        )
-
-        # Assert
-        assert result_1.assembly_id != result_2.assembly_id
-        assert result_1.input_document_id == document_id_1
-        assert result_2.input_document_id == document_id_2
-        assert result_1.assembly_specification_id == assembly_specification_id
-        assert result_2.assembly_specification_id == assembly_specification_id
+        # Act & Assert
+        with pytest.raises(ValueError, match="Assembly specification not found"):
+            await use_case.assemble_data(
+                document_id=document_id_1,
+                assembly_specification_id=assembly_specification_id,
+            )
 
     @pytest.mark.asyncio
     async def test_assemble_data_propagates_id_generation_error(
@@ -130,3 +142,320 @@ class TestAssembleDataUseCase:
                 document_id=document_id,
                 assembly_specification_id=assembly_specification_id,
             )
+
+    @pytest.mark.asyncio
+    async def test_full_assembly_workflow_success(
+        self,
+        use_case: AssembleDataUseCase,
+        document_repo: MemoryDocumentRepository,
+        assembly_repo: MemoryAssemblyRepository,
+        assembly_specification_repo: MemoryAssemblySpecificationRepository,
+        knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
+        knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+    ) -> None:
+        """Test complete assembly workflow with knowledge service integration."""
+        # Arrange - Create test document
+        content_text = "Sample meeting transcript for testing"
+        content_bytes = content_text.encode("utf-8")
+        document = Document(
+            document_id="doc-123",
+            original_filename="test_transcript.txt",
+            content_type="text/plain",
+            size_bytes=len(content_bytes),
+            content_multihash="test-hash-123",
+            status=DocumentStatus.CAPTURED,
+            content=ContentStream(io.BytesIO(content_bytes)),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await document_repo.store(document)
+
+        # Create assembly specification with simple schema
+        schema = {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "summary": {"type": "string"}
+            },
+            "required": ["title", "summary"]
+        }
+
+        assembly_spec = AssemblySpecification(
+            assembly_specification_id="spec-123",
+            name="Test Assembly",
+            applicability="Test documents",
+            jsonschema=schema,
+            status=AssemblySpecificationStatus.ACTIVE,
+            knowledge_service_queries={
+                "/properties/title": "query-1",
+                "/properties/summary": "query-2"
+            },
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await assembly_specification_repo.save(assembly_spec)
+
+        # Create knowledge service config
+        ks_config = KnowledgeServiceConfig(
+            knowledge_service_id="ks-123",
+            name="Test Knowledge Service",
+            description="Test service",
+            service_api=ServiceApi.MEMORY,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await knowledge_service_config_repo.save(ks_config)
+
+        # Create knowledge service queries
+        query1 = KnowledgeServiceQuery(
+            query_id="query-1",
+            name="Extract Title",
+            knowledge_service_id="ks-123",
+            prompt="Extract the title from this document",
+            query_metadata={"max_tokens": 100},
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        query2 = KnowledgeServiceQuery(
+            query_id="query-2",
+            name="Extract Summary",
+            knowledge_service_id="ks-123",
+            prompt="Extract a summary from this document",
+            query_metadata={"max_tokens": 200},
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await knowledge_service_query_repo.save(query1)
+        await knowledge_service_query_repo.save(query2)
+
+        # Create memory service with canned responses
+        memory_service = MemoryKnowledgeService(ks_config)
+        memory_service.add_canned_query_results([
+            QueryResult(
+                query_id="result-1",
+                query_text="Extract the title from this document",
+                result_data={"response": '"Test Meeting"'},
+                execution_time_ms=100,
+                created_at=datetime.now(timezone.utc),
+            ),
+            QueryResult(
+                query_id="result-2",
+                query_text="Extract a summary from this document",
+                result_data={"response": '"This was a test meeting about important topics"'},
+                execution_time_ms=150,
+                created_at=datetime.now(timezone.utc),
+            ),
+        ])
+
+        # Patch the factory to return our configured memory service
+        import julee_example.use_cases.assemble_data
+        original_factory = julee_example.use_cases.assemble_data.knowledge_service_factory
+        julee_example.use_cases.assemble_data.knowledge_service_factory = lambda config: memory_service
+
+        try:
+            # Act
+            result = await use_case.assemble_data(
+                document_id="doc-123",
+                assembly_specification_id="spec-123",
+            )
+        finally:
+            # Restore original factory
+            julee_example.use_cases.assemble_data.knowledge_service_factory = original_factory
+
+        # Assert
+        assert isinstance(result, Assembly)
+        assert result.status == AssemblyStatus.COMPLETED
+        assert len(result.iterations) == 1
+        assert result.iterations[0].iteration_id == 1
+
+        # Verify assembled document was created
+        assembled_doc = await document_repo.get(result.iterations[0].document_id)
+        assert assembled_doc is not None
+        assert assembled_doc.status == DocumentStatus.ASSEMBLED
+
+        # Check assembled content
+        assembled_doc.content.seek(0)
+        content = assembled_doc.content.read().decode('utf-8')
+        assembled_data = json.loads(content)
+
+        assert "title" in assembled_data
+        assert "summary" in assembled_data
+        assert assembled_data["title"] == "Test Meeting"
+        assert assembled_data["summary"] == "This was a test meeting about important topics"
+
+    @pytest.mark.asyncio
+    async def test_assembly_fails_when_specification_not_found(
+        self, use_case: AssembleDataUseCase
+    ) -> None:
+        """Test that assembly fails when assembly specification is not found."""
+        # Act & Assert
+        with pytest.raises(ValueError, match="Assembly specification not found"):
+            await use_case.assemble_data(
+                document_id="doc-123",
+                assembly_specification_id="nonexistent-spec",
+            )
+
+    @pytest.mark.asyncio
+    async def test_assembly_fails_when_document_not_found(
+        self,
+        use_case: AssembleDataUseCase,
+        assembly_specification_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test that assembly fails when input document is not found."""
+        # Arrange - Create assembly specification but no document
+        assembly_spec = AssemblySpecification(
+            assembly_specification_id="spec-123",
+            name="Test Assembly",
+            applicability="Test documents",
+            jsonschema={"type": "object", "properties": {}},
+            status=AssemblySpecificationStatus.ACTIVE,
+            knowledge_service_queries={},
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await assembly_specification_repo.save(assembly_spec)
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Document not found"):
+            await use_case.assemble_data(
+                document_id="nonexistent-doc",
+                assembly_specification_id="spec-123",
+            )
+
+    @pytest.mark.asyncio
+    async def test_assembly_fails_when_query_not_found(
+        self,
+        use_case: AssembleDataUseCase,
+        document_repo: MemoryDocumentRepository,
+        assembly_specification_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test that assembly fails when a knowledge service query is not found."""
+        # Arrange - Create document and spec with non-existent query
+        content_text = "Sample content"
+        content_bytes = content_text.encode("utf-8")
+        document = Document(
+            document_id="doc-123",
+            original_filename="test.txt",
+            content_type="text/plain",
+            size_bytes=len(content_bytes),
+            content_multihash="test-hash",
+            status=DocumentStatus.CAPTURED,
+            content=ContentStream(io.BytesIO(content_bytes)),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await document_repo.store(document)
+
+        assembly_spec = AssemblySpecification(
+            assembly_specification_id="spec-123",
+            name="Test Assembly",
+            applicability="Test documents",
+            jsonschema={"type": "object", "properties": {"title": {"type": "string"}}},
+            status=AssemblySpecificationStatus.ACTIVE,
+            knowledge_service_queries={"/properties/title": "nonexistent-query"},
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await assembly_specification_repo.save(assembly_spec)
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Knowledge service query not found"):
+            await use_case.assemble_data(
+                document_id="doc-123",
+                assembly_specification_id="spec-123",
+            )
+
+    @pytest.mark.asyncio
+    async def test_assembly_fails_with_invalid_json_schema(
+        self,
+        use_case: AssembleDataUseCase,
+        document_repo: MemoryDocumentRepository,
+        assembly_specification_repo: MemoryAssemblySpecificationRepository,
+        knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
+        knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+    ) -> None:
+        """Test that assembly fails when assembled data doesn't match JSON schema."""
+        # Arrange - Create test document
+        content_text = "Sample content"
+        content_bytes = content_text.encode("utf-8")
+        document = Document(
+            document_id="doc-123",
+            original_filename="test.txt",
+            content_type="text/plain",
+            size_bytes=len(content_bytes),
+            content_multihash="test-hash",
+            status=DocumentStatus.CAPTURED,
+            content=ContentStream(io.BytesIO(content_bytes)),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await document_repo.store(document)
+
+        # Create assembly specification with strict schema
+        schema = {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "count": {"type": "integer"}  # Require integer
+            },
+            "required": ["title", "count"]
+        }
+
+        assembly_spec = AssemblySpecification(
+            assembly_specification_id="spec-123",
+            name="Test Assembly",
+            applicability="Test documents",
+            jsonschema=schema,
+            status=AssemblySpecificationStatus.ACTIVE,
+            knowledge_service_queries={"/properties/title": "query-1"},
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await assembly_specification_repo.save(assembly_spec)
+
+        # Create knowledge service config and query
+        ks_config = KnowledgeServiceConfig(
+            knowledge_service_id="ks-123",
+            name="Test Knowledge Service",
+            description="Test service",
+            service_api=ServiceApi.MEMORY,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await knowledge_service_config_repo.save(ks_config)
+
+        query = KnowledgeServiceQuery(
+            query_id="query-1",
+            name="Extract Title",
+            knowledge_service_id="ks-123",
+            prompt="Extract the title",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await knowledge_service_query_repo.save(query)
+
+        # Create memory service that returns invalid data (missing required count field)
+        memory_service = MemoryKnowledgeService(ks_config)
+        memory_service.add_canned_query_result(QueryResult(
+            query_id="result-1",
+            query_text="Extract the title",
+            result_data={"response": '"Test"'},  # Only returns title, missing "count" field
+            execution_time_ms=100,
+            created_at=datetime.now(timezone.utc),
+        ))
+
+        # Patch the factory to return our configured memory service
+        import julee_example.use_cases.assemble_data
+        original_factory = julee_example.use_cases.assemble_data.knowledge_service_factory
+        julee_example.use_cases.assemble_data.knowledge_service_factory = lambda config: memory_service
+
+        try:
+            # Act & Assert
+            with pytest.raises(ValueError, match="Assembled data does not conform to JSON schema"):
+                await use_case.assemble_data(
+                    document_id="doc-123",
+                    assembly_specification_id="spec-123",
+                )
+        finally:
+            # Restore original factory
+            julee_example.use_cases.assemble_data.knowledge_service_factory = original_factory
