@@ -37,6 +37,7 @@ from julee_example.services.knowledge_service.memory import (
     MemoryKnowledgeService,
 )
 from julee_example.services.knowledge_service import QueryResult
+import julee_example.use_cases.assemble_data
 
 
 class TestAssembleDataUseCase:
@@ -262,8 +263,6 @@ class TestAssembleDataUseCase:
         )
 
         # Patch the factory to return our configured memory service
-        import julee_example.use_cases.assemble_data
-
         original_factory = (
             julee_example.use_cases.assemble_data.knowledge_service_factory
         )
@@ -484,8 +483,6 @@ class TestAssembleDataUseCase:
         )
 
         # Patch the factory to return our configured memory service
-        import julee_example.use_cases.assemble_data
-
         original_factory = (
             julee_example.use_cases.assemble_data.knowledge_service_factory
         )
