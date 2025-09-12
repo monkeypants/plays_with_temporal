@@ -10,10 +10,12 @@ from .document import DocumentRepository
 from .assembly import AssemblyRepository
 from .assembly_specification import AssemblySpecificationRepository
 from .knowledge_service_config import KnowledgeServiceConfigRepository
+from .knowledge_service_query import KnowledgeServiceQueryRepository
 
 __all__ = [
     "DocumentRepository",
     "AssemblyRepository",
     "AssemblySpecificationRepository",
     "KnowledgeServiceConfigRepository",
+    "KnowledgeServiceQueryRepository",
 ]

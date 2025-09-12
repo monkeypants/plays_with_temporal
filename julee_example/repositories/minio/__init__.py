@@ -14,10 +14,12 @@ from .assembly import MinioAssemblyRepository
 from .assembly_specification import MinioAssemblySpecificationRepository
 from .document import MinioDocumentRepository
 from .knowledge_service_config import MinioKnowledgeServiceConfigRepository
+from .knowledge_service_query import MinioKnowledgeServiceQueryRepository
 
 __all__ = [
     "MinioAssemblyRepository",
     "MinioAssemblySpecificationRepository",
     "MinioDocumentRepository",
     "MinioKnowledgeServiceConfigRepository",
+    "MinioKnowledgeServiceQueryRepository",
 ]
