@@ -14,7 +14,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any
 import jsonpointer  # type: ignore
-import multihash  # type: ignore[import-untyped]
+import multihash
+import jsonschema
 
 from julee_example.domain import (
     Assembly,
@@ -372,6 +373,9 @@ class AssembleDataUseCase:
                 assembled_data, schema_pointer, result_data
             )
 
+        # Validate the assembled data against the JSON schema
+        self._validate_assembled_data(assembled_data, assembly_specification)
+
         # Create the assembled document
         assembled_document_id = await self._create_assembled_document(
             assembled_data, assembly_specification
@@ -480,8 +484,17 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
         else:
             # Use JSON Pointer to set the data at the correct location
             try:
-                # Convert pointer to path components
+                # Convert pointer to path components, skipping "properties" wrapper
                 path_parts = schema_pointer.strip("/").split("/") if schema_pointer.strip("/") else []
+
+                # Remove "properties" from path if it exists (schema artifact)
+                if path_parts and path_parts[0] == "properties":
+                    path_parts = path_parts[1:]
+
+                # If no path parts left, store at root level
+                if not path_parts:
+                    assembled_data.update(result_data)
+                    return
 
                 # Navigate/create the nested structure
                 current = assembled_data
@@ -491,8 +504,7 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
                     current = current[part]
 
                 # Set the final value
-                if path_parts:
-                    current[path_parts[-1]] = result_data
+                current[path_parts[-1]] = result_data
 
             except (KeyError, TypeError) as e:
                 raise ValueError(
@@ -514,7 +526,10 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
         assembled_content = json.dumps(assembled_data, indent=2)
         content_bytes = assembled_content.encode('utf-8')
 
-        # Create the assembled document
+        # Create the assembled document with content stream at beginning
+        content_stream = ContentStream(io.BytesIO(content_bytes))
+        content_stream.seek(0)  # Ensure stream is at beginning
+
         assembled_document = Document(
             document_id=document_id,
             original_filename=f"assembled_{assembly_specification.name.replace(' ', '_')}.json",
@@ -522,7 +537,7 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
             size_bytes=len(content_bytes),
             content_multihash=self._calculate_multihash_from_content(content_bytes),
             status=DocumentStatus.ASSEMBLED,
-            content=ContentStream(io.BytesIO(content_bytes)),
+            content=content_stream,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
@@ -531,6 +546,39 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
         await self.document_repo.store(assembled_document)
 
         return document_id
+
+    def _validate_assembled_data(
+        self, assembled_data: Dict[str, Any], assembly_specification: AssemblySpecification
+    ) -> None:
+        """Validate that the assembled data conforms to the JSON schema."""
+        try:
+            jsonschema.validate(assembled_data, assembly_specification.jsonschema)
+            logger.debug(
+                "Assembled data validation passed",
+                extra={
+                    "assembly_specification_id": assembly_specification.assembly_specification_id,
+                },
+            )
+        except jsonschema.ValidationError as e:
+            logger.error(
+                "Assembled data validation failed",
+                extra={
+                    "assembly_specification_id": assembly_specification.assembly_specification_id,
+                    "validation_error": str(e),
+                    "error_path": list(e.absolute_path) if e.absolute_path else [],
+                    "schema_path": list(e.schema_path) if e.schema_path else [],
+                },
+            )
+            raise ValueError(f"Assembled data does not conform to JSON schema: {e.message}")
+        except jsonschema.SchemaError as e:
+            logger.error(
+                "JSON schema is invalid",
+                extra={
+                    "assembly_specification_id": assembly_specification.assembly_specification_id,
+                    "schema_error": str(e),
+                },
+            )
+            raise ValueError(f"Invalid JSON schema in assembly specification: {e.message}")
 
     def _calculate_multihash_from_content(self, content_bytes: bytes) -> str:
         """Calculate multihash from content bytes."""
