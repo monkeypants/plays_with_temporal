@@ -181,7 +181,9 @@ class AssembleDataUseCase:
         queries = await self._retrieve_all_queries(assembly_specification)
 
         # Step 5: Retrieve all knowledge services once
-        knowledge_services = await self._retrieve_all_knowledge_services(queries)
+        knowledge_services = await self._retrieve_all_knowledge_services(
+            queries
+        )
 
         # Step 6: Register the document with knowledge services
         document = await self._retrieve_document(document_id)
@@ -192,7 +194,11 @@ class AssembleDataUseCase:
         # Step 7: Perform the assembly iteration
         try:
             assembled_document_id = await self._assemble_iteration(
-                document, assembly_specification, document_registrations, queries, knowledge_services
+                document,
+                assembly_specification,
+                document_registrations,
+                queries,
+                knowledge_services,
             )
 
             # Step 8: Add the iteration to the assembly and return
@@ -209,7 +215,9 @@ class AssembleDataUseCase:
                 "Assembly completed successfully",
                 extra={
                     "assembly_id": assembly_id,
-                    "iterations_count": len(assembly_with_iteration.iterations),
+                    "iterations_count": len(
+                        assembly_with_iteration.iterations
+                    ),
                 },
             )
 
@@ -247,7 +255,8 @@ class AssembleDataUseCase:
         Args:
             document: The document to register
             queries: Dict of query_id to KnowledgeServiceQuery objects
-            knowledge_services: Dict of service_id to KnowledgeService instances
+            knowledge_services: Dict of service_id to KnowledgeService
+                instances
 
         Returns:
             Dict mapping knowledge_service_id to service_file_id
@@ -256,7 +265,9 @@ class AssembleDataUseCase:
             RuntimeError: If registration fails
         """
         registrations = {}
-        required_service_ids = {query.knowledge_service_id for query in queries.values()}
+        required_service_ids = {
+            query.knowledge_service_id for query in queries.values()
+        }
 
         for knowledge_service_id in required_service_ids:
             knowledge_service = knowledge_services[knowledge_service_id]
@@ -275,10 +286,14 @@ class AssembleDataUseCase:
     ) -> Dict[str, KnowledgeServiceQuery]:
         """Retrieve all knowledge service queries needed for this assembly."""
         queries = {}
-        for query_id in assembly_specification.knowledge_service_queries.values():
+        for (
+            query_id
+        ) in assembly_specification.knowledge_service_queries.values():
             query = await self.knowledge_service_query_repo.get(query_id)
             if not query:
-                raise ValueError(f"Knowledge service query not found: {query_id}")
+                raise ValueError(
+                    f"Knowledge service query not found: {query_id}"
+                )
             queries[query_id] = query
         return queries
 
@@ -288,7 +303,9 @@ class AssembleDataUseCase:
     ) -> Dict[str, KnowledgeService]:
         """Retrieve all unique knowledge services needed for this assembly."""
         knowledge_services = {}
-        unique_service_ids = {query.knowledge_service_id for query in queries.values()}
+        unique_service_ids = {
+            query.knowledge_service_id for query in queries.values()
+        }
 
         for service_id in unique_service_ids:
             knowledge_service = await self._get_knowledge_service(service_id)
@@ -319,7 +336,8 @@ class AssembleDataUseCase:
             assembly_specification: The specification defining how to assemble
             document_registrations: Mapping of service_id to service_file_id
             queries: Dict of query_id to KnowledgeServiceQuery objects
-            knowledge_services: Dict of service_id to KnowledgeService instances
+            knowledge_services: Dict of service_id to KnowledgeService
+                instances
 
         Returns:
             ID of the newly created assembled document
@@ -332,8 +350,12 @@ class AssembleDataUseCase:
         assembled_data: Dict[str, Any] = {}
 
         # Process each knowledge service query
-        # TODO: This is where we may want to fan-out/fan-in to do these in parallel.
-        for schema_pointer, query_id in assembly_specification.knowledge_service_queries.items():
+        # TODO: This is where we may want to fan-out/fan-in to do these
+        # in parallel.
+        for (
+            schema_pointer,
+            query_id,
+        ) in assembly_specification.knowledge_service_queries.items():
 
             # Get the relevant schema section
             schema_section = self._extract_schema_section(
@@ -352,7 +374,8 @@ class AssembleDataUseCase:
             )
             if not service_file_id:
                 raise ValueError(
-                    f"Document not registered with service {query.knowledge_service_id}"
+                    f"Document not registered with service "
+                    f"{query.knowledge_service_id}"
                 )
 
             # Execute the query with schema section embedded in the prompt
@@ -400,7 +423,8 @@ class AssembleDataUseCase:
         )
         if not specification:
             raise ValueError(
-                f"Assembly specification not found: {assembly_specification_id}"
+                f"Assembly specification not found: "
+                f"{assembly_specification_id}"
             )
         return specification
 
@@ -412,21 +436,24 @@ class AssembleDataUseCase:
             raise ValueError(f"Document not found: {document_id}")
         return document
 
-
     @try_use_case_step("knowledge_service_creation")
     async def _get_knowledge_service(
         self, knowledge_service_id: str
     ) -> KnowledgeService:
         """Get knowledge service instance with error handling."""
-        config = await self.knowledge_service_config_repo.get(knowledge_service_id)
+        config = await self.knowledge_service_config_repo.get(
+            knowledge_service_id
+        )
         if not config:
-            raise ValueError(f"Knowledge service config not found: {knowledge_service_id}")
+            raise ValueError(
+                f"Knowledge service config not found: {knowledge_service_id}"
+            )
         return knowledge_service_factory(config)
 
     def _extract_schema_section(
         self, jsonschema: Dict[str, Any], schema_pointer: str
-    ) -> Dict[str, Any]:
-        """Extract the relevant section of the JSON schema using JSON Pointer."""
+    ) -> Any:
+        """Extract relevant section of JSON schema using JSON Pointer."""
         if not schema_pointer:
             # Empty pointer refers to the entire schema
             return jsonschema
@@ -434,8 +461,6 @@ class AssembleDataUseCase:
         try:
             ptr = jsonpointer.JsonPointer(schema_pointer)
             result = ptr.resolve(jsonschema)
-            if not isinstance(result, dict):
-                raise ValueError(f"Schema section '{schema_pointer}' is not a dictionary")
             return result
         except (jsonpointer.JsonPointerException, KeyError, TypeError) as e:
             raise ValueError(
@@ -443,7 +468,7 @@ class AssembleDataUseCase:
             )
 
     def _build_query_with_schema(
-        self, base_prompt: str, schema_section: Dict[str, Any]
+        self, base_prompt: str, schema_section: Any
     ) -> str:
         """Build the query text with embedded JSON schema section."""
         schema_json = json.dumps(schema_section, indent=2)
@@ -452,9 +477,10 @@ class AssembleDataUseCase:
 Please structure your response according to this JSON schema:
 {schema_json}
 
-Return only valid JSON that conforms to this schema, without any surrounding text or markdown formatting."""
+Return only valid JSON that conforms to this schema, without any surrounding
+text or markdown formatting."""
 
-    def _parse_query_result(self, result_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _parse_query_result(self, result_data: Dict[str, Any]) -> Any:
         """Parse the query result to extract the JSON response."""
         response_text = result_data.get("response", "")
         if not response_text:
@@ -462,30 +488,43 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
 
         # Try to parse as JSON
         try:
-            return json.loads(response_text.strip())
+            parsed_result = json.loads(response_text.strip())
+            return parsed_result
         except json.JSONDecodeError as e:
             logger.warning(
                 "Failed to parse JSON response, returning as text",
                 extra={"response": response_text, "error": str(e)},
             )
             # If it's not valid JSON, return as a string value
-            return {"text": response_text.strip()}
+            return response_text.strip()
 
     def _store_result_in_assembled_data(
         self,
         assembled_data: Dict[str, Any],
         schema_pointer: str,
-        result_data: Dict[str, Any],
+        result_data: Any,
     ) -> None:
-        """Store query result in the appropriate location in assembled data."""
+        """Store query result in appropriate location in assembled data."""
         if not schema_pointer:
-            # Root level - merge the entire result
-            assembled_data.update(result_data)
+            # Root level - merge the entire result if it's a dict,
+            # otherwise store as-is
+            if isinstance(result_data, dict):
+                assembled_data.update(result_data)
+            else:
+                # Can't merge non-dict at root level, this would be an error
+                raise ValueError(
+                    "Cannot merge non-dict result data at root level"
+                )
         else:
             # Use JSON Pointer to set the data at the correct location
             try:
-                # Convert pointer to path components, skipping "properties" wrapper
-                path_parts = schema_pointer.strip("/").split("/") if schema_pointer.strip("/") else []
+                # Convert pointer to path components, skipping "properties"
+                # wrapper
+                path_parts = (
+                    schema_pointer.strip("/").split("/")
+                    if schema_pointer.strip("/")
+                    else []
+                )
 
                 # Remove "properties" from path if it exists (schema artifact)
                 if path_parts and path_parts[0] == "properties":
@@ -493,7 +532,14 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
 
                 # If no path parts left, store at root level
                 if not path_parts:
-                    assembled_data.update(result_data)
+                    if isinstance(result_data, dict):
+                        assembled_data.update(result_data)
+                    else:
+                        # Can't merge non-dict at root level, this would be
+                        # an error
+                        raise ValueError(
+                            "Cannot merge non-dict result data at root level"
+                        )
                     return
 
                 # Navigate/create the nested structure
@@ -508,7 +554,8 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
 
             except (KeyError, TypeError) as e:
                 raise ValueError(
-                    f"Cannot store result at schema pointer '{schema_pointer}': {e}"
+                    f"Cannot store result at schema pointer "
+                    f"'{schema_pointer}': {e}"
                 )
 
     @try_use_case_step("assembled_document_creation")
@@ -524,7 +571,7 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
 
         # Convert assembled data to JSON string
         assembled_content = json.dumps(assembled_data, indent=2)
-        content_bytes = assembled_content.encode('utf-8')
+        content_bytes = assembled_content.encode("utf-8")
 
         # Create the assembled document with content stream at beginning
         content_stream = ContentStream(io.BytesIO(content_bytes))
@@ -532,10 +579,15 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
 
         assembled_document = Document(
             document_id=document_id,
-            original_filename=f"assembled_{assembly_specification.name.replace(' ', '_')}.json",
+            original_filename=(
+                f"assembled_"
+                f"{assembly_specification.name.replace(' ', '_')}.json"
+            ),
             content_type="application/json",
             size_bytes=len(content_bytes),
-            content_multihash=self._calculate_multihash_from_content(content_bytes),
+            content_multihash=self._calculate_multihash_from_content(
+                content_bytes
+            ),
             status=DocumentStatus.ASSEMBLED,
             content=content_stream,
             created_at=datetime.now(timezone.utc),
@@ -548,37 +600,55 @@ Return only valid JSON that conforms to this schema, without any surrounding tex
         return document_id
 
     def _validate_assembled_data(
-        self, assembled_data: Dict[str, Any], assembly_specification: AssemblySpecification
+        self,
+        assembled_data: Dict[str, Any],
+        assembly_specification: AssemblySpecification,
     ) -> None:
         """Validate that the assembled data conforms to the JSON schema."""
         try:
-            jsonschema.validate(assembled_data, assembly_specification.jsonschema)
+            jsonschema.validate(
+                assembled_data, assembly_specification.jsonschema
+            )
             logger.debug(
                 "Assembled data validation passed",
                 extra={
-                    "assembly_specification_id": assembly_specification.assembly_specification_id,
+                    "assembly_specification_id": (
+                        assembly_specification.assembly_specification_id
+                    ),
                 },
             )
         except jsonschema.ValidationError as e:
             logger.error(
                 "Assembled data validation failed",
                 extra={
-                    "assembly_specification_id": assembly_specification.assembly_specification_id,
+                    "assembly_specification_id": (
+                        assembly_specification.assembly_specification_id
+                    ),
                     "validation_error": str(e),
-                    "error_path": list(e.absolute_path) if e.absolute_path else [],
-                    "schema_path": list(e.schema_path) if e.schema_path else [],
+                    "error_path": (
+                        list(e.absolute_path) if e.absolute_path else []
+                    ),
+                    "schema_path": (
+                        list(e.schema_path) if e.schema_path else []
+                    ),
                 },
             )
-            raise ValueError(f"Assembled data does not conform to JSON schema: {e.message}")
+            raise ValueError(
+                f"Assembled data does not conform to JSON schema: {e.message}"
+            )
         except jsonschema.SchemaError as e:
             logger.error(
                 "JSON schema is invalid",
                 extra={
-                    "assembly_specification_id": assembly_specification.assembly_specification_id,
+                    "assembly_specification_id": (
+                        assembly_specification.assembly_specification_id
+                    ),
                     "schema_error": str(e),
                 },
             )
-            raise ValueError(f"Invalid JSON schema in assembly specification: {e.message}")
+            raise ValueError(
+                f"Invalid JSON schema in assembly specification: {e.message}"
+            )
 
     def _calculate_multihash_from_content(self, content_bytes: bytes) -> str:
         """Calculate multihash from content bytes."""

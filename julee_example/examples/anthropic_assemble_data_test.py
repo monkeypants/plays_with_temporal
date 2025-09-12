@@ -165,13 +165,13 @@ async def create_assembly_specification() -> AssemblySpecification:
                             "type": "object",
                             "properties": {
                                 "name": {"type": "string"},
-                                "role": {"type": "string"}
+                                "role": {"type": "string"},
                             },
-                            "required": ["name", "role"]
-                        }
-                    }
+                            "required": ["name", "role"],
+                        },
+                    },
                 },
-                "required": ["title", "date", "attendees"]
+                "required": ["title", "date", "attendees"],
             },
             "agenda_items": {
                 "type": "array",
@@ -181,15 +181,15 @@ async def create_assembly_specification() -> AssemblySpecification:
                         "topic": {"type": "string"},
                         "discussion_points": {
                             "type": "array",
-                            "items": {"type": "string"}
+                            "items": {"type": "string"},
                         },
                         "decisions": {
                             "type": "array",
-                            "items": {"type": "string"}
-                        }
+                            "items": {"type": "string"},
+                        },
                     },
-                    "required": ["topic"]
-                }
+                    "required": ["topic"],
+                },
             },
             "action_items": {
                 "type": "array",
@@ -199,13 +199,16 @@ async def create_assembly_specification() -> AssemblySpecification:
                         "task": {"type": "string"},
                         "assignee": {"type": "string"},
                         "due_date": {"type": "string"},
-                        "priority": {"type": "string", "enum": ["low", "medium", "high"]}
+                        "priority": {
+                            "type": "string",
+                            "enum": ["low", "medium", "high"],
+                        },
                     },
-                    "required": ["task", "assignee"]
-                }
-            }
+                    "required": ["task", "assignee"],
+                },
+            },
         },
-        "required": ["meeting_info", "agenda_items"]
+        "required": ["meeting_info", "agenda_items"],
     }
 
     # Create assembly specification
@@ -214,21 +217,27 @@ async def create_assembly_specification() -> AssemblySpecification:
     assembly_spec = AssemblySpecification(
         assembly_specification_id=spec_id,
         name="Meeting Minutes Assembly",
-        applicability="Meeting transcripts from video conferences or in-person meetings that need to be structured into formal meeting minutes",
+        applicability=(
+            "Meeting transcripts from video conferences or in-person "
+            "meetings that need to be structured into formal meeting minutes"
+        ),
         jsonschema=meeting_minutes_schema,
         status=AssemblySpecificationStatus.ACTIVE,
         knowledge_service_queries={
             "/properties/meeting_info": "extract-meeting-info-query",
             "/properties/agenda_items": "extract-agenda-items-query",
-            "/properties/action_items": "extract-action-items-query"
+            "/properties/action_items": "extract-action-items-query",
         },
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
 
-    print(f"✅ Created assembly specification: {assembly_spec.assembly_specification_id}")
+    print("✅ Created assembly specification:")
+    print(f"   ID: {assembly_spec.assembly_specification_id}")
     print(f"   Name: {assembly_spec.name}")
-    print(f"   Query mappings: {len(assembly_spec.knowledge_service_queries)}")
+    print(
+        f"   Query mappings: {len(assembly_spec.knowledge_service_queries)}"
+    )
 
     return assembly_spec
 
@@ -241,21 +250,28 @@ async def create_knowledge_service_config() -> KnowledgeServiceConfig:
     config = KnowledgeServiceConfig(
         knowledge_service_id=config_id,
         name="Anthropic Meeting Analysis Service",
-        description="Anthropic Claude service for analyzing meeting transcripts and extracting structured data",
+        description=(
+            "Anthropic Claude service for analyzing meeting transcripts and "
+            "extracting structured data"
+        ),
         service_api=ServiceApi.ANTHROPIC,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
 
-    print(f"✅ Created knowledge service config: {config.knowledge_service_id}")
+    print(
+        f"✅ Created knowledge service config: {config.knowledge_service_id}"
+    )
     print(f"   Name: {config.name}")
     print(f"   API: {config.service_api.value}")
 
     return config
 
 
-async def create_knowledge_service_queries(knowledge_service_id: str) -> list[KnowledgeServiceQuery]:
-    """Create knowledge service queries for different parts of the meeting minutes."""
+async def create_knowledge_service_queries(
+    knowledge_service_id: str,
+) -> list[KnowledgeServiceQuery]:
+    """Create knowledge service queries for meeting minutes parts."""
 
     queries = []
 
@@ -264,12 +280,16 @@ async def create_knowledge_service_queries(knowledge_service_id: str) -> list[Kn
         query_id="extract-meeting-info-query",
         name="Extract Meeting Information",
         knowledge_service_id=knowledge_service_id,
-        prompt="Extract the basic meeting information from this transcript including title, date, times, and attendees with their roles.",
-        query_metadata={
-            "max_tokens": 1000,
-            "temperature": 0.1
-        },
-        assistant_prompt="Looking at the meeting transcript, here's the extracted meeting information that conforms to the provided schema, without surrounding ```json ... ``` markers:",
+        prompt=(
+            "Extract the basic meeting information from this transcript "
+            "including title, date, times, and attendees with their roles."
+        ),
+        query_metadata={"max_tokens": 1000, "temperature": 0.1},
+        assistant_prompt=(
+            "Looking at the meeting transcript, here's the extracted meeting "
+            "information that conforms to the provided schema, without "
+            "surrounding ```json ... ``` markers:"
+        ),
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -280,12 +300,17 @@ async def create_knowledge_service_queries(knowledge_service_id: str) -> list[Kn
         query_id="extract-agenda-items-query",
         name="Extract Agenda Items",
         knowledge_service_id=knowledge_service_id,
-        prompt="Analyze the meeting transcript and extract the main agenda items discussed, including the topic, key discussion points, and any decisions made for each item.",
-        query_metadata={
-            "max_tokens": 2000,
-            "temperature": 0.1
-        },
-        assistant_prompt="Analyzing the meeting transcript, here are the agenda items with discussion points and decisions that conform to the provided schema, without surrounding ```json ... ``` markers:",
+        prompt=(
+            "Analyze the meeting transcript and extract the main agenda "
+            "items discussed, including the topic, key discussion points, "
+            "and any decisions made for each item."
+        ),
+        query_metadata={"max_tokens": 2000, "temperature": 0.1},
+        assistant_prompt=(
+            "Analyzing the meeting transcript, here are the agenda items "
+            "with discussion points and decisions that conform to the "
+            "provided schema, without surrounding ```json ... ``` markers:"
+        ),
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -296,12 +321,17 @@ async def create_knowledge_service_queries(knowledge_service_id: str) -> list[Kn
         query_id="extract-action-items-query",
         name="Extract Action Items",
         knowledge_service_id=knowledge_service_id,
-        prompt="Identify and extract action items from the meeting transcript, including the specific task, who it's assigned to, any mentioned due dates, and the priority level.",
-        query_metadata={
-            "max_tokens": 1500,
-            "temperature": 0.1
-        },
-        assistant_prompt="From the meeting transcript, here are the identified action items formatted according to the provided schema, without surrounding ```json ... ``` markers:",
+        prompt=(
+            "Identify and extract action items from the meeting transcript, "
+            "including the specific task, who it's assigned to, any "
+            "mentioned due dates, and the priority level."
+        ),
+        query_metadata={"max_tokens": 1500, "temperature": 0.1},
+        assistant_prompt=(
+            "From the meeting transcript, here are the identified action "
+            "items formatted according to the provided schema, without "
+            "surrounding ```json ... ``` markers:"
+        ),
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -330,7 +360,9 @@ async def setup_repositories_with_test_data() -> tuple:
     document = await create_meeting_transcript_document()
     assembly_spec = await create_assembly_specification()
     ks_config = await create_knowledge_service_config()
-    ks_queries = await create_knowledge_service_queries(ks_config.knowledge_service_id)
+    ks_queries = await create_knowledge_service_queries(
+        ks_config.knowledge_service_id
+    )
 
     # Store test data in repositories
     await document_repo.store(document)
@@ -349,7 +381,7 @@ async def setup_repositories_with_test_data() -> tuple:
         ks_config_repo,
         ks_query_repo,
         document,
-        assembly_spec
+        assembly_spec,
     )
 
 
@@ -374,7 +406,7 @@ async def test_assemble_data_use_case() -> None:
             ks_config_repo,
             ks_query_repo,
             document,
-            assembly_spec
+            assembly_spec,
         ) = await setup_repositories_with_test_data()
 
         # Create the use case
@@ -420,7 +452,7 @@ async def test_assemble_data_use_case() -> None:
                 # Read and parse the assembled content
                 assembled_doc.content.seek(0)
                 content_bytes = assembled_doc.content.read()
-                content_text = content_bytes.decode('utf-8')
+                content_text = content_bytes.decode("utf-8")
                 assembled_doc.content.seek(0)
 
                 try:
@@ -437,8 +469,13 @@ async def test_assemble_data_use_case() -> None:
 
                     print()
                     print("Assembly Statistics:")
-                    print("   Meeting Title:", meeting_info.get("title", "N/A"))
-                    print("   Attendees:", len(meeting_info.get("attendees", [])))
+                    print(
+                        "   Meeting Title:", meeting_info.get("title", "N/A")
+                    )
+                    print(
+                        "   Attendees:",
+                        len(meeting_info.get("attendees", [])),
+                    )
                     print("   Agenda Items:", len(agenda_items))
                     print("   Action Items:", len(action_items))
 
