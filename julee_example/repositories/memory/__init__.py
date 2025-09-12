@@ -14,10 +14,12 @@ from .assembly import MemoryAssemblyRepository
 from .assembly_specification import MemoryAssemblySpecificationRepository
 from .document import MemoryDocumentRepository
 from .knowledge_service_config import MemoryKnowledgeServiceConfigRepository
+from .knowledge_service_query import MemoryKnowledgeServiceQueryRepository
 
 __all__ = [
     "MemoryAssemblyRepository",
     "MemoryAssemblySpecificationRepository",
     "MemoryDocumentRepository",
     "MemoryKnowledgeServiceConfigRepository",
+    "MemoryKnowledgeServiceQueryRepository",
 ]
