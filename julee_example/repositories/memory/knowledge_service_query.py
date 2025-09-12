@@ -91,9 +91,10 @@ class MemoryKnowledgeServiceQueryRepository(KnowledgeServiceQueryRepository):
             extra={"query_id": query.query_id},
         )
 
-        # Update the updated_at timestamp
-        updated_query = query.model_copy()
-        updated_query.updated_at = datetime.now(timezone.utc)
+        # Update the updated_at timestamp using proper Pydantic pattern
+        updated_query = query.model_copy(
+            update={"updated_at": datetime.now(timezone.utc)}
+        )
 
         # Store in memory
         self._queries[query.query_id] = updated_query
