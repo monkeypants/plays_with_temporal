@@ -14,14 +14,13 @@ if TYPE_CHECKING:
 from .knowledge_service import KnowledgeService
 from .anthropic import AnthropicKnowledgeService
 from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.repositories import DocumentRepository
+
 
 logger = logging.getLogger(__name__)
 
 
 def knowledge_service_factory(
     knowledge_service_config: "KnowledgeServiceConfig",
-    document_repo: DocumentRepository,
 ) -> KnowledgeService:
     """Create a configured KnowledgeService instance.
 
@@ -33,7 +32,6 @@ def knowledge_service_factory(
     Args:
         knowledge_service_config: KnowledgeServiceConfig domain object with
                                  configuration and API information
-        document_repo: DocumentRepository for accessing document data
 
     Returns:
         Configured KnowledgeService implementation ready for external
@@ -47,18 +45,14 @@ def knowledge_service_factory(
         >>> from julee_example.domain.knowledge_service_config import (
         ...     ServiceApi
         ... )
-        >>> from julee_example.repositories.memory import (
-        ...     MemoryDocumentRepository
-        ... )
         >>> config = KnowledgeServiceConfig(
         ...     knowledge_service_id="ks-123",
         ...     name="My Anthropic Service",
         ...     description="Anthropic-powered document analysis",
         ...     service_api=ServiceApi.ANTHROPIC
         ... )
-        >>> document_repo = MemoryDocumentRepository()
-        >>> service = knowledge_service_factory(config, document_repo)
-        >>> result = await service.register_file("doc-456")
+        >>> service = knowledge_service_factory(config)
+        >>> result = await service.register_file(document)
     """
     logger.debug(
         "Creating KnowledgeService via factory",

@@ -8,12 +8,11 @@ scenarios where external service dependencies should be avoided.
 """
 
 import logging
-from typing import Optional, List, Dict, Deque
+from typing import Optional, List, Dict, Deque, Any
 from datetime import datetime, timezone
 from collections import deque
 
-from julee_example.domain import KnowledgeServiceConfig
-from julee_example.repositories import DocumentRepository
+from julee_example.domain import KnowledgeServiceConfig, Document
 from ..knowledge_service import (
     KnowledgeService,
     QueryResult,
@@ -39,14 +38,12 @@ class MemoryKnowledgeService(KnowledgeService):
     def __init__(
         self,
         config: KnowledgeServiceConfig,
-        document_repo: DocumentRepository,
     ) -> None:
-        """Initialize memory knowledge service.
+        """Initialize memory knowledge service with configuration.
 
         Args:
             config: KnowledgeServiceConfig domain object containing metadata
                    and service configuration
-            document_repo: Repository for accessing document data
         """
         logger.debug(
             "Initializing MemoryKnowledgeService",
@@ -57,7 +54,6 @@ class MemoryKnowledgeService(KnowledgeService):
         )
 
         self.config = config
-        self.document_repo = document_repo
 
         # Storage for file registrations, keyed by knowledge_service_file_id
         self._registered_files: Dict[str, FileRegistrationResult] = {}
@@ -114,33 +110,35 @@ class MemoryKnowledgeService(KnowledgeService):
         """
         return self._registered_files.copy()
 
-    async def register_file(self, document_id: str) -> FileRegistrationResult:
-        """Register a document file in memory storage.
+    async def register_file(
+        self, document: Document
+    ) -> FileRegistrationResult:
+        """Register a document file by storing metadata in memory.
 
         Args:
-            document_id: ID of the document to register
+            document: Document domain object to register
 
         Returns:
             FileRegistrationResult with memory-specific details
         """
         logger.debug(
-            "Registering file with MemoryKnowledgeService",
+            "Registering file with memory service",
             extra={
                 "knowledge_service_id": self.config.knowledge_service_id,
-                "document_id": document_id,
+                "document_id": document.document_id,
             },
         )
 
         # Check if already registered
         for existing_result in self._registered_files.values():
-            if existing_result.document_id == document_id:
+            if existing_result.document_id == document.document_id:
                 logger.debug(
                     "Document already registered, returning existing result",
                     extra={
                         "knowledge_service_id": (
                             self.config.knowledge_service_id
                         ),
-                        "document_id": document_id,
+                        "document_id": document.document_id,
                         "knowledge_service_file_id": (
                             existing_result.knowledge_service_file_id
                         ),
@@ -149,18 +147,21 @@ class MemoryKnowledgeService(KnowledgeService):
                 return existing_result
 
         # Generate a unique file ID for this service
-        memory_file_id = (
-            f"memory_{document_id}_{int(datetime.now().timestamp())}"
-        )
+        timestamp = int(datetime.now().timestamp())
+        memory_file_id = f"memory_{document.document_id}_{timestamp}"
 
         # Create registration result
         result = FileRegistrationResult(
-            document_id=document_id,
+            document_id=document.document_id,
             knowledge_service_file_id=memory_file_id,
             registration_metadata={
                 "service": "memory",
                 "registered_via": "in_memory_storage",
+                "timestamp": timestamp,
                 "knowledge_service_id": self.config.knowledge_service_id,
+                "filename": document.original_filename,
+                "content_type": document.content_type,
+                "size_bytes": document.size_bytes,
             },
             created_at=datetime.now(timezone.utc),
         )
@@ -172,7 +173,7 @@ class MemoryKnowledgeService(KnowledgeService):
             "File registered with MemoryKnowledgeService",
             extra={
                 "knowledge_service_id": self.config.knowledge_service_id,
-                "document_id": document_id,
+                "document_id": document.document_id,
                 "knowledge_service_file_id": memory_file_id,
                 "total_registered": len(self._registered_files),
             },
@@ -183,13 +184,16 @@ class MemoryKnowledgeService(KnowledgeService):
     async def execute_query(
         self,
         query_text: str,
-        document_ids: Optional[List[str]] = None,
+        service_file_ids: Optional[List[str]] = None,
+        query_metadata: Optional[Dict[str, Any]] = None,
     ) -> QueryResult:
         """Execute a query by returning a canned response.
 
         Args:
             query_text: The query to execute
-            document_ids: Optional list of document IDs to scope query to
+            service_file_ids: Optional list of service file IDs for query
+            query_metadata: Optional service-specific metadata (ignored in
+                           memory implementation)
 
         Returns:
             QueryResult from the queue of canned responses
@@ -202,8 +206,9 @@ class MemoryKnowledgeService(KnowledgeService):
             extra={
                 "knowledge_service_id": self.config.knowledge_service_id,
                 "query_text": query_text,
-                "document_count": len(document_ids) if document_ids else 0,
-                "canned_results_available": len(self._canned_query_results),
+                "document_count": (
+                    len(service_file_ids) if service_file_ids else 0
+                ),
             },
         )
 
@@ -231,7 +236,7 @@ class MemoryKnowledgeService(KnowledgeService):
             query_text=query_text,  # Use actual query text
             result_data={
                 **result.result_data,
-                "queried_documents": document_ids or [],
+                "queried_documents": service_file_ids or [],
                 "service": "memory",
                 "knowledge_service_id": self.config.knowledge_service_id,
             },

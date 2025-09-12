@@ -219,3 +219,94 @@ class TestKnowledgeServiceQueryDefaults:
 
         assert custom_query.query_id == "custom-id"
         assert custom_query.name == "Custom Query"
+
+
+class TestKnowledgeServiceQueryMetadata:
+    """Test KnowledgeServiceQuery query_metadata field functionality."""
+
+    def test_query_metadata_defaults_to_empty_dict(self) -> None:
+        """Test that query_metadata defaults to an empty dict."""
+        query = KnowledgeServiceQuery(
+            query_id="test-id",
+            name="Test Query",
+            knowledge_service_id="test-service",
+            prompt="Test prompt",
+        )
+
+        assert query.query_metadata == {}
+
+    def test_query_metadata_accepts_custom_values(self) -> None:
+        """Test that query_metadata can accept custom service values."""
+        metadata = {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 4000,
+            "temperature": 0.1,
+        }
+
+        query = KnowledgeServiceQuery(
+            query_id="test-id",
+            name="Test Query",
+            knowledge_service_id="anthropic-service",
+            prompt="Test prompt",
+            query_metadata=metadata,
+        )
+
+        assert query.query_metadata == metadata
+        assert query.query_metadata["model"] == "claude-sonnet-4-20250514"
+        assert query.query_metadata["max_tokens"] == 4000
+        assert query.query_metadata["temperature"] == 0.1
+
+    def test_query_metadata_serialization(self) -> None:
+        """Test that query_metadata serializes correctly in JSON."""
+        metadata = {
+            "model": "gpt-4",
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "custom_config": {"endpoint": "v2", "retries": 3},
+        }
+
+        query = KnowledgeServiceQuery(
+            query_id="openai-query",
+            name="OpenAI Query",
+            knowledge_service_id="openai-service",
+            prompt="Test prompt for OpenAI",
+            query_metadata=metadata,
+        )
+
+        json_str = query.model_dump_json()
+        import json
+
+        json_data = json.loads(json_str)
+
+        assert json_data["query_metadata"] == metadata
+        assert json_data["query_metadata"]["model"] == "gpt-4"
+        assert (
+            json_data["query_metadata"]["custom_config"]["endpoint"] == "v2"
+        )
+
+    def test_query_metadata_roundtrip_serialization(self) -> None:
+        """Test query_metadata survives JSON roundtrip serialization."""
+        metadata = {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 2000,
+            "temperature": 0.0,
+            "citations": True,
+        }
+
+        original = KnowledgeServiceQuery(
+            query_id="roundtrip-test",
+            name="Roundtrip Test",
+            knowledge_service_id="test-service",
+            prompt="Test roundtrip serialization",
+            query_metadata=metadata,
+        )
+
+        # Serialize and deserialize
+        json_str = original.model_dump_json()
+        import json
+
+        json_data = json.loads(json_str)
+        reconstructed = KnowledgeServiceQuery(**json_data)
+
+        assert reconstructed.query_metadata == original.query_metadata
+        assert reconstructed.query_metadata == metadata

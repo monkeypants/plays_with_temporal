@@ -15,6 +15,8 @@ from typing import Protocol, Optional, List, runtime_checkable, Dict, Any
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
+from julee_example.domain import Document
+
 
 class QueryResult(BaseModel):
     """Result of a knowledge service query execution."""
@@ -66,7 +68,9 @@ class KnowledgeService(Protocol):
     of different knowledge service APIs (Anthropic, OpenAI, etc.).
     """
 
-    async def register_file(self, document_id: str) -> FileRegistrationResult:
+    async def register_file(
+        self, document: Document
+    ) -> FileRegistrationResult:
         """Register a document file with the external knowledge service.
 
         This method registers a document with the external knowledge service,
@@ -74,7 +78,7 @@ class KnowledgeService(Protocol):
         future queries.
 
         Args:
-            document_id: ID of the document to register
+            document: Document domain object to register
 
         Returns:
             FileRegistrationResult containing registration details and the
@@ -84,7 +88,7 @@ class KnowledgeService(Protocol):
         - Must be idempotent: re-registering same document returns same result
         - Should handle service unavailability gracefully
         - Must return the service's internal file ID for future queries
-        - May involve uploading document content to external service
+        - Document content is accessed directly from the Document object
         - Should handle various document formats and sizes
 
         Workflow Context:
@@ -97,7 +101,8 @@ class KnowledgeService(Protocol):
     async def execute_query(
         self,
         query_text: str,
-        document_ids: Optional[List[str]] = None,
+        service_file_ids: Optional[List[str]] = None,
+        query_metadata: Optional[Dict[str, Any]] = None,
     ) -> QueryResult:
         """Execute a query against the external knowledge service.
 
@@ -107,22 +112,29 @@ class KnowledgeService(Protocol):
 
         Args:
             query_text: The query to execute (natural language or structured)
-            document_ids: Optional list of document IDs to scope the query to.
-                         If None, query runs against all registered documents.
+            service_file_ids: Optional list of service file IDs to provide as
+                             context for the query. These are the IDs returned
+                             by the knowledge service from register_file
+                             operations, and are included in the query to give
+                             the service access to specific documents.
+            query_metadata: Optional service-specific metadata and
+                           configuration options such as model selection,
+                           temperature, max_tokens, etc. The structure depends
+                           on the specific knowledge service being used.
 
         Returns:
             QueryResult containing query results and execution metadata
 
         Implementation Notes:
         - Must be idempotent: same query returns consistent results
-        - Document IDs are translated to service's internal file identifiers
+        - Service file IDs are provided as context to enhance query responses
         - Should handle service unavailability gracefully
         - Query results should be structured as domain objects
         - Should track execution time and metadata
         - Must handle various query formats (natural language, structured,
           etc.)
-        - Should validate that document_ids have been registered before
-          querying
+        - Should validate that service_file_ids exist in the service before
+          including them in the query context
 
         Workflow Context:
         In Temporal workflows, this method is implemented as an activity
