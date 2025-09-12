@@ -66,8 +66,10 @@ def mock_anthropic_client() -> MagicMock:
 
     # Mock the messages.create response
     mock_response = MagicMock()
-    mock_response.content = [MagicMock()]
-    mock_response.content[0].text = "This is a test response from Anthropic."
+    mock_content_block = MagicMock()
+    mock_content_block.type = "text"
+    mock_content_block.text = "This is a test response from Anthropic."
+    mock_response.content = [mock_content_block]
     mock_response.usage.input_tokens = 150
     mock_response.usage.output_tokens = 25
     mock_response.stop_reason = "end_turn"

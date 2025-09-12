@@ -186,6 +186,7 @@ class MemoryKnowledgeService(KnowledgeService):
         query_text: str,
         service_file_ids: Optional[List[str]] = None,
         query_metadata: Optional[Dict[str, Any]] = None,
+        assistant_prompt: Optional[str] = None,
     ) -> QueryResult:
         """Execute a query by returning a canned response.
 
@@ -194,6 +195,8 @@ class MemoryKnowledgeService(KnowledgeService):
             service_file_ids: Optional list of service file IDs for query
             query_metadata: Optional service-specific metadata (ignored in
                            memory implementation)
+            assistant_prompt: Optional assistant message content (ignored in
+                             memory implementation)
 
         Returns:
             QueryResult from the queue of canned responses
