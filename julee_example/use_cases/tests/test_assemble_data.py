@@ -112,19 +112,31 @@ class TestAssembleDataUseCase:
 
     @pytest.mark.asyncio
     async def test_assemble_data_fails_without_document(
-        self, use_case: AssembleDataUseCase
+        self,
+        use_case: AssembleDataUseCase,
+        assembly_specification_repo: MemoryAssemblySpecificationRepository,
     ) -> None:
         """Test that assemble_data fails when document doesn't exist."""
-        # Arrange
-        document_id_1 = "doc-456"
+        # Arrange - Create assembly specification but no document
+        assembly_spec = AssemblySpecification(
+            assembly_specification_id="spec-123",
+            name="Test Assembly",
+            applicability="Test documents",
+            jsonschema={"type": "object", "properties": {}},
+            status=AssemblySpecificationStatus.ACTIVE,
+            knowledge_service_queries={},
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await assembly_specification_repo.save(assembly_spec)
+
+        document_id = "nonexistent-doc"
         assembly_specification_id = "spec-123"
 
         # Act & Assert
-        with pytest.raises(
-            ValueError, match="Assembly specification not found"
-        ):
+        with pytest.raises(ValueError, match="Document not found"):
             await use_case.assemble_data(
-                document_id=document_id_1,
+                document_id=document_id,
                 assembly_specification_id=assembly_specification_id,
             )
 

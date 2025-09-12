@@ -580,7 +580,6 @@ text or markdown formatting."""
 
         # Create the assembled document with content stream at beginning
         content_stream = ContentStream(io.BytesIO(content_bytes))
-        content_stream.seek(0)  # Ensure stream is at beginning
 
         assembled_document = Document(
             document_id=document_id,
