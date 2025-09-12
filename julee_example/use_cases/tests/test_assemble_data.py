@@ -208,7 +208,7 @@ class TestAssembleDataUseCase:
             knowledge_service_id="ks-123",
             name="Test Knowledge Service",
             description="Test service",
-            service_api=ServiceApi.MEMORY,
+            service_api=ServiceApi.ANTHROPIC,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
@@ -453,7 +453,7 @@ class TestAssembleDataUseCase:
             knowledge_service_id="ks-123",
             name="Test Knowledge Service",
             description="Test service",
-            service_api=ServiceApi.MEMORY,
+            service_api=ServiceApi.ANTHROPIC,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )

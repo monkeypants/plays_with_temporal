@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 from .knowledge_service import KnowledgeService
 from .anthropic import AnthropicKnowledgeService
-from .memory.knowledge_service import MemoryKnowledgeService
 from julee_example.domain.knowledge_service_config import ServiceApi
 
 
@@ -69,8 +68,6 @@ def knowledge_service_factory(
     service: KnowledgeService
     if knowledge_service_config.service_api == ServiceApi.ANTHROPIC:
         service = AnthropicKnowledgeService(knowledge_service_config)
-    elif knowledge_service_config.service_api == ServiceApi.MEMORY:
-        service = MemoryKnowledgeService(knowledge_service_config)
     else:
         raise ValueError(
             f"Unsupported service API: {knowledge_service_config.service_api}"
