@@ -3,6 +3,19 @@
 
 * Architectural Enforcement Patterns
 
+** REQUIRED READING
+
+*THIS DOCUMENT IS INCOMPLETE WITHOUT ITS COMPANION*
+
+Before proceeding, you MUST also read:
+- =fun-police/formatting.org= - Code formatting standards and line length rules
+
+These two documents work together as a unified system.
+The architectural patterns in this document assume compliance
+with the formatting standards defined in the companion document.
+
+*Both documents must be read and understood together.*
+
 ** Framework Philosophy
 
 This document defines the mandatory architectural patterns
@@ -17,8 +30,10 @@ By eliminating architectural decision-making during implementation,
 developers can focus their creative energy on solving business problems
 rather than debating patterns.
 
-*Note*: Code formatting standards (line length, style rules) are defined
-separately in =fun-police/formatting.org= and enforced via =pyproject.toml=.
+*CRITICAL NOTE*: This document defines architectural patterns only.
+Code formatting standards (78-character line limits, style rules) are defined
+in the companion document =fun-police/formatting.org= and enforced via =pyproject.toml=.
+Both documents are mandatory and work together as a unified system.
 
 ** Architecture Overview
 
@@ -32,7 +47,7 @@ innovation on architecture is explicitly prohibited
 to prevent technical debt and maintain system coherence.
 
 *Related Documentation*:
-- Code formatting standards: =fun-police/formatting.org=
+- Code formatting standards: =fun-police/formatting.org= *[REQUIRED - READ FIRST]*
 - Tooling configuration: =pyproject.toml=
 
 ** Core Architectural Patterns

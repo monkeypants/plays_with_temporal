@@ -8,14 +8,13 @@ content streams, ensuring idempotency and proper error handling.
 
 The implementation separates document metadata (stored as JSON) from content
 (stored as content-addressable binary objects) in Minio, following the large
-payload handling pattern from the architectural guidelines."""
+payload handling pattern from the architectural guidelines.
+"""
 
 import io
 import json
-
-import logging
-import uuid
 import hashlib
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -24,12 +23,10 @@ import multihash  # type: ignore[import-untyped]
 
 from julee_example.domain import Document, ContentStream
 from julee_example.repositories.document import DocumentRepository
-from .client import MinioClient
-
-logger = logging.getLogger(__name__)
+from .client import MinioClient, MinioRepositoryMixin
 
 
-class MinioDocumentRepository(DocumentRepository):
+class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
     """
     Minio implementation of DocumentRepository using Minio for persistence.
 
@@ -47,46 +44,14 @@ class MinioDocumentRepository(DocumentRepository):
         Args:
             client: MinioClient protocol implementation (real or fake)
         """
-        logger.debug("Initializing MinioDocumentRepository")
-
         self.client = client
+        self.logger = logging.getLogger("MinioDocumentRepository")
         self.metadata_bucket = "documents"
         self.content_bucket = "documents-content"
-        self._ensure_buckets_exist()
-
-    def _ensure_buckets_exist(self) -> None:
-        """Ensure both metadata and content buckets exist."""
-        for bucket_name in [self.metadata_bucket, self.content_bucket]:
-            try:
-                if not self.client.bucket_exists(bucket_name):
-                    logger.info(
-                        "Creating document bucket",
-                        extra={"bucket_name": bucket_name},
-                    )
-                    self.client.make_bucket(bucket_name)
-                else:
-                    logger.debug(
-                        "Document bucket already exists",
-                        extra={"bucket_name": bucket_name},
-                    )
-            except S3Error as e:
-                logger.error(
-                    "Failed to create document bucket",
-                    extra={"bucket_name": bucket_name, "error": str(e)},
-                )
-                raise
+        self.ensure_buckets_exist([self.metadata_bucket, self.content_bucket])
 
     async def get(self, document_id: str) -> Optional[Document]:
         """Retrieve a document with metadata and content."""
-        logger.debug(
-            "MinioDocumentRepository: Attempting to retrieve document",
-            extra={
-                "document_id": document_id,
-                "metadata_bucket": self.metadata_bucket,
-                "content_bucket": self.content_bucket,
-            },
-        )
-
         try:
             # First, get the metadata
             metadata_response = self.client.get_object(
@@ -104,9 +69,8 @@ class MinioDocumentRepository(DocumentRepository):
             # Now get the content stream using the content multihash as key
             content_multihash = document_dict.get("content_multihash")
             if not content_multihash:
-                logger.error(
-                    "MinioDocumentRepository: Document metadata missing "
-                    "content_multihash",
+                self.logger.error(
+                    "Document metadata missing content_multihash",
                     extra={"document_id": document_id},
                 )
                 return None
@@ -122,22 +86,14 @@ class MinioDocumentRepository(DocumentRepository):
                 content_stream = ContentStream(content_response)
                 document_dict["content"] = content_stream
 
-                logger.info(
-                    "MinioDocumentRepository: Document retrieved "
-                    "successfully",
+                self.logger.info(
+                    "Document retrieved successfully",
                     extra={
                         "document_id": document_id,
                         "content_multihash": content_multihash,
-                        "original_filename": document_dict.get(
-                            "original_filename"
-                        ),
-                        "content_type": document_dict.get("content_type"),
-                        "size_bytes": document_dict.get("size_bytes"),
-                        "status": document_dict.get("status"),
                         "retrieved_at": datetime.now(
                             timezone.utc
                         ).isoformat(),
-                        "metadata_size_bytes": len(metadata_data),
                     },
                 )
 
@@ -145,13 +101,11 @@ class MinioDocumentRepository(DocumentRepository):
 
             except S3Error as content_error:
                 if getattr(content_error, "code", None) == "NoSuchKey":
-                    logger.warning(
-                        "MinioDocumentRepository: Document metadata found "
-                        "but content missing",
+                    self.logger.warning(
+                        "Document metadata found but content missing",
                         extra={
                             "document_id": document_id,
                             "content_multihash": content_multihash,
-                            "error_code": "NoSuchKey",
                         },
                     )
                     # Return document without content stream for metadata-only
@@ -163,35 +117,23 @@ class MinioDocumentRepository(DocumentRepository):
 
         except S3Error as e:
             if getattr(e, "code", None) == "NoSuchKey":
-                logger.debug(
-                    "MinioDocumentRepository: Document not found in Minio "
-                    "storage (NoSuchKey)",
-                    extra={
-                        "document_id": document_id,
-                        "error_code": "NoSuchKey",
-                    },
+                self.logger.debug(
+                    "Document not found",
+                    extra={"document_id": document_id},
                 )
                 return None
             else:
-                logger.error(
-                    "MinioDocumentRepository: Error retrieving document "
-                    "metadata from Minio",
-                    extra={
-                        "document_id": document_id,
-                        "error": str(e),
-                        "error_type": type(e).__name__,
-                    },
-                    exc_info=True,
+                self.logger.error(
+                    "Error retrieving document metadata",
+                    extra={"document_id": document_id, "error": str(e)},
                 )
-                return None
+                raise
         except Exception as e:
-            logger.error(
-                "MinioDocumentRepository: Unexpected error during document "
-                "retrieval",
+            self.logger.error(
+                "Unexpected error during document retrieval",
                 extra={
                     "document_id": document_id,
                     "error": str(e),
-                    "error_type": type(e).__name__,
                 },
                 exc_info=True,
             )
@@ -199,8 +141,8 @@ class MinioDocumentRepository(DocumentRepository):
 
     async def store(self, document: Document) -> None:
         """Store a new document with its content and metadata."""
-        logger.info(
-            "MinioDocumentRepository: Storing document",
+        self.logger.info(
+            "Storing document",
             extra={
                 "document_id": document.document_id,
                 "original_filename": document.original_filename,
@@ -216,9 +158,9 @@ class MinioDocumentRepository(DocumentRepository):
 
             # Verify and update multihash if needed
             if document.content_multihash != calculated_multihash:
-                logger.warning(
-                    "MinioDocumentRepository: Provided multihash differs "
-                    "from calculated, using calculated",
+                self.logger.warning(
+                    "Provided multihash differs from calculated, using "
+                    "calculated",
                     extra={
                         "document_id": document.document_id,
                         "provided_multihash": document.content_multihash,
@@ -230,23 +172,20 @@ class MinioDocumentRepository(DocumentRepository):
             # Store metadata second (atomic operation)
             await self._store_metadata(document)
 
-            logger.info(
-                "MinioDocumentRepository: Document stored successfully",
+            self.logger.info(
+                "Document stored successfully",
                 extra={
                     "document_id": document.document_id,
                     "content_multihash": calculated_multihash,
-                    "metadata_bucket": self.metadata_bucket,
-                    "content_bucket": self.content_bucket,
                 },
             )
 
         except Exception as e:
-            logger.error(
-                "MinioDocumentRepository: Failed to store document",
+            self.logger.error(
+                "Failed to store document",
                 extra={
                     "document_id": document.document_id,
                     "error": str(e),
-                    "error_type": type(e).__name__,
                 },
                 exc_info=True,
             )
@@ -254,8 +193,8 @@ class MinioDocumentRepository(DocumentRepository):
 
     async def update(self, document: Document) -> None:
         """Update a complete document with content and metadata."""
-        logger.info(
-            "MinioDocumentRepository: Updating document",
+        self.logger.info(
+            "Updating document",
             extra={
                 "document_id": document.document_id,
                 "original_filename": document.original_filename,
@@ -263,49 +202,42 @@ class MinioDocumentRepository(DocumentRepository):
             },
         )
 
-        # Update the timestamp
-        document.updated_at = datetime.now(timezone.utc)
+        # Update timestamp
+        self.update_timestamps(document)
 
         try:
-            # Store content using multihash key and get calculated multihash
+            # Store content and get calculated multihash
             calculated_multihash = await self._store_content(document)
 
-            # Verify and update multihash if needed
+            # Update multihash if needed
             if document.content_multihash != calculated_multihash:
-                logger.warning(
-                    "MinioDocumentRepository: Provided multihash differs "
-                    "from calculated, using calculated",
+                self.logger.warning(
+                    "Content changed during update, updating multihash",
                     extra={
                         "document_id": document.document_id,
-                        "provided_multihash": document.content_multihash,
-                        "calculated_multihash": calculated_multihash,
+                        "old_multihash": document.content_multihash,
+                        "new_multihash": calculated_multihash,
                     },
                 )
                 document.content_multihash = calculated_multihash
 
-            # Always update metadata (includes updated_at timestamp)
+            # Store updated metadata
             await self._store_metadata(document)
 
-            logger.info(
-                "MinioDocumentRepository: Document updated successfully",
+            self.logger.info(
+                "Document updated successfully",
                 extra={
                     "document_id": document.document_id,
                     "content_multihash": calculated_multihash,
-                    "updated_at": (
-                        document.updated_at.isoformat()
-                        if document.updated_at
-                        else None
-                    ),
                 },
             )
 
         except Exception as e:
-            logger.error(
-                "MinioDocumentRepository: Failed to update document",
+            self.logger.error(
+                "Failed to update document",
                 extra={
                     "document_id": document.document_id,
                     "error": str(e),
-                    "error_type": type(e).__name__,
                 },
                 exc_info=True,
             )
@@ -313,150 +245,98 @@ class MinioDocumentRepository(DocumentRepository):
 
     async def generate_id(self) -> str:
         """Generate a unique document identifier."""
-        document_id = str(uuid.uuid4())
-
-        logger.debug(
-            "MinioDocumentRepository: Generated document ID",
-            extra={
-                "document_id": document_id,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-            },
-        )
-
-        return document_id
+        return self.generate_id_with_prefix("doc")
 
     async def _store_content(self, document: Document) -> str:
-        """Store document content to Minio using content multihash as key.
+        """Store document content to content-addressable storage and return
+        multihash."""
+        if not document.content:
+            raise ValueError(
+                f"Document {document.document_id} has no content"
+            )
 
-        This provides natural deduplication and immutability - identical
-        content
-        is only stored once regardless of how many documents reference it.
-
-        Returns:
-            The calculated multihash of the stored content
-        """
-        # First, calculate the actual multihash from content stream
-        document.content.seek(0)
+        # Calculate multihash from the content stream
         calculated_multihash = self._calculate_multihash_from_stream(
-            document.content.stream
+            document.content
         )
-
-        # Use calculated multihash as the key (not provided multihash)
         object_name = calculated_multihash
 
         try:
-            # Check if content already exists (idempotency via
-            # content-addressing)
+            # Check if content already exists (deduplication)
             try:
-                # Just check if the object exists - no need to read and
-                # compare
                 self.client.stat_object(
                     bucket_name=self.content_bucket, object_name=object_name
                 )
-
-                logger.debug(
-                    "MinioDocumentRepository: Content already exists "
-                    "(content deduplication)",
+                # Content already exists, no need to store again
+                self.logger.debug(
+                    "Content already exists, skipping storage",
                     extra={
                         "document_id": document.document_id,
-                        "content_multihash": object_name,
+                        "content_multihash": calculated_multihash,
                     },
                 )
                 return calculated_multihash
 
             except S3Error as e:
                 if getattr(e, "code", None) == "NoSuchKey":
-                    logger.debug(
-                        "MinioDocumentRepository: Content not found, "
-                        "storing new",
-                        extra={
-                            "document_id": document.document_id,
-                            "content_multihash": object_name,
-                        },
-                    )
-                    # Continue to store the content
+                    # Content doesn't exist, continue to store it
+                    pass
                 else:
                     raise  # Re-raise if it's another S3 error
 
             # Store the content using calculated multihash
-            document.content.seek(0)  # Reset stream position
-            # Pass the stream directly to Minio - no need to read into memory
+            content_data = document.content.read()
             self.client.put_object(
                 bucket_name=self.content_bucket,
                 object_name=object_name,
-                data=document.content.stream,
-                length=document.size_bytes,
-                content_type=document.content_type,
+                data=io.BytesIO(content_data),
+                length=len(content_data),
+                content_type=document.content_type
+                or "application/octet-stream",
                 metadata={
-                    "content_multihash": calculated_multihash,
-                    "content_type": document.content_type,
-                    "stored_at": datetime.now(timezone.utc).isoformat(),
+                    "document_id": document.document_id,
+                    "original_filename": document.original_filename or "",
                 },
             )
 
-            logger.debug(
-                "MinioDocumentRepository: Content stored successfully",
+            self.logger.debug(
+                "Content stored successfully",
                 extra={
                     "document_id": document.document_id,
                     "content_multihash": calculated_multihash,
-                    "bucket": self.content_bucket,
-                    "content_size": document.size_bytes,
+                    "content_size": len(content_data),
                 },
             )
 
             return calculated_multihash
 
-        except S3Error as e:
-            logger.error(
-                "MinioDocumentRepository: Failed to store content to Minio",
-                extra={
-                    "document_id": document.document_id,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                },
-                exc_info=True,
-            )
-            raise
         except Exception as e:
-            logger.error(
-                "MinioDocumentRepository: Unexpected error during content "
-                "storage",
+            self.logger.error(
+                "Failed to store content",
                 extra={
                     "document_id": document.document_id,
                     "error": str(e),
-                    "error_type": type(e).__name__,
                 },
-                exc_info=True,
             )
             raise
 
     def _calculate_multihash_from_stream(
-        self, stream: io.IOBase, chunk_size: int = 8192
+        self, content_stream: ContentStream
     ) -> str:
-        """Calculate SHA-256 multihash from a stream without loading all
-        content into memory.
+        """Calculate multihash from content stream."""
+        if not content_stream:
+            raise ValueError("Content stream is required")
 
-        Args:
-            stream: The content stream to hash
-            chunk_size: Size of chunks to read at a time
+        # Read content and calculate SHA-256 hash
+        content_data = content_stream.read()
+        sha256_hash = hashlib.sha256(content_data).digest()
 
-        Returns:
-            Hex-encoded multihash string
-        """
-        hasher = hashlib.sha256()
+        # Reset stream position for future reads
+        content_stream.seek(0)
 
-        # Process stream in chunks
-        while True:
-            chunk = stream.read(chunk_size)
-            if not chunk:
-                break
-            if isinstance(chunk, str):
-                chunk = chunk.encode("utf-8")
-            hasher.update(chunk)
-
-        # Create proper multihash (0x12 = SHA-256, length = 32 bytes)
-        mh = multihash.encode(hasher.digest(), multihash.SHA2_256)
-        return str(mh.hex())
+        # Create multihash with SHA-256 (code 0x12)
+        mhash = multihash.encode(sha256_hash, multihash.SHA2_256)
+        return str(mhash.hex())
 
     async def _store_metadata(self, document: Document) -> None:
         """Store document metadata to Minio with idempotency check."""
@@ -476,83 +356,46 @@ class MinioDocumentRepository(DocumentRepository):
                 existing_response.release_conn()
 
                 if existing_data == metadata_json:
-                    logger.debug(
-                        "MinioDocumentRepository: Metadata already exists "
-                        "with correct data, skipping put (idempotent)",
-                        extra={
-                            "document_id": document.document_id,
-                            "object_name": object_name,
-                        },
+                    self.logger.debug(
+                        "Metadata unchanged, skipping storage",
+                        extra={"document_id": document.document_id},
                     )
                     return
-                else:
-                    logger.debug(
-                        "MinioDocumentRepository: Metadata exists with "
-                        "different data, overwriting",
-                        extra={
-                            "document_id": document.document_id,
-                            "object_name": object_name,
-                        },
-                    )
 
             except S3Error as e:
                 if getattr(e, "code", None) == "NoSuchKey":
-                    logger.debug(
-                        "MinioDocumentRepository: Metadata not found, "
-                        "creating new",
-                        extra={
-                            "document_id": document.document_id,
-                            "object_name": object_name,
-                        },
-                    )
+                    # Metadata doesn't exist, continue to store it
+                    pass
                 else:
-                    raise  # Re-raise if it's another S3 error
+                    raise
 
             # Store the metadata
-            data_stream = io.BytesIO(metadata_json)
             self.client.put_object(
                 bucket_name=self.metadata_bucket,
                 object_name=object_name,
-                data=data_stream,
+                data=io.BytesIO(metadata_json),
                 length=len(metadata_json),
                 content_type="application/json",
                 metadata={
-                    "document_id": document.document_id,
-                    "status": document.status.value,
-                    "stored_at": datetime.now(timezone.utc).isoformat(),
+                    "content_multihash": document.content_multihash or "",
+                    "original_filename": document.original_filename or "",
                 },
             )
 
-            logger.debug(
-                "MinioDocumentRepository: Metadata stored successfully",
+            self.logger.debug(
+                "Metadata stored successfully",
                 extra={
                     "document_id": document.document_id,
-                    "bucket": self.metadata_bucket,
-                    "object_name": object_name,
                     "metadata_size": len(metadata_json),
                 },
             )
 
-        except S3Error as e:
-            logger.error(
-                "MinioDocumentRepository: Failed to store metadata to Minio",
-                extra={
-                    "document_id": document.document_id,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                },
-                exc_info=True,
-            )
-            raise
         except Exception as e:
-            logger.error(
-                "MinioDocumentRepository: Unexpected error during metadata "
-                "storage",
+            self.logger.error(
+                "Failed to store metadata",
                 extra={
                     "document_id": document.document_id,
                     "error": str(e),
-                    "error_type": type(e).__name__,
                 },
-                exc_info=True,
             )
             raise
