@@ -14,7 +14,7 @@ and type safety, following the patterns established in the sample project.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timezone
 from enum import Enum
 import jsonschema
@@ -71,6 +71,12 @@ class AssemblySpecification(BaseModel):
         "KnowledgeServiceQuery IDs. Keys are JSON Pointer strings "
         "(e.g., '/properties/attendees', '') and values are query IDs "
         "for extracting data for that schema section",
+    )
+    scorecard_queries: List[Tuple[str, int]] = Field(
+        default_factory=list,
+        description="List of 2-tuples containing "
+        "(knowledge_service_query_id, score_out_of_100) "
+        "for scoring and evaluating the quality of knowledge service queries",
     )
 
     # AssemblySpecification metadata
@@ -174,6 +180,40 @@ class AssemblySpecification(BaseModel):
             cleaned_queries[schema_pointer] = query_id.strip()
 
         return cleaned_queries
+
+    @field_validator("scorecard_queries")
+    @classmethod
+    def scorecard_queries_must_be_valid(
+        cls, v: List[Tuple[str, int]]
+    ) -> List[Tuple[str, int]]:
+        if not isinstance(v, list):
+            raise ValueError("Scorecard queries must be a list")
+
+        validated_queries = []
+        for item in v:
+            if not isinstance(item, tuple) or len(item) != 2:
+                raise ValueError(
+                    "Each scorecard query must be a 2-tuple of "
+                    "(knowledge_service_query_id, score_out_of_100)"
+                )
+
+            query_id, score = item
+
+            # Validate query ID
+            if not isinstance(query_id, str) or not query_id.strip():
+                raise ValueError(
+                    "Knowledge service query ID must be a non-empty string"
+                )
+
+            # Validate score
+            if not isinstance(score, int):
+                raise ValueError("Score must be an integer")
+            if not (0 <= score <= 100):
+                raise ValueError("Score must be between 0 and 100 inclusive")
+
+            validated_queries.append((query_id.strip(), score))
+
+        return validated_queries
 
     @field_validator("version")
     @classmethod
