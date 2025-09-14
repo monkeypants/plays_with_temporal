@@ -19,6 +19,8 @@ import pytest
 import json
 from datetime import datetime, timezone
 
+from typing import Any
+
 from julee_example.domain import AssemblyIteration
 from .factories import AssemblyIterationFactory
 
@@ -213,3 +215,90 @@ class TestAssemblyIterationFieldValidation:
 
         assert iteration.iteration_id == 1
         assert iteration.document_id == "trim-doc"
+
+
+class TestAssemblyIterationScorecardResults:
+    """Test scorecard_results field validation."""
+
+    @pytest.mark.parametrize(
+        "scorecard_results,expected_success",
+        [
+            # Valid cases - empty list
+            ([], True),
+            # Valid cases - valid tuples with scores in range
+            ([("query-1", 85)], True),
+            ([("query-1", 0)], True),  # Minimum valid score
+            ([("query-1", 100)], True),  # Maximum valid score
+            ([("query-1", 85), ("query-2", 92)], True),  # Multiple results
+            ([("very-long-query-id-name", 75)], True),  # Long query ID
+            # Invalid cases - wrong types
+            ("not-a-list", False),
+            ({"query-1": 85}, False),  # Dict instead of list
+            # Invalid cases - wrong tuple structure
+            ([("query-1", 85, "extra")], False),  # 3-tuple instead of 2
+            ([("query-1",)], False),  # 1-tuple instead of 2
+            (["query-1", 85], False),  # List items instead of tuples
+            # Invalid cases - invalid query IDs
+            ([("", 85)], False),  # Empty query ID
+            ([("   ", 85)], False),  # Whitespace-only query ID
+            ([(123, 85)], False),  # Non-string query ID
+            # Invalid cases - invalid scores
+            ([("query-1", -1)], False),  # Score below 0
+            ([("query-1", 101)], False),  # Score above 100
+            (
+                [("query-1", "not-a-number")],
+                False,
+            ),  # String score that can't be converted to int
+            ([("query-1", 85.5)], False),  # Float score instead of int
+        ],
+    )
+    def test_scorecard_results_validation(
+        self, scorecard_results: Any, expected_success: bool
+    ) -> None:
+        """Test scorecard_results field validation."""
+        if expected_success:
+            # Should create successfully
+            iteration = AssemblyIteration(
+                iteration_id=1,
+                document_id="test-doc",
+                scorecard_results=scorecard_results,
+            )
+            # Verify the scorecard_results are stored correctly
+            assert iteration.scorecard_results == scorecard_results
+        else:
+            # Should raise validation error
+            with pytest.raises(Exception):
+                AssemblyIteration(
+                    iteration_id=1,
+                    document_id="test-doc",
+                    scorecard_results=scorecard_results,
+                )
+
+    def test_scorecard_results_with_valid_scores(self) -> None:
+        """Test scorecard_results with valid scores are properly stored."""
+        valid_scorecard_results = [
+            ("extraction-query-1", 85),
+            ("extraction-query-2", 92),
+            ("validation-query-1", 78),
+        ]
+
+        iteration = AssemblyIterationFactory.build(
+            scorecard_results=valid_scorecard_results
+        )
+
+        assert iteration.scorecard_results == valid_scorecard_results
+        assert len(iteration.scorecard_results) == 3
+        # Verify individual tuples
+        assert iteration.scorecard_results[0] == ("extraction-query-1", 85)
+        assert iteration.scorecard_results[1] == ("extraction-query-2", 92)
+        assert iteration.scorecard_results[2] == ("validation-query-1", 78)
+
+    def test_scorecard_results_default_empty(self) -> None:
+        """Test that scorecard_results defaults to empty list."""
+        iteration = AssemblyIteration(
+            iteration_id=1,
+            document_id="test-doc",
+        )
+
+        assert iteration.scorecard_results == []
+        assert len(iteration.scorecard_results) == 0

@@ -385,3 +385,51 @@ class TestMinioAssemblyRepositoryRoundtrip:
         assert final_assembly.iterations[0].document_id == "output-1"
         assert final_assembly.iterations[1].document_id == "output-2"
         assert final_assembly.iterations[2].document_id == "output-3"
+
+    @pytest.mark.asyncio
+    async def test_assembly_iterations_with_default_scorecard_results(
+        self, assembly_repo: MinioAssemblyRepository
+    ) -> None:
+        """Test that assembly iterations have default empty scorecard_results
+        that are properly serialized."""
+        # Create and save initial assembly
+        assembly_id = await assembly_repo.generate_id()
+        assembly = Assembly(
+            assembly_id=assembly_id,
+            assembly_specification_id="spec-scorecard-test",
+            input_document_id="input-scorecard-doc",
+            status=AssemblyStatus.IN_PROGRESS,
+            iterations=[],
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await assembly_repo.save(assembly)
+
+        # Add iterations using repository method (they will have default empty
+        # scorecard_results)
+        assembly = await assembly_repo.add_iteration(
+            assembly_id, "output-doc-1"
+        )
+        assembly = await assembly_repo.add_iteration(
+            assembly_id, "output-doc-2"
+        )
+
+        # Retrieve and verify iterations have empty scorecard_results by
+        # default
+        retrieved = await assembly_repo.get(assembly_id)
+        assert retrieved is not None
+        assert len(retrieved.iterations) == 2
+
+        # Verify iterations have empty scorecard_results (demonstrating field
+        # is included in serialization)
+        iteration1 = retrieved.iterations[0]
+        assert iteration1.scorecard_results == []
+        assert iteration1.document_id == "output-doc-1"
+
+        iteration2 = retrieved.iterations[1]
+        assert iteration2.scorecard_results == []
+        assert iteration2.document_id == "output-doc-2"
+
+        # Verify JSON serialization includes the scorecard_results field
+        json_str = iteration1.model_dump_json()
+        assert "scorecard_results" in json_str

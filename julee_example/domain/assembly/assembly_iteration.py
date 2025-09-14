@@ -14,7 +14,7 @@ and type safety, following the patterns established in the sample project.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Optional, List, Tuple
 from datetime import datetime, timezone
 
 
@@ -41,6 +41,12 @@ class AssemblyIteration(BaseModel):
     document_id: str = Field(
         description="ID of the output document produced by this iteration"
     )
+    scorecard_results: List[Tuple[str, int]] = Field(
+        default_factory=list,
+        description="List of 2-tuples containing "
+        "(scorecard_query_id, actual_score_out_of_100) "
+        "for the actual scores achieved by this iteration",
+    )
 
     # Iteration metadata
     created_at: Optional[datetime] = Field(
@@ -63,3 +69,37 @@ class AssemblyIteration(BaseModel):
         if not v or not v.strip():
             raise ValueError("Document ID cannot be empty")
         return v.strip()
+
+    @field_validator("scorecard_results")
+    @classmethod
+    def scorecard_results_must_be_valid(
+        cls, v: List[Tuple[str, int]]
+    ) -> List[Tuple[str, int]]:
+        if not isinstance(v, list):
+            raise ValueError("Scorecard results must be a list")
+
+        validated_results = []
+        for item in v:
+            if not isinstance(item, tuple) or len(item) != 2:
+                raise ValueError(
+                    "Each scorecard result must be a 2-tuple of "
+                    "(scorecard_query_id, actual_score_out_of_100)"
+                )
+
+            query_id, score = item
+
+            # Validate query ID
+            if not isinstance(query_id, str) or not query_id.strip():
+                raise ValueError(
+                    "Scorecard query ID must be a non-empty string"
+                )
+
+            # Validate score
+            if not isinstance(score, int):
+                raise ValueError("Score must be an integer")
+            if not (0 <= score <= 100):
+                raise ValueError("Score must be between 0 and 100 inclusive")
+
+            validated_results.append((query_id.strip(), score))
+
+        return validated_results
