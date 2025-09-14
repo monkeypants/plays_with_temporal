@@ -508,3 +508,90 @@ class TestAssemblyVersionValidation:
         else:
             with pytest.raises(Exception):
                 AssemblyFactory.build(version=version)
+
+
+class TestAssemblyScorecardQueriesValidation:
+    """Test scorecard_queries field validation."""
+
+    @pytest.mark.parametrize(
+        "scorecard_queries,expected_success",
+        [
+            # Valid cases - empty list
+            ([], True),
+            # Valid cases - valid tuples with scores in range
+            ([("query-1", 85)], True),
+            ([("query-1", 0)], True),  # Minimum valid score
+            ([("query-1", 100)], True),  # Maximum valid score
+            ([("query-1", 85), ("query-2", 92)], True),  # Multiple queries
+            ([("very-long-query-id-name", 75)], True),  # Long query ID
+            # Invalid cases - wrong types
+            ("not-a-list", False),
+            ({"query-1": 85}, False),  # Dict instead of list
+            # Invalid cases - wrong tuple structure
+            ([("query-1", 85, "extra")], False),  # 3-tuple instead of 2
+            ([("query-1",)], False),  # 1-tuple instead of 2
+            (["query-1", 85], False),  # List items instead of tuples
+            # Invalid cases - invalid query IDs
+            ([("", 85)], False),  # Empty query ID
+            ([("   ", 85)], False),  # Whitespace-only query ID
+            ([(123, 85)], False),  # Non-string query ID
+            # Invalid cases - invalid scores
+            ([("query-1", -1)], False),  # Score below 0
+            ([("query-1", 101)], False),  # Score above 100
+            (
+                [("query-1", "not-a-number")],
+                False,
+            ),  # String score that can't be converted to int
+            ([("query-1", 85.5)], False),  # Float score instead of int
+        ],
+    )
+    def test_scorecard_queries_validation(
+        self, scorecard_queries: Any, expected_success: bool
+    ) -> None:
+        """Test scorecard_queries field validation."""
+        if expected_success:
+            # Should create successfully
+            assembly = AssemblySpecification(
+                assembly_specification_id="test-id",
+                name="Test Assembly",
+                applicability="Test applicability",
+                jsonschema={
+                    "type": "object",
+                    "properties": {"test": {"type": "string"}},
+                },
+                scorecard_queries=scorecard_queries,
+            )
+            # Verify the scorecard_queries are stored correctly
+            assert assembly.scorecard_queries == scorecard_queries
+        else:
+            # Should raise validation error
+            with pytest.raises(Exception):
+                AssemblySpecification(
+                    assembly_specification_id="test-id",
+                    name="Test Assembly",
+                    applicability="Test applicability",
+                    jsonschema={
+                        "type": "object",
+                        "properties": {"test": {"type": "string"}},
+                    },
+                    scorecard_queries=scorecard_queries,
+                )
+
+    def test_scorecard_queries_with_valid_scores(self) -> None:
+        """Test scorecard_queries with valid scores are properly stored."""
+        valid_scorecard_queries = [
+            ("extraction-query-1", 85),
+            ("extraction-query-2", 92),
+            ("validation-query-1", 78),
+        ]
+
+        assembly = AssemblyFactory.build(
+            scorecard_queries=valid_scorecard_queries
+        )
+
+        assert assembly.scorecard_queries == valid_scorecard_queries
+        assert len(assembly.scorecard_queries) == 3
+        # Verify individual tuples
+        assert assembly.scorecard_queries[0] == ("extraction-query-1", 85)
+        assert assembly.scorecard_queries[1] == ("extraction-query-2", 92)
+        assert assembly.scorecard_queries[2] == ("validation-query-1", 78)
