@@ -395,3 +395,112 @@ class TestMinioAssemblySpecificationRepositoryComplexScenarios:
         assert "título" in retrieved.jsonschema["properties"]
         assert "метаданные" in retrieved.jsonschema["properties"]
         assert "/properties/título" in retrieved.knowledge_service_queries
+
+
+class TestMinioAssemblySpecificationRepositoryScorecardQueries:
+    """Test scorecard_queries field handling in repository operations."""
+
+    @pytest.mark.asyncio
+    async def test_specification_with_scorecard_queries(
+        self, specification_repo: MinioAssemblySpecificationRepository
+    ) -> None:
+        """Test saving and retrieving specification with scorecard_queries."""
+        specification = AssemblySpecification(
+            assembly_specification_id="scorecard-spec",
+            name="Scorecard Test Specification",
+            applicability="Test specification for scorecard queries",
+            jsonschema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "content": {"type": "string"},
+                },
+                "required": ["title"],
+            },
+            status=AssemblySpecificationStatus.ACTIVE,
+            knowledge_service_queries={
+                "/properties/title": "extract-title",
+                "/properties/content": "extract-content",
+            },
+            scorecard_queries=[
+                ("extract-title", 85),
+                ("extract-content", 92),
+                ("validation-query", 78),
+            ],
+            version="1.0.0",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        # Save and retrieve
+        await specification_repo.save(specification)
+        retrieved = await specification_repo.get("scorecard-spec")
+
+        assert retrieved is not None
+        assert retrieved.scorecard_queries == [
+            ("extract-title", 85),
+            ("extract-content", 92),
+            ("validation-query", 78),
+        ]
+        assert len(retrieved.scorecard_queries) == 3
+
+    @pytest.mark.asyncio
+    async def test_specification_with_empty_scorecard_queries(
+        self, specification_repo: MinioAssemblySpecificationRepository
+    ) -> None:
+        """Test specification with default empty scorecard_queries."""
+        specification = AssemblySpecification(
+            assembly_specification_id="empty-scorecard-spec",
+            name="Empty Scorecard Specification",
+            applicability="Test specification with no scorecard queries",
+            jsonschema={
+                "type": "object",
+                "properties": {"test": {"type": "string"}},
+            },
+            status=AssemblySpecificationStatus.ACTIVE,
+            version="1.0.0",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        # Save and retrieve
+        await specification_repo.save(specification)
+        retrieved = await specification_repo.get("empty-scorecard-spec")
+
+        assert retrieved is not None
+        assert retrieved.scorecard_queries == []
+
+    @pytest.mark.asyncio
+    async def test_scorecard_queries_roundtrip_with_extreme_scores(
+        self, specification_repo: MinioAssemblySpecificationRepository
+    ) -> None:
+        """Test scorecard_queries with boundary score values."""
+        specification = AssemblySpecification(
+            assembly_specification_id="boundary-scores-spec",
+            name="Boundary Scores Specification",
+            applicability="Test specification with boundary score values",
+            jsonschema={
+                "type": "object",
+                "properties": {"test": {"type": "string"}},
+            },
+            status=AssemblySpecificationStatus.ACTIVE,
+            scorecard_queries=[
+                ("min-score-query", 0),
+                ("max-score-query", 100),
+                ("mid-score-query", 50),
+            ],
+            version="1.0.0",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        # Save and retrieve
+        await specification_repo.save(specification)
+        retrieved = await specification_repo.get("boundary-scores-spec")
+
+        assert retrieved is not None
+        assert retrieved.scorecard_queries == [
+            ("min-score-query", 0),
+            ("max-score-query", 100),
+            ("mid-score-query", 50),
+        ]
