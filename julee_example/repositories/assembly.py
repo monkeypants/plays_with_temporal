@@ -30,7 +30,7 @@ stubs that delegate to activities for durability and proper error handling.
 """
 
 from typing import Protocol, Optional, runtime_checkable
-from julee_example.domain import Assembly
+from julee_example.domain import Assembly, AssemblyIteration
 
 
 @runtime_checkable
@@ -61,13 +61,13 @@ class AssemblyRepository(Protocol):
         ...
 
     async def add_iteration(
-        self, assembly_id: str, document_id: str
+        self, assembly_id: str, assembly_iteration: "AssemblyIteration"
     ) -> Assembly:
         """Add a new iteration to an assembly and persist it immediately.
 
         Args:
             assembly_id: ID of the assembly to add iteration to
-            document_id: ID of the document produced by this iteration
+            assembly_iteration: Complete AssemblyIteration object to add
 
         Returns:
             Updated Assembly aggregate with the new iteration included
@@ -77,7 +77,9 @@ class AssemblyRepository(Protocol):
           used in an iteration
         - If document_id is same as another iteration, returns assembly
           unchanged
-        - Automatically assigns sequential iteration_id (1, 2, 3...)
+        - Automatically assigns sequential iteration_id based on current count
+        - Preserves all data from the provided AssemblyIteration including
+          scorecard_results
         - Persists the iteration immediately, not on assembly save
         - Updates assembly's updated_at timestamp
         - Returns complete assembly with new iteration in iterations list

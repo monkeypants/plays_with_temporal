@@ -87,8 +87,8 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
                 iteration_dict = json.loads(iteration_json)
                 iterations.append(AssemblyIteration(**iteration_dict))
 
-            # Sort iterations by iteration_id
-            iterations.sort(key=lambda x: x.iteration_id)
+            # Sort iterations by iteration_id (use 0 for None values)
+            iterations.sort(key=lambda x: x.iteration_id or 0)
             assembly.iterations = iterations
 
         except S3Error as iterations_error:
@@ -101,7 +101,7 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
         return assembly
 
     async def add_iteration(
-        self, assembly_id: str, document_id: str
+        self, assembly_id: str, assembly_iteration: AssemblyIteration
     ) -> Assembly:
         """Add a new iteration to an assembly and persist it immediately."""
 
@@ -112,14 +112,15 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
 
         # Check idempotency - if document_id already exists, return unchanged
         for iteration in assembly.iterations:
-            if iteration.document_id == document_id:
+            if iteration.document_id == assembly_iteration.document_id:
 
                 return assembly
 
-        # Create new iteration with next sequential ID
+        # Use provided iteration but set sequential ID and update timestamps
         new_iteration = AssemblyIteration(
             iteration_id=len(assembly.iterations) + 1,
-            document_id=document_id,
+            document_id=assembly_iteration.document_id,
+            scorecard_results=assembly_iteration.scorecard_results,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
@@ -136,7 +137,7 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
             extra_log_data={
                 "assembly_id": assembly_id,
                 "iteration_id": new_iteration.iteration_id,
-                "document_id": document_id,
+                "document_id": assembly_iteration.document_id,
             },
         )
 

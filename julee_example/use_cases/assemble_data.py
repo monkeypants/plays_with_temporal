@@ -12,7 +12,8 @@ import io
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
+
 import jsonpointer  # type: ignore
 import multihash
 import jsonschema
@@ -20,6 +21,7 @@ import jsonschema
 from julee_example.domain import (
     Assembly,
     AssemblyStatus,
+    AssemblyIteration,
     Document,
     DocumentStatus,
     ContentStream,
@@ -181,32 +183,40 @@ class AssembleDataUseCase:
         )
 
         # Step 4: Retrieve all knowledge service queries once
-        queries = await self._retrieve_all_queries(assembly_specification)
-
-        # Step 5: Retrieve all knowledge services once
-        knowledge_services = await self._retrieve_all_knowledge_services(
-            queries
+        extraction_queries = await self._retrieve_all_extraction_queries(
+            assembly_specification
         )
 
-        # Step 6: Register the document with knowledge services
+        # Step 5: Retrieve all scorecard queries once
+        scorecard_queries = await self._retrieve_all_scorecard_queries(
+            assembly_specification
+        )
+
+        # Step 6: Retrieve all knowledge services once
+        knowledge_services = await self._retrieve_all_knowledge_services(
+            extraction_queries
+        )
+
+        # Step 7: Register the document with knowledge services
         document = await self._retrieve_document(document_id)
         document_registrations = await self._register_document_with_services(
-            document, queries, knowledge_services
+            document, extraction_queries, knowledge_services
         )
 
-        # Step 7: Perform the assembly iteration
+        # Step 8: Perform the assembly iteration
         try:
-            assembled_document_id = await self._assemble_iteration(
+            assembly_iteration = await self._assemble_iteration(
                 document,
                 assembly_specification,
                 document_registrations,
-                queries,
+                extraction_queries,
+                scorecard_queries,
                 knowledge_services,
             )
 
-            # Step 8: Add the iteration to the assembly and return
+            # Step 9: Add the iteration to the assembly
             assembly_with_iteration = await self.assembly_repo.add_iteration(
-                assembly_id, assembled_document_id
+                assembly_id, assembly_iteration
             )
 
             # Update status to completed
@@ -283,14 +293,14 @@ class AssembleDataUseCase:
 
         return registrations
 
-    @try_use_case_step("queries_retrieval")
-    async def _retrieve_all_queries(
+    @try_use_case_step("extraction_queries_retrieval")
+    async def _retrieve_all_extraction_queries(
         self, assembly_specification: AssemblySpecification
     ) -> Dict[str, KnowledgeServiceQuery]:
         """Retrieve all knowledge service queries needed for this assembly."""
         # TODO: we should update the interface to take multiple ids (for all
         # repositories), since most backends will support fetching multiple.
-        queries = {}
+        extraction_queries = {}
         for (
             query_id
         ) in assembly_specification.knowledge_service_queries.values():
@@ -299,17 +309,33 @@ class AssembleDataUseCase:
                 raise ValueError(
                     f"Knowledge service query not found: {query_id}"
                 )
-            queries[query_id] = query
-        return queries
+            extraction_queries[query_id] = query
+        return extraction_queries
+
+    @try_use_case_step("scorecard_queries_retrieval")
+    async def _retrieve_all_scorecard_queries(
+        self, assembly_specification: AssemblySpecification
+    ) -> Dict[str, KnowledgeServiceQuery]:
+        """Retrieve all scorecard queries needed for this assembly."""
+        # TODO: we should update the interface to take multiple ids (for all
+        # repositories), since most backends will support fetching multiple.
+        scorecard_queries = {}
+        for query_id, _score in assembly_specification.scorecard_queries:
+            query = await self.knowledge_service_query_repo.get(query_id)
+            if not query:
+                raise ValueError(f"Scorecard query not found: {query_id}")
+            scorecard_queries[query_id] = query
+        return scorecard_queries
 
     @try_use_case_step("knowledge_services_retrieval")
     async def _retrieve_all_knowledge_services(
-        self, queries: Dict[str, KnowledgeServiceQuery]
+        self, extraction_queries: Dict[str, KnowledgeServiceQuery]
     ) -> Dict[str, KnowledgeService]:
         """Retrieve all unique knowledge services needed for this assembly."""
         knowledge_services = {}
         unique_service_ids = {
-            query.knowledge_service_id for query in queries.values()
+            query.knowledge_service_id
+            for query in extraction_queries.values()
         }
 
         for service_id in unique_service_ids:
@@ -324,9 +350,10 @@ class AssembleDataUseCase:
         document: Document,
         assembly_specification: AssemblySpecification,
         document_registrations: Dict[str, str],
-        queries: Dict[str, KnowledgeServiceQuery],
+        extraction_queries: Dict[str, KnowledgeServiceQuery],
+        scorecard_queries: Dict[str, KnowledgeServiceQuery],
         knowledge_services: Dict[str, KnowledgeService],
-    ) -> str:
+    ) -> AssemblyIteration:
         """
         Perform a single assembly iteration using knowledge services.
 
@@ -334,18 +361,22 @@ class AssembleDataUseCase:
         1. Executes all knowledge service queries defined in the specification
         2. Stitches together the query results into a complete JSON document
         3. Creates and stores the assembled document
-        4. Returns the ID of the assembled document
+        4. Executes scorecard queries to evaluate the assembled document
+        5. Creates and returns a complete AssemblyIteration with results
 
         Args:
             document: The input document
             assembly_specification: The specification defining how to assemble
             document_registrations: Mapping of service_id to service_file_id
-            queries: Dict of query_id to KnowledgeServiceQuery objects
+            extraction_queries: Dict of query_id to KnowledgeServiceQuery
+                objects
+            scorecard_queries: Dict of query_id to KnowledgeServiceQuery
+                objects for scorecard evaluation
             knowledge_services: Dict of service_id to KnowledgeService
                 instances
 
         Returns:
-            ID of the newly created assembled document
+            Complete AssemblyIteration with document_id and scorecard_results
 
         Raises:
             ValueError: If required entities are not found
@@ -368,7 +399,7 @@ class AssembleDataUseCase:
             )
 
             # Get the query configuration
-            query = queries[query_id]
+            query = extraction_queries[query_id]
 
             # Get the knowledge service
             knowledge_service = knowledge_services[query.knowledge_service_id]
@@ -409,7 +440,25 @@ class AssembleDataUseCase:
             assembled_data, assembly_specification
         )
 
-        return assembled_document_id
+        # Execute scorecard queries to evaluate the assembled document
+        scorecard_results = await self._execute_scorecard_queries(
+            assembled_document_id,
+            scorecard_queries,
+            document_registrations,
+            knowledge_services,
+        )
+
+        # Create the complete AssemblyIteration with document and scorecard
+        # results. iteration_id will be set when added to assembly
+        assembly_iteration = AssemblyIteration(
+            document_id=assembled_document_id,
+            scorecard_results=scorecard_results,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        # Return the complete AssemblyIteration object
+        return assembly_iteration
 
     @try_use_case_step("assembly_id_generation")
     async def _generate_assembly_id(
@@ -652,6 +701,111 @@ text or markdown formatting."""
             )
             raise ValueError(
                 f"Invalid JSON schema in assembly specification: {e.message}"
+            )
+
+    @try_use_case_step("scorecard_evaluation")
+    async def _execute_scorecard_queries(
+        self,
+        assembled_document_id: str,
+        scorecard_queries: Dict[str, KnowledgeServiceQuery],
+        document_registrations: Dict[str, str],
+        knowledge_services: Dict[str, KnowledgeService],
+    ) -> List[Tuple[str, int]]:
+        """
+        Execute scorecard queries to evaluate the assembled document.
+
+        Args:
+            assembled_document_id: ID of the assembled document to evaluate
+            scorecard_queries: Dict of query_id to KnowledgeServiceQuery
+                objects
+            document_registrations: Mapping of service_id to service_file_id
+            knowledge_services: Dict of service_id to KnowledgeService
+                instances
+
+        Returns:
+            List of (scorecard_query_id, actual_score) tuples
+
+        Raises:
+            ValueError: If required entities are not found
+            RuntimeError: If scorecard evaluation fails
+        """
+        scorecard_results = []
+
+        # TODO: This is where we may want to fan-out/fan-in to do these
+        # in parallel
+        for query_id, query in scorecard_queries.items():
+            # Get the knowledge service
+            knowledge_service = knowledge_services[query.knowledge_service_id]
+
+            # Get the service file ID from our registrations
+            service_file_id = document_registrations.get(
+                query.knowledge_service_id
+            )
+            if not service_file_id:
+                raise ValueError(
+                    f"Document not registered with service "
+                    f"{query.knowledge_service_id}"
+                )
+
+            # Execute the scorecard query
+            # NOTE: currently this is passing the original document only, not
+            # the assembled document from the iteration. We need to pass both
+            # so that the query can reference both, but it's not clear if we
+            # should register the assembled document with the service...
+            # I guess we will have to. But where?
+            query_result = await knowledge_service.execute_query(
+                query_text=query.prompt,
+                service_file_ids=[service_file_id],
+                query_metadata=query.query_metadata,
+                assistant_prompt=query.assistant_prompt,
+            )
+
+            # Parse the result to extract the numeric score
+            score = self._parse_scorecard_result(
+                query_result.result_data, query_id
+            )
+            scorecard_results.append((query_id, score))
+
+        return scorecard_results
+
+    def _parse_scorecard_result(
+        self, result_data: Dict[str, Any], query_id: str
+    ) -> int:
+        """
+        Parse scorecard query result to extract numeric score.
+
+        Args:
+            result_data: Result data from knowledge service
+            query_id: Query ID for error reporting
+
+        Returns:
+            Numeric score between 0-100
+
+        Raises:
+            ValueError: If score cannot be parsed or is out of range
+        """
+        response_text = result_data.get("response", "")
+        if not response_text:
+            raise ValueError(
+                f"Empty response from scorecard query {query_id}"
+            )
+
+        # Expect a simple numeric string between 0-100
+        response_text = response_text.strip()
+
+        try:
+            score = int(response_text)
+            if 0 <= score <= 100:
+                return score
+            else:
+                raise ValueError(
+                    f"Score {score} out of range (0-100) for scorecard "
+                    f"query {query_id}"
+                )
+        except ValueError:
+            raise ValueError(
+                f"Could not parse numeric score from scorecard query "
+                f"{query_id} response: '{response_text}'"
             )
 
     def _calculate_multihash_from_content(self, content_bytes: bytes) -> str:

@@ -34,9 +34,10 @@ class AssemblyIteration(BaseModel):
     """
 
     # Core iteration identification
-    iteration_id: int = Field(
+    iteration_id: Optional[int] = Field(
+        default=None,
         description="Sequential iteration number within this assembly "
-        "(1, 2, 3, ...)"
+        "(1, 2, 3, ...). None for unsaved iterations.",
     )
     document_id: str = Field(
         description="ID of the output document produced by this iteration"
@@ -58,8 +59,8 @@ class AssemblyIteration(BaseModel):
 
     @field_validator("iteration_id")
     @classmethod
-    def iteration_id_must_be_positive(cls, v: int) -> int:
-        if v <= 0:
+    def iteration_id_must_be_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v <= 0:
             raise ValueError("Iteration ID must be a positive integer")
         return v
 

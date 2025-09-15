@@ -88,13 +88,13 @@ class MemoryAssemblyRepository(AssemblyRepository):
         return result
 
     async def add_iteration(
-        self, assembly_id: str, document_id: str
+        self, assembly_id: str, assembly_iteration: AssemblyIteration
     ) -> Assembly:
         """Add a new iteration to an assembly and persist it immediately.
 
         Args:
             assembly_id: ID of the assembly to add iteration to
-            document_id: ID of the document produced by this iteration
+            assembly_iteration: Complete AssemblyIteration object to add
 
         Returns:
             Updated Assembly aggregate with the new iteration included
@@ -103,7 +103,7 @@ class MemoryAssemblyRepository(AssemblyRepository):
             "MemoryAssemblyRepository: Adding iteration to assembly",
             extra={
                 "assembly_id": assembly_id,
-                "document_id": document_id,
+                "document_id": assembly_iteration.document_id,
             },
         )
 
@@ -116,13 +116,16 @@ class MemoryAssemblyRepository(AssemblyRepository):
 
         # Check for idempotency - if document_id already exists in iterations
         for existing_iteration in iterations:
-            if existing_iteration.document_id == document_id:
+            if (
+                existing_iteration.document_id
+                == assembly_iteration.document_id
+            ):
                 logger.debug(
                     "MemoryAssemblyRepository: Iteration with document_id "
                     "already exists, returning unchanged",
                     extra={
                         "assembly_id": assembly_id,
-                        "document_id": document_id,
+                        "document_id": assembly_iteration.document_id,
                     },
                 )
                 # Return assembly with current iterations
@@ -130,12 +133,14 @@ class MemoryAssemblyRepository(AssemblyRepository):
                 assembly_dict["iterations"] = iterations
                 return Assembly(**assembly_dict)
 
-        # Create new iteration with sequential ID
+        # Use provided iteration but set sequential ID and update timestamps
         iteration_id = len(iterations) + 1
         new_iteration = AssemblyIteration(
             iteration_id=iteration_id,
-            document_id=document_id,
+            document_id=assembly_iteration.document_id,
+            scorecard_results=assembly_iteration.scorecard_results,
             created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         # Add iteration to storage
@@ -155,8 +160,11 @@ class MemoryAssemblyRepository(AssemblyRepository):
             "MemoryAssemblyRepository: Iteration added successfully",
             extra={
                 "assembly_id": assembly_id,
-                "document_id": document_id,
-                "iteration_id": iteration_id,
+                "iteration_id": new_iteration.iteration_id,
+                "document_id": assembly_iteration.document_id,
+                "scorecard_results_count": len(
+                    new_iteration.scorecard_results
+                ),
             },
         )
 

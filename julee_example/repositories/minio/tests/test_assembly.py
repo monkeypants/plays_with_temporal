@@ -10,7 +10,7 @@ import pytest
 from datetime import datetime, timezone
 
 
-from julee_example.domain import Assembly, AssemblyStatus
+from julee_example.domain import Assembly, AssemblyStatus, AssemblyIteration
 from julee_example.repositories.minio.assembly import MinioAssemblyRepository
 from .fake_client import FakeMinioClient
 
@@ -106,8 +106,9 @@ class TestMinioAssemblyRepositoryIterations:
         await assembly_repo.save(sample_assembly)
 
         # Add iteration
+        iteration = AssemblyIteration(document_id="output-doc-1")
         updated_assembly = await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "output-doc-1"
+            sample_assembly.assembly_id, iteration
         )
 
         assert len(updated_assembly.iterations) == 1
@@ -132,15 +133,17 @@ class TestMinioAssemblyRepositoryIterations:
         await assembly_repo.save(sample_assembly)
 
         # Add first iteration
+        iteration1 = AssemblyIteration(document_id="output-doc-1")
         updated_assembly = await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "output-doc-1"
+            sample_assembly.assembly_id, iteration1
         )
         assert len(updated_assembly.iterations) == 1
         assert updated_assembly.iterations[0].iteration_id == 1
 
         # Add second iteration
+        iteration2 = AssemblyIteration(document_id="output-doc-2")
         updated_assembly = await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "output-doc-2"
+            sample_assembly.assembly_id, iteration2
         )
         assert len(updated_assembly.iterations) == 2
         assert updated_assembly.iterations[0].iteration_id == 1
@@ -148,8 +151,9 @@ class TestMinioAssemblyRepositoryIterations:
         assert updated_assembly.iterations[1].document_id == "output-doc-2"
 
         # Add third iteration
+        iteration3 = AssemblyIteration(document_id="output-doc-3")
         updated_assembly = await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "output-doc-3"
+            sample_assembly.assembly_id, iteration3
         )
         assert len(updated_assembly.iterations) == 3
         assert updated_assembly.iterations[2].iteration_id == 3
@@ -166,15 +170,17 @@ class TestMinioAssemblyRepositoryIterations:
         await assembly_repo.save(sample_assembly)
 
         # Add iteration first time
+        iteration1 = AssemblyIteration(document_id="output-doc-1")
         updated_assembly1 = await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "output-doc-1"
+            sample_assembly.assembly_id, iteration1
         )
         assert len(updated_assembly1.iterations) == 1
         assert updated_assembly1.iterations[0].iteration_id == 1
 
         # Add same document_id again - should be idempotent
+        iteration2 = AssemblyIteration(document_id="output-doc-1")
         updated_assembly2 = await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "output-doc-1"
+            sample_assembly.assembly_id, iteration2
         )
         assert len(updated_assembly2.iterations) == 1
         assert updated_assembly2.iterations[0].iteration_id == 1
@@ -190,9 +196,10 @@ class TestMinioAssemblyRepositoryIterations:
         self, assembly_repo: MinioAssemblyRepository
     ) -> None:
         """Test adding iteration to non-existent assembly raises error."""
+        iteration = AssemblyIteration(document_id="doc-123")
         with pytest.raises(ValueError, match="Assembly not found"):
             await assembly_repo.add_iteration(
-                "nonexistent-assembly", "doc-123"
+                "nonexistent-assembly", iteration
             )
 
     @pytest.mark.asyncio
@@ -208,8 +215,9 @@ class TestMinioAssemblyRepositoryIterations:
         # Add iterations in sequence
         documents = ["doc-1", "doc-2", "doc-3", "doc-4", "doc-5"]
         for i, doc_id in enumerate(documents, 1):
+            iteration = AssemblyIteration(document_id=doc_id)
             updated_assembly = await assembly_repo.add_iteration(
-                sample_assembly.assembly_id, doc_id
+                sample_assembly.assembly_id, iteration
             )
             assert len(updated_assembly.iterations) == i
             assert updated_assembly.iterations[i - 1].iteration_id == i
@@ -303,11 +311,13 @@ class TestMinioAssemblyRepositoryEdgeCases:
         await assembly_repo.save(sample_assembly)
 
         # Add some iterations
+        iteration1 = AssemblyIteration(document_id="doc-1")
         await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "doc-1"
+            sample_assembly.assembly_id, iteration1
         )
+        iteration2 = AssemblyIteration(document_id="doc-2")
         await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "doc-2"
+            sample_assembly.assembly_id, iteration2
         )
 
         # Update assembly status
@@ -315,13 +325,15 @@ class TestMinioAssemblyRepositoryEdgeCases:
         await assembly_repo.save(sample_assembly)
 
         # Add more iterations
+        iteration3 = AssemblyIteration(document_id="doc-3")
         await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "doc-3"
+            sample_assembly.assembly_id, iteration3
         )
 
         # Try to add duplicate (should be idempotent)
+        iteration_duplicate = AssemblyIteration(document_id="doc-2")
         updated_assembly = await assembly_repo.add_iteration(
-            sample_assembly.assembly_id, "doc-2"
+            sample_assembly.assembly_id, iteration_duplicate
         )
 
         # Verify final state
@@ -366,9 +378,14 @@ class TestMinioAssemblyRepositoryRoundtrip:
         await assembly_repo.save(assembly)
 
         # Add iterations as assembly progresses
-        assembly = await assembly_repo.add_iteration(assembly_id, "output-1")
-        assembly = await assembly_repo.add_iteration(assembly_id, "output-2")
-        assembly = await assembly_repo.add_iteration(assembly_id, "output-3")
+        iteration1 = AssemblyIteration(document_id="output-1")
+        assembly = await assembly_repo.add_iteration(assembly_id, iteration1)
+
+        iteration2 = AssemblyIteration(document_id="output-2")
+        assembly = await assembly_repo.add_iteration(assembly_id, iteration2)
+
+        iteration3 = AssemblyIteration(document_id="output-3")
+        assembly = await assembly_repo.add_iteration(assembly_id, iteration3)
 
         # Complete assembly
         assembly.status = AssemblyStatus.COMPLETED
@@ -407,12 +424,11 @@ class TestMinioAssemblyRepositoryRoundtrip:
 
         # Add iterations using repository method (they will have default empty
         # scorecard_results)
-        assembly = await assembly_repo.add_iteration(
-            assembly_id, "output-doc-1"
-        )
-        assembly = await assembly_repo.add_iteration(
-            assembly_id, "output-doc-2"
-        )
+        iteration1 = AssemblyIteration(document_id="output-doc-1")
+        assembly = await assembly_repo.add_iteration(assembly_id, iteration1)
+
+        iteration2 = AssemblyIteration(document_id="output-doc-2")
+        assembly = await assembly_repo.add_iteration(assembly_id, iteration2)
 
         # Retrieve and verify iterations have empty scorecard_results by
         # default
@@ -433,3 +449,55 @@ class TestMinioAssemblyRepositoryRoundtrip:
         # Verify JSON serialization includes the scorecard_results field
         json_str = iteration1.model_dump_json()
         assert "scorecard_results" in json_str
+
+    @pytest.mark.asyncio
+    async def test_assembly_with_scorecard_results(
+        self, assembly_repo: MinioAssemblyRepository
+    ) -> None:
+        """Test assembly iterations with actual scorecard results are
+        properly persisted."""
+        # Create and save initial assembly
+        assembly_id = await assembly_repo.generate_id()
+        assembly = Assembly(
+            assembly_id=assembly_id,
+            assembly_specification_id="spec-scorecard-test",
+            input_document_id="input-scorecard-doc",
+            status=AssemblyStatus.IN_PROGRESS,
+            iterations=[],
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await assembly_repo.save(assembly)
+
+        # Add iteration with scorecard results
+        iteration_with_scores = AssemblyIteration(
+            document_id="output-doc-with-scores",
+            scorecard_results=[
+                ("accuracy-query", 87),
+                ("completeness-query", 94),
+                ("format-query", 82),
+            ],
+        )
+        assembly = await assembly_repo.add_iteration(
+            assembly_id, iteration_with_scores
+        )
+
+        # Retrieve and verify scorecard results were saved
+        retrieved = await assembly_repo.get(assembly_id)
+        assert retrieved is not None
+        assert len(retrieved.iterations) == 1
+
+        # Verify scorecard results
+        iteration = retrieved.iterations[0]
+        assert len(iteration.scorecard_results) == 3
+        assert iteration.scorecard_results == [
+            ("accuracy-query", 87),
+            ("completeness-query", 94),
+            ("format-query", 82),
+        ]
+
+        # Verify individual scores
+        scores_dict = dict(iteration.scorecard_results)
+        assert scores_dict["accuracy-query"] == 87
+        assert scores_dict["completeness-query"] == 94
+        assert scores_dict["format-query"] == 82
