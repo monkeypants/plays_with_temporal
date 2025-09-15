@@ -1,0 +1,10 @@
+{
+  "name": "Extract Agenda Items",
+  "knowledge_service_id": "anthropic-ks",
+  "prompt": "Analyze the meeting transcript and extract the main agenda items discussed, including the topic, key discussion points, and any decisions made for each item.",
+  "query_metadata": {
+    "max_tokens": 2000,
+    "temperature": 0.1
+  },
+  "assistant_prompt": "Analyzing the meeting transcript, here are the agenda items with discussion points and decisions that conform to the provided schema, without surrounding ```json ... ``` markers:"
+}

@@ -293,74 +293,67 @@ async def create_knowledge_service_config() -> KnowledgeServiceConfig:
 
 async def create_knowledge_service_queries(
     knowledge_service_id: str,
+    assembly_spec: AssemblySpecification,
+    base_path: Path = None,
 ) -> list[KnowledgeServiceQuery]:
-    """Create knowledge service queries for meeting minutes parts."""
+    """Create knowledge service queries by loading from external files.
+
+    Args:
+        knowledge_service_id: ID of the knowledge service to use
+        assembly_spec: Assembly specification containing query IDs
+        base_path: Base path for resolving relative query file paths
+    """
 
     queries = []
 
-    # Query for meeting info extraction
-    meeting_info_query = KnowledgeServiceQuery(
-        query_id="extract-meeting-info-query",
-        name="Extract Meeting Information",
-        knowledge_service_id=knowledge_service_id,
-        prompt=(
-            "Extract the basic meeting information from this transcript "
-            "including title, date, times, and attendees with their roles."
-        ),
-        query_metadata={"max_tokens": 1000, "temperature": 0.1},
-        assistant_prompt=(
-            "Looking at the meeting transcript, here's the extracted meeting "
-            "information that conforms to the provided schema, without "
-            "surrounding ```json ... ``` markers:"
-        ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
-    queries.append(meeting_info_query)
+    if base_path is None:
+        base_path = Path(__file__).parent
 
-    # Query for agenda items extraction
-    agenda_query = KnowledgeServiceQuery(
-        query_id="extract-agenda-items-query",
-        name="Extract Agenda Items",
-        knowledge_service_id=knowledge_service_id,
-        prompt=(
-            "Analyze the meeting transcript and extract the main agenda "
-            "items discussed, including the topic, key discussion points, "
-            "and any decisions made for each item."
-        ),
-        query_metadata={"max_tokens": 2000, "temperature": 0.1},
-        assistant_prompt=(
-            "Analyzing the meeting transcript, here are the agenda items "
-            "with discussion points and decisions that conform to the "
-            "provided schema, without surrounding ```json ... ``` markers:"
-        ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
-    queries.append(agenda_query)
+    # Define mapping from query IDs to their external file paths
+    query_file_mapping = {
+        "extract-meeting-info-query": "data/extract_meeting_info_query.json",
+        "extract-agenda-items-query": "data/extract_agenda_items_query.json",
+        "extract-action-items-query": "data/extract_action_items_query.json",
+    }
 
-    # Query for action items extraction
-    action_query = KnowledgeServiceQuery(
-        query_id="extract-action-items-query",
-        name="Extract Action Items",
-        knowledge_service_id=knowledge_service_id,
-        prompt=(
-            "Identify and extract action items from the meeting transcript, "
-            "including the specific task, who it's assigned to, any "
-            "mentioned due dates, and the priority level."
-        ),
-        query_metadata={"max_tokens": 1500, "temperature": 0.1},
-        assistant_prompt=(
-            "From the meeting transcript, here are the identified action "
-            "items formatted according to the provided schema, without "
-            "surrounding ```json ... ``` markers:"
-        ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
-    queries.append(action_query)
+    # Load queries from external files based on what's referenced in spec
+    for (
+        schema_pointer,
+        query_id,
+    ) in assembly_spec.knowledge_service_queries.items():
+        if query_id not in query_file_mapping:
+            raise ValueError(
+                f"No query file mapping found for query ID: {query_id}"
+            )
 
-    print(f"✅ Created {len(queries)} knowledge service queries:")
+        query_file_path = query_file_mapping[query_id]
+        query_file = base_path / query_file_path
+
+        if not query_file.exists():
+            raise FileNotFoundError(f"Query file not found: {query_file}")
+
+        # Load query data from file
+        with query_file.open("r", encoding="utf-8") as f:
+            query_data = json.load(f)
+
+        # Create query object with the correct ID expected by the use case
+        query = KnowledgeServiceQuery(
+            query_id=query_id,
+            name=query_data["name"],
+            knowledge_service_id=knowledge_service_id,
+            prompt=query_data["prompt"],
+            query_metadata=query_data.get("query_metadata", {}),
+            assistant_prompt=query_data.get("assistant_prompt", ""),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        queries.append(query)
+        print(f"   📋 Loaded query from {query_file.name} -> {query_id}")
+
+    print(
+        f"✅ Created {len(queries)} knowledge service queries from external "
+        f"files:"
+    )
     for query in queries:
         print(f"   - {query.name} ({query.query_id})")
 
@@ -390,8 +383,15 @@ async def setup_repositories_with_test_data(
     document = await create_meeting_transcript_document(input_file_path)
     assembly_spec = await create_assembly_specification(spec_file_path)
     ks_config = await create_knowledge_service_config()
+
+    # Determine base path for query files
+    if spec_file_path:
+        base_path = Path(spec_file_path).parent
+    else:
+        base_path = Path(__file__).parent
+
     ks_queries = await create_knowledge_service_queries(
-        ks_config.knowledge_service_id
+        ks_config.knowledge_service_id, assembly_spec, base_path
     )
 
     # Store test data in repositories

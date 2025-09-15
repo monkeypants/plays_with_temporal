@@ -1,0 +1,10 @@
+{
+  "name": "Extract Meeting Information",
+  "knowledge_service_id": "anthropic-ks",
+  "prompt": "Extract the basic meeting information from this transcript including title, date, times, and attendees with their roles.",
+  "query_metadata": {
+    "max_tokens": 1000,
+    "temperature": 0.1
+  },
+  "assistant_prompt": "Looking at the meeting transcript, here's the extracted meeting information that conforms to the provided schema, without surrounding ```json ... ``` markers:"
+}

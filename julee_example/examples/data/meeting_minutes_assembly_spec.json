@@ -34,18 +34,11 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "name",
-                "role"
-              ]
+              "required": ["name", "role"]
             }
           }
         },
-        "required": [
-          "title",
-          "date",
-          "attendees"
-        ]
+        "required": ["title", "date", "attendees"]
       },
       "agenda_items": {
         "type": "array",
@@ -68,9 +61,7 @@
               }
             }
           },
-          "required": [
-            "topic"
-          ]
+          "required": ["topic"]
         }
       },
       "action_items": {
@@ -89,24 +80,14 @@
             },
             "priority": {
               "type": "string",
-              "enum": [
-                "low",
-                "medium",
-                "high"
-              ]
+              "enum": ["low", "medium", "high"]
             }
           },
-          "required": [
-            "task",
-            "assignee"
-          ]
+          "required": ["task", "assignee"]
         }
       }
     },
-    "required": [
-      "meeting_info",
-      "agenda_items"
-    ]
+    "required": ["meeting_info", "agenda_items"]
   },
   "knowledge_service_queries": {
     "/properties/meeting_info": "extract-meeting-info-query",
