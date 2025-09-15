@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Example script to test AssembleDataUseCase with Anthropic knowledge services.
+Example script to test ExtractAssembleDataUseCase with Anthropic knowledge
+services.
 
 This script demonstrates how to:
 1. Create test documents and assembly specifications
 2. Set up knowledge service configurations and queries
-3. Use the AssembleDataUseCase to assemble documents using Anthropic
+3. Use the ExtractAssembleDataUseCase to extract and assemble documents using
+   Anthropic
 4. View the complete assembled output
 
 Requirements:
@@ -44,7 +46,9 @@ from julee_example.repositories.memory import (
     MemoryKnowledgeServiceConfigRepository,
     MemoryKnowledgeServiceQueryRepository,
 )
-from julee_example.use_cases.assemble_data import AssembleDataUseCase
+from julee_example.use_cases.extract_assemble_data import (
+    ExtractAssembleDataUseCase,
+)
 
 
 def setup_logging() -> None:
@@ -386,7 +390,8 @@ async def setup_repositories_with_test_data() -> tuple:
 
 
 async def test_assemble_data_use_case() -> None:
-    """Test the AssembleDataUseCase with Anthropic knowledge services."""
+    """Test the ExtractAssembleDataUseCase with Anthropic knowledge
+    services."""
 
     # Check for API key
     if not os.getenv("ANTHROPIC_API_KEY"):
@@ -394,7 +399,10 @@ async def test_assemble_data_use_case() -> None:
         print("   Set it with: export ANTHROPIC_API_KEY='your-api-key-here'")
         return
 
-    print("🚀 Testing AssembleDataUseCase with Anthropic knowledge services")
+    print(
+        "🚀 Testing ExtractAssembleDataUseCase with Anthropic knowledge "
+        "services"
+    )
     print("=" * 70)
 
     try:
@@ -410,7 +418,7 @@ async def test_assemble_data_use_case() -> None:
         ) = await setup_repositories_with_test_data()
 
         # Create the use case
-        use_case = AssembleDataUseCase(
+        use_case = ExtractAssembleDataUseCase(
             document_repo=document_repo,
             assembly_repo=assembly_repo,
             assembly_specification_repo=assembly_spec_repo,
@@ -418,7 +426,7 @@ async def test_assemble_data_use_case() -> None:
             knowledge_service_config_repo=ks_config_repo,
         )
 
-        print("\n✅ Created AssembleDataUseCase with all repositories")
+        print("\n✅ Created ExtractAssembleDataUseCase with all repositories")
 
         # Execute the assembly
         print("\n🔄 Executing assembly...")
@@ -430,18 +438,19 @@ async def test_assemble_data_use_case() -> None:
             assembly_specification_id=assembly_spec.assembly_specification_id,
         )
 
-        print("\n✅ Assembly completed successfully!")
+        print("✅ Assembly completed successfully!")
         print(f"   Assembly ID: {assembly_result.assembly_id}")
         print(f"   Status: {assembly_result.status.value}")
-        print(f"   Iterations: {len(assembly_result.iterations)}")
+        print(
+            f"   Assembled document ID: "
+            f"{assembly_result.assembled_document_id}"
+        )
 
-        if assembly_result.iterations:
-            iteration = assembly_result.iterations[0]
-            print(f"   First iteration ID: {iteration.iteration_id}")
-            print(f"   Assembled document ID: {iteration.document_id}")
-
+        if assembly_result.assembled_document_id:
             # Retrieve and display the assembled document
-            assembled_doc = await document_repo.get(iteration.document_id)
+            assembled_doc = await document_repo.get(
+                assembly_result.assembled_document_id
+            )
             if assembled_doc:
                 print("\n📄 Assembled Document Details:")
                 print(f"   Document ID: {assembled_doc.document_id}")
@@ -493,8 +502,8 @@ async def test_assemble_data_use_case() -> None:
 
 async def main() -> None:
     """Main function to run the test."""
-    print("Anthropic Assemble Data Use Case Test")
-    print("====================================")
+    print("Anthropic Extract Assemble Data Use Case Test")
+    print("=============================================")
 
     # Setup logging first
     setup_logging()

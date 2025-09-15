@@ -3,8 +3,8 @@ Assembly repository interface defined as Protocol for the Capture, Extract,
 Assemble, Publish workflow.
 
 This module defines the core assembly storage and retrieval repository
-protocol. The repository works with Assembly domain objects that contain
-AssemblyIteration entities within the aggregate boundary.
+protocol. The repository works with Assembly domain objects that produce
+a single assembled document.
 
 All repository operations follow the same principles as the sample
 repositories:
@@ -18,12 +18,10 @@ repositories:
   explicitly delegated to activities.
 
 - **Domain Objects**: Methods accept and return domain objects or primitives,
-  never framework-specific types. Assembly aggregate contains all its
-  iterations.
+  never framework-specific types. Assembly contains its assembled document ID.
 
-- **Aggregate Boundary**: Repository handles the complete Assembly aggregate
-  including all contained AssemblyIteration entities. No separate iteration
-  repository is needed.
+- **Aggregate Boundary**: Repository handles Assembly entities with their
+  assembled document references.
 
 In Temporal workflow contexts, these protocols are implemented by workflow
 stubs that delegate to activities for durability and proper error handling.
@@ -35,52 +33,46 @@ from julee_example.domain import Assembly
 
 @runtime_checkable
 class AssemblyRepository(Protocol):
-    """Handles assembly aggregate storage and retrieval operations.
+    """Handles assembly storage and retrieval operations.
 
-    This repository manages Assembly aggregates within the Capture, Extract,
-    Assemble, Publish workflow. Each Assembly contains its complete iteration
-    history as entities within the aggregate boundary.
+    This repository manages Assembly entities within the Capture, Extract,
+    Assemble, Publish workflow. Each Assembly produces a single assembled
+    document.
     """
 
     async def get(self, assembly_id: str) -> Optional[Assembly]:
-        """Retrieve an assembly with all its iterations.
+        """Retrieve an assembly by ID.
 
         Args:
             assembly_id: Unique assembly identifier
 
         Returns:
-            Assembly aggregate with all iterations if found, None otherwise
+            Assembly if found, None otherwise
 
         Implementation Notes:
         - Must be idempotent: multiple calls return same result
         - Should handle missing assemblies gracefully (return None)
-        - Must load complete aggregate including all AssemblyIteration
-          entities
-        - Iterations should be ordered by iteration_id
+        - Loads complete assembly including assembled_document_id
         """
         ...
 
-    async def add_iteration(
+    async def set_assembled_document(
         self, assembly_id: str, document_id: str
     ) -> Assembly:
-        """Add a new iteration to an assembly and persist it immediately.
+        """Set the assembled document for an assembly.
 
         Args:
-            assembly_id: ID of the assembly to add iteration to
-            document_id: ID of the document produced by this iteration
+            assembly_id: ID of the assembly to update
+            document_id: ID of the assembled document produced
 
         Returns:
-            Updated Assembly aggregate with the new iteration included
+            Updated Assembly with the assembled_document_id set
 
         Implementation Notes:
-        - Idempotent: only creates iteration if document_id is not already
-          used in an iteration
-        - If document_id is same as another iteration, returns assembly
-          unchanged
-        - Automatically assigns sequential iteration_id (1, 2, 3...)
-        - Persists the iteration immediately, not on assembly save
+        - Idempotent: setting same document_id multiple times is safe
         - Updates assembly's updated_at timestamp
-        - Returns complete assembly with new iteration in iterations list
+        - Updates assembly status to COMPLETED if successful
+        - Returns complete assembly with assembled_document_id set
         """
         ...
 
@@ -88,13 +80,12 @@ class AssemblyRepository(Protocol):
         """Save assembly metadata (status, updated_at, etc.).
 
         Args:
-            assembly: Assembly aggregate
+            assembly: Assembly entity
 
         Implementation Notes:
         - Must be idempotent: saving same assembly state is safe
         - Should update the updated_at timestamp
-        - Saves only Assembly root entity fields (not iterations)
-        - Iterations are persisted via add_iteration(), not here
+        - Saves complete assembly including assembled_document_id
         - Use for status changes, metadata updates, etc.
         """
         ...

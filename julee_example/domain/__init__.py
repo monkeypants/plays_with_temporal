@@ -5,7 +5,7 @@ from .assembly_specification import (
     AssemblySpecificationStatus,
     KnowledgeServiceQuery,
 )
-from .assembly import Assembly, AssemblyStatus, AssemblyIteration
+from .assembly import Assembly, AssemblyStatus
 from .knowledge_service_config import KnowledgeServiceConfig
 
 __all__ = [
@@ -17,6 +17,5 @@ __all__ = [
     "KnowledgeServiceQuery",
     "Assembly",
     "AssemblyStatus",
-    "AssemblyIteration",
     "KnowledgeServiceConfig",
 ]

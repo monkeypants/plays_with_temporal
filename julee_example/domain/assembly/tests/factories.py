@@ -8,32 +8,12 @@ Assembly domain objects with sensible defaults.
 from datetime import datetime, timezone
 from factory.base import Factory
 from factory.faker import Faker
-from factory.declarations import LazyFunction, Sequence
-from factory import LazyAttribute
+from factory.declarations import LazyFunction
 
 from julee_example.domain.assembly import (
     Assembly,
     AssemblyStatus,
-    AssemblyIteration,
 )
-
-
-class AssemblyIterationFactory(Factory):
-    """Factory for creating AssemblyIteration instances with sensible
-    test defaults."""
-
-    class Meta:
-        model = AssemblyIteration
-
-    # Core iteration identification
-    iteration_id = Sequence(
-        lambda n: n + 1
-    )  # Sequential integers: 1, 2, 3, ...
-    document_id = Faker("uuid4")
-
-    # Timestamps
-    created_at = LazyFunction(lambda: datetime.now(timezone.utc))
-    updated_at = LazyFunction(lambda: datetime.now(timezone.utc))
 
 
 class AssemblyFactory(Factory):
@@ -49,7 +29,7 @@ class AssemblyFactory(Factory):
 
     # Assembly process tracking
     status = AssemblyStatus.PENDING
-    iterations = LazyAttribute(lambda obj: [])
+    assembled_document_id = None
 
     # Timestamps
     created_at = LazyFunction(lambda: datetime.now(timezone.utc))

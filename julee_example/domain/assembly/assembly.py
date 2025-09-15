@@ -6,19 +6,16 @@ assembly process/instance in the CEAP workflow system.
 
 An Assembly represents a specific instance of assembling a document using
 an AssemblySpecification. It links an input document with an assembly
-specification and tracks multiple assembly iterations as the document
-is refined through the assembly process.
+specification and produces a single assembled document as output.
 
 All domain models use Pydantic BaseModel for validation, serialization,
 and type safety, following the patterns established in the sample project.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime, timezone
 from enum import Enum
-
-from .assembly_iteration import AssemblyIteration
 
 
 class AssemblyStatus(str, Enum):
@@ -33,16 +30,12 @@ class AssemblyStatus(str, Enum):
 
 class Assembly(BaseModel):
     """Assembly process that links a specification with input document and
-    tracks iterations.
+    produces an assembled document.
 
     An Assembly represents a specific instance of the document assembly
     process. It connects an AssemblySpecification (which defines how to
-    assemble) with an input Document (what to assemble from) and tracks
-    multiple AssemblyIterations (attempts at creating the assembled output).
-
-    This allows for iterative refinement of assembled documents, where each
-    iteration can build upon previous attempts or incorporate new information
-    or feedback.
+    assemble) with an input Document (what to assemble from) and produces
+    a single assembled document as output.
     """
 
     # Core assembly identification
@@ -58,9 +51,9 @@ class Assembly(BaseModel):
 
     # Assembly process tracking
     status: AssemblyStatus = AssemblyStatus.PENDING
-    iterations: List[AssemblyIteration] = Field(
-        default_factory=list,
-        description="List of assembly iterations/attempts",
+    assembled_document_id: Optional[str] = Field(
+        default=None,
+        description="ID of the assembled document produced by this assembly",
     )
 
     # Assembly metadata
@@ -91,3 +84,12 @@ class Assembly(BaseModel):
         if not v or not v.strip():
             raise ValueError("Input document ID cannot be empty")
         return v.strip()
+
+    @field_validator("assembled_document_id")
+    @classmethod
+    def assembled_document_id_must_not_be_empty_if_provided(
+        cls, v: Optional[str]
+    ) -> Optional[str]:
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("Assembled document ID cannot be empty string")
+        return v.strip() if v else None
