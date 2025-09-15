@@ -8,14 +8,14 @@ model using table-based tests. It covers:
 - JSON serialization behavior
 - Field validation for required fields
 - Assembly status transitions
-- Assembly iteration management
+- Assembly document output management
 
 Design decisions documented:
 - Assemblies must have all required fields (assembly_id,
   assembly_specification_id, input_document_id)
 - All ID fields must be non-empty and non-whitespace
 - Status defaults to PENDING
-- Iterations list defaults to empty list
+- assembled_document_id is optional and defaults to None
 - Timestamps are automatically set with timezone-aware defaults
 """
 
@@ -24,7 +24,7 @@ import json
 from datetime import datetime, timezone
 
 from julee_example.domain import Assembly, AssemblyStatus
-from .factories import AssemblyFactory, AssemblyIterationFactory
+from .factories import AssemblyFactory
 
 
 class TestAssemblyInstantiation:
@@ -74,7 +74,7 @@ class TestAssemblyInstantiation:
             )
             assert assembly.input_document_id == input_document_id.strip()
             assert assembly.status == AssemblyStatus.PENDING  # Default
-            assert assembly.iterations == []  # Default empty list
+            assert assembly.assembled_document_id is None  # Default None
             assert assembly.created_at is not None
             assert assembly.updated_at is not None
         else:
@@ -94,19 +94,12 @@ class TestAssemblySerialization:
 
     def test_assembly_json_serialization(self) -> None:
         """Test that Assembly serializes to JSON correctly."""
-        iteration1 = AssemblyIterationFactory.build(
-            iteration_id=1, document_id="output-1"
-        )
-        iteration2 = AssemblyIterationFactory.build(
-            iteration_id=2, document_id="output-2"
-        )
-
         assembly = AssemblyFactory.build(
             assembly_id="test-assembly-123",
             assembly_specification_id="spec-456",
             input_document_id="input-789",
             status=AssemblyStatus.IN_PROGRESS,
-            iterations=[iteration1, iteration2],
+            assembled_document_id="output-doc-456",
         )
 
         json_str = assembly.model_dump_json()
@@ -122,23 +115,16 @@ class TestAssemblySerialization:
         assert json_data["status"] == assembly.status.value
         assert "created_at" in json_data
         assert "updated_at" in json_data
-
-        # Iterations should be serialized as nested objects
-        assert len(json_data["iterations"]) == 2
-        assert json_data["iterations"][0]["iteration_id"] == 1
-        assert json_data["iterations"][0]["document_id"] == "output-1"
-        assert json_data["iterations"][1]["iteration_id"] == 2
-        assert json_data["iterations"][1]["document_id"] == "output-2"
+        assert (
+            json_data["assembled_document_id"]
+            == assembly.assembled_document_id
+        )
 
     def test_assembly_json_roundtrip(self) -> None:
         """Test that Assembly can be serialized to JSON and deserialized
         back."""
-        original_assembly = AssemblyFactory.build()
-        iteration = AssemblyIterationFactory.build(
-            assembly_id=original_assembly.assembly_id
-        )
         original_assembly = AssemblyFactory.build(
-            assembly_id=original_assembly.assembly_id, iterations=[iteration]
+            assembled_document_id="test-output-doc"
         )
 
         # Serialize to JSON
@@ -162,19 +148,10 @@ class TestAssemblySerialization:
             == original_assembly.input_document_id
         )
         assert reconstructed_assembly.status == original_assembly.status
-        assert len(reconstructed_assembly.iterations) == len(
-            original_assembly.iterations
+        assert (
+            reconstructed_assembly.assembled_document_id
+            == original_assembly.assembled_document_id
         )
-
-        if original_assembly.iterations:
-            assert (
-                reconstructed_assembly.iterations[0].iteration_id
-                == original_assembly.iterations[0].iteration_id
-            )
-            assert (
-                reconstructed_assembly.iterations[0].document_id
-                == original_assembly.iterations[0].document_id
-            )
 
 
 class TestAssemblyDefaults:
@@ -189,7 +166,7 @@ class TestAssemblyDefaults:
         )
 
         assert minimal_assembly.status == AssemblyStatus.PENDING
-        assert minimal_assembly.iterations == []
+        assert minimal_assembly.assembled_document_id is None
         assert minimal_assembly.created_at is not None
         assert minimal_assembly.updated_at is not None
         assert isinstance(minimal_assembly.created_at, datetime)
@@ -200,9 +177,6 @@ class TestAssemblyDefaults:
 
     def test_assembly_custom_values(self) -> None:
         """Test Assembly with custom non-default values."""
-        custom_iteration = AssemblyIterationFactory.build(
-            assembly_id="custom-id"
-        )
         custom_created_at = datetime(
             2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc
         )
@@ -215,14 +189,13 @@ class TestAssemblyDefaults:
             assembly_specification_id="custom-spec",
             input_document_id="custom-doc",
             status=AssemblyStatus.COMPLETED,
-            iterations=[custom_iteration],
+            assembled_document_id="custom-output-doc",
             created_at=custom_created_at,
             updated_at=custom_updated_at,
         )
 
         assert custom_assembly.status == AssemblyStatus.COMPLETED
-        assert len(custom_assembly.iterations) == 1
-        assert custom_assembly.iterations[0] == custom_iteration
+        assert custom_assembly.assembled_document_id == "custom-output-doc"
         assert custom_assembly.created_at == custom_created_at
         assert custom_assembly.updated_at == custom_updated_at
 
@@ -333,45 +306,65 @@ class TestAssemblyFieldValidation:
         assert assembly.input_document_id == "trim-doc"
 
 
-class TestAssemblyIterationManagement:
-    """Test Assembly iteration list management."""
+class TestAssemblyDocumentManagement:
+    """Test Assembly assembled document management."""
 
-    def test_empty_iterations_list(self) -> None:
-        """Test Assembly with empty iterations list."""
-        assembly = AssemblyFactory.build(iterations=[])
-        assert assembly.iterations == []
+    def test_default_assembled_document_id(self) -> None:
+        """Test Assembly with default assembled_document_id (None)."""
+        assembly = AssemblyFactory.build(assembled_document_id=None)
+        assert assembly.assembled_document_id is None
 
-    def test_single_iteration(self) -> None:
-        """Test Assembly with single iteration."""
-        iteration = AssemblyIterationFactory.build(assembly_id="asm-id")
-        assembly = AssemblyFactory.build(iterations=[iteration])
-
-        assert len(assembly.iterations) == 1
-        assert assembly.iterations[0] == iteration
-
-    def test_multiple_iterations(self) -> None:
-        """Test Assembly with multiple iterations."""
-        iteration1 = AssemblyIterationFactory.build(iteration_id=1)
-        iteration2 = AssemblyIterationFactory.build(iteration_id=2)
-        iteration3 = AssemblyIterationFactory.build(iteration_id=3)
-
+    def test_valid_assembled_document_id(self) -> None:
+        """Test Assembly with valid assembled document ID."""
         assembly = AssemblyFactory.build(
-            iterations=[iteration1, iteration2, iteration3]
+            assembled_document_id="output-doc-123"
         )
+        assert assembly.assembled_document_id == "output-doc-123"
 
-        assert len(assembly.iterations) == 3
-        assert assembly.iterations[0].iteration_id == 1
-        assert assembly.iterations[1].iteration_id == 2
-        assert assembly.iterations[2].iteration_id == 3
+    def test_assembled_document_id_validation(self) -> None:
+        """Test assembled_document_id field validation."""
+        # Valid cases
+        valid_assembly = Assembly(
+            assembly_id="asm-id",
+            assembly_specification_id="spec-id",
+            input_document_id="doc-id",
+            assembled_document_id="valid-output-doc",
+        )
+        assert valid_assembly.assembled_document_id == "valid-output-doc"
 
-    def test_iterations_maintain_order(self) -> None:
-        """Test that iterations maintain their order in the list."""
-        iterations = [
-            AssemblyIterationFactory.build(iteration_id=i + 1)
-            for i in range(5)
-        ]
+        # None is valid
+        none_assembly = Assembly(
+            assembly_id="asm-id",
+            assembly_specification_id="spec-id",
+            input_document_id="doc-id",
+            assembled_document_id=None,
+        )
+        assert none_assembly.assembled_document_id is None
 
-        assembly = AssemblyFactory.build(iterations=iterations)
+        # Invalid cases - empty string
+        with pytest.raises(Exception):
+            Assembly(
+                assembly_id="asm-id",
+                assembly_specification_id="spec-id",
+                input_document_id="doc-id",
+                assembled_document_id="",
+            )
 
-        for i, iteration in enumerate(assembly.iterations):
-            assert iteration.iteration_id == i + 1
+        # Invalid cases - whitespace only
+        with pytest.raises(Exception):
+            Assembly(
+                assembly_id="asm-id",
+                assembly_specification_id="spec-id",
+                input_document_id="doc-id",
+                assembled_document_id="   ",
+            )
+
+    def test_assembled_document_id_trimming(self) -> None:
+        """Test that assembled_document_id is properly trimmed."""
+        assembly = Assembly(
+            assembly_id="asm-id",
+            assembly_specification_id="spec-id",
+            input_document_id="doc-id",
+            assembled_document_id="  trim-output-doc  ",
+        )
+        assert assembly.assembled_document_id == "trim-output-doc"

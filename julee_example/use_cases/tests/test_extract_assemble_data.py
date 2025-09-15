@@ -1,9 +1,9 @@
 """
-Tests for AssembleDataUseCase.
+Tests for ExtractAssembleDataUseCase.
 
-This module provides tests for the data assembly use case, ensuring proper
-business logic execution and repository interaction patterns following
-the Clean Architecture principles.
+This module provides tests for the extract and assemble data use case,
+ensuring proper business logic execution and repository interaction patterns
+following the Clean Architecture principles.
 """
 
 import io
@@ -13,7 +13,9 @@ import pytest
 from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 
-from julee_example.use_cases.assemble_data import AssembleDataUseCase
+from julee_example.use_cases.extract_assemble_data import (
+    ExtractAssembleDataUseCase,
+)
 from julee_example.domain import (
     Assembly,
     AssemblyStatus,
@@ -37,11 +39,11 @@ from julee_example.services.knowledge_service.memory import (
     MemoryKnowledgeService,
 )
 from julee_example.services.knowledge_service import QueryResult
-import julee_example.use_cases.assemble_data
+import julee_example.use_cases.extract_assemble_data
 
 
-class TestAssembleDataUseCase:
-    """Test cases for AssembleDataUseCase business logic."""
+class TestExtractAssembleDataUseCase:
+    """Test cases for ExtractAssembleDataUseCase business logic."""
 
     @pytest.fixture
     def document_repo(self) -> MemoryDocumentRepository:
@@ -82,9 +84,10 @@ class TestAssembleDataUseCase:
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
         knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
-    ) -> AssembleDataUseCase:
-        """Create AssembleDataUseCase with memory repository dependencies."""
-        return AssembleDataUseCase(
+    ) -> ExtractAssembleDataUseCase:
+        """Create ExtractAssembleDataUseCase with memory repository
+        dependencies."""
+        return ExtractAssembleDataUseCase(
             document_repo=document_repo,
             assembly_repo=assembly_repo,
             assembly_specification_repo=assembly_specification_repo,
@@ -94,7 +97,7 @@ class TestAssembleDataUseCase:
 
     @pytest.mark.asyncio
     async def test_assemble_data_fails_without_specification(
-        self, use_case: AssembleDataUseCase
+        self, use_case: ExtractAssembleDataUseCase
     ) -> None:
         """Test that assemble_data fails when specification doesn't exist."""
         # Arrange
@@ -113,7 +116,7 @@ class TestAssembleDataUseCase:
     @pytest.mark.asyncio
     async def test_assemble_data_fails_without_document(
         self,
-        use_case: AssembleDataUseCase,
+        use_case: ExtractAssembleDataUseCase,
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
     ) -> None:
         """Test that assemble_data fails when document doesn't exist."""
@@ -143,7 +146,7 @@ class TestAssembleDataUseCase:
     @pytest.mark.asyncio
     async def test_assemble_data_propagates_id_generation_error(
         self,
-        use_case: AssembleDataUseCase,
+        use_case: ExtractAssembleDataUseCase,
         assembly_repo: MemoryAssemblyRepository,
     ) -> None:
         """Test that ID generation errors are properly propagated."""
@@ -167,7 +170,7 @@ class TestAssembleDataUseCase:
     @pytest.mark.asyncio
     async def test_full_assembly_workflow_success(
         self,
-        use_case: AssembleDataUseCase,
+        use_case: ExtractAssembleDataUseCase,
         document_repo: MemoryDocumentRepository,
         assembly_repo: MemoryAssemblyRepository,
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
@@ -276,11 +279,9 @@ class TestAssembleDataUseCase:
 
         # Patch the factory to return our configured memory service
         original_factory = (
-            julee_example.use_cases.assemble_data.knowledge_service_factory
+            julee_example.use_cases.extract_assemble_data.knowledge_service_factory
         )
-        julee_example.use_cases.assemble_data.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
-        )
+        julee_example.use_cases.extract_assemble_data.knowledge_service_factory = lambda config: memory_service  # type: ignore[assignment]  # noqa: E501
 
         try:
             # Act
@@ -291,19 +292,16 @@ class TestAssembleDataUseCase:
         finally:
             # Restore original factory
             (
-                julee_example.use_cases.assemble_data.knowledge_service_factory
+                julee_example.use_cases.extract_assemble_data.knowledge_service_factory
             ) = original_factory
 
         # Assert
         assert isinstance(result, Assembly)
         assert result.status == AssemblyStatus.COMPLETED
-        assert len(result.iterations) == 1
-        assert result.iterations[0].iteration_id == 1
+        assert result.assembled_document_id is not None
 
         # Verify assembled document was created
-        assembled_doc = await document_repo.get(
-            result.iterations[0].document_id
-        )
+        assembled_doc = await document_repo.get(result.assembled_document_id)
         assert assembled_doc is not None
         assert assembled_doc.status == DocumentStatus.ASSEMBLED
 
@@ -322,7 +320,7 @@ class TestAssembleDataUseCase:
 
     @pytest.mark.asyncio
     async def test_assembly_fails_when_specification_not_found(
-        self, use_case: AssembleDataUseCase
+        self, use_case: ExtractAssembleDataUseCase
     ) -> None:
         """Test that assembly fails when specification is not found."""
         # Act & Assert
@@ -337,7 +335,7 @@ class TestAssembleDataUseCase:
     @pytest.mark.asyncio
     async def test_assembly_fails_when_document_not_found(
         self,
-        use_case: AssembleDataUseCase,
+        use_case: ExtractAssembleDataUseCase,
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
     ) -> None:
         """Test that assembly fails when input document is not found."""
@@ -364,7 +362,7 @@ class TestAssembleDataUseCase:
     @pytest.mark.asyncio
     async def test_assembly_fails_when_query_not_found(
         self,
-        use_case: AssembleDataUseCase,
+        use_case: ExtractAssembleDataUseCase,
         document_repo: MemoryDocumentRepository,
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
     ) -> None:
@@ -414,7 +412,7 @@ class TestAssembleDataUseCase:
     @pytest.mark.asyncio
     async def test_assembly_fails_with_invalid_json_schema(
         self,
-        use_case: AssembleDataUseCase,
+        use_case: ExtractAssembleDataUseCase,
         document_repo: MemoryDocumentRepository,
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
@@ -496,11 +494,9 @@ class TestAssembleDataUseCase:
 
         # Patch the factory to return our configured memory service
         original_factory = (
-            julee_example.use_cases.assemble_data.knowledge_service_factory
+            julee_example.use_cases.extract_assemble_data.knowledge_service_factory
         )
-        julee_example.use_cases.assemble_data.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
-        )
+        julee_example.use_cases.extract_assemble_data.knowledge_service_factory = lambda config: memory_service  # type: ignore[assignment]  # noqa: E501
 
         try:
             # Act & Assert
@@ -515,5 +511,5 @@ class TestAssembleDataUseCase:
         finally:
             # Restore original factory
             (
-                julee_example.use_cases.assemble_data.knowledge_service_factory
+                julee_example.use_cases.extract_assemble_data.knowledge_service_factory
             ) = original_factory

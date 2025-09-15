@@ -40,12 +40,13 @@ from .decorators import try_use_case_step
 logger = logging.getLogger(__name__)
 
 
-class AssembleDataUseCase:
+class ExtractAssembleDataUseCase:
     """
-    Use case for assembling documents according to specifications.
+    Use case for extracting and assembling documents according to
+    specifications.
 
-    This class orchestrates the business logic for the "Assemble" phase
-    of the Capture, Extract, Assemble, Publish workflow while remaining
+    This class orchestrates the business logic for the "Extract, Assemble"
+    phases of the Capture, Extract, Assemble, Publish workflow while remaining
     framework-agnostic. It depends only on repository protocols, not
     concrete implementations.
 
@@ -73,7 +74,7 @@ class AssembleDataUseCase:
         knowledge_service_query_repo: KnowledgeServiceQueryRepository,
         knowledge_service_config_repo: KnowledgeServiceConfigRepository,
     ) -> None:
-        """Initialize data assembly use case.
+        """Initialize extract and assemble data use case.
 
         Args:
             document_repo: Repository for document operations
@@ -123,7 +124,7 @@ class AssembleDataUseCase:
         This method orchestrates the core assembly workflow:
         1. Generates a unique assembly ID
         2. Retrieves the assembly specification
-        3. Stores the initial assembly (without iterations) in the repository
+        3. Stores the initial assembly in the repository
         4. Retrieves all knowledge service queries needed for the assembly
         5. Retrieves all knowledge service instances needed for the assembly
         6. Retrieves the input document and registers it with knowledge
@@ -160,13 +161,13 @@ class AssembleDataUseCase:
             assembly_specification_id
         )
 
-        # Step 3: Store the initial assembly (without iterations)
+        # Step 3: Store the initial assembly
         assembly = Assembly(
             assembly_id=assembly_id,
             assembly_specification_id=assembly_specification_id,
             input_document_id=document_id,
             status=AssemblyStatus.IN_PROGRESS,
-            iterations=[],
+            assembled_document_id=None,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
@@ -204,27 +205,22 @@ class AssembleDataUseCase:
                 knowledge_services,
             )
 
-            # Step 8: Add the iteration to the assembly and return
-            assembly_with_iteration = await self.assembly_repo.add_iteration(
-                assembly_id, assembled_document_id
+            # Step 8: Set the assembled document and return
+            assembly_with_document = (
+                await self.assembly_repo.set_assembled_document(
+                    assembly_id, assembled_document_id
+                )
             )
-
-            # Update status to completed
-            assembly_with_iteration.status = AssemblyStatus.COMPLETED
-            assembly_with_iteration.updated_at = datetime.now(timezone.utc)
-            await self.assembly_repo.save(assembly_with_iteration)
 
             logger.info(
                 "Assembly completed successfully",
                 extra={
                     "assembly_id": assembly_id,
-                    "iterations_count": len(
-                        assembly_with_iteration.iterations
-                    ),
+                    "assembled_document_id": assembled_document_id,
                 },
             )
 
-            return assembly_with_iteration
+            return assembly_with_document
 
         except Exception as e:
             # Mark assembly as failed
