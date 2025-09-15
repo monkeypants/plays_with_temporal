@@ -278,10 +278,11 @@ class TestExtractAssembleDataUseCase:
         )
 
         # Patch the factory to return our configured memory service
-        original_factory = (
-            julee_example.use_cases.extract_assemble_data.knowledge_service_factory
+        module = julee_example.use_cases.extract_assemble_data
+        original_factory = module.knowledge_service_factory
+        module.knowledge_service_factory = (
+            lambda config: memory_service  # type: ignore[assignment]
         )
-        julee_example.use_cases.extract_assemble_data.knowledge_service_factory = lambda config: memory_service  # type: ignore[assignment]  # noqa: E501
 
         try:
             # Act
@@ -291,9 +292,7 @@ class TestExtractAssembleDataUseCase:
             )
         finally:
             # Restore original factory
-            (
-                julee_example.use_cases.extract_assemble_data.knowledge_service_factory
-            ) = original_factory
+            module.knowledge_service_factory = original_factory
 
         # Assert
         assert isinstance(result, Assembly)
@@ -493,10 +492,11 @@ class TestExtractAssembleDataUseCase:
         )
 
         # Patch the factory to return our configured memory service
-        original_factory = (
-            julee_example.use_cases.extract_assemble_data.knowledge_service_factory
+        module = julee_example.use_cases.extract_assemble_data
+        original_factory = module.knowledge_service_factory
+        module.knowledge_service_factory = (
+            lambda config: memory_service  # type: ignore[assignment]
         )
-        julee_example.use_cases.extract_assemble_data.knowledge_service_factory = lambda config: memory_service  # type: ignore[assignment]  # noqa: E501
 
         try:
             # Act & Assert
@@ -510,6 +510,4 @@ class TestExtractAssembleDataUseCase:
                 )
         finally:
             # Restore original factory
-            (
-                julee_example.use_cases.extract_assemble_data.knowledge_service_factory
-            ) = original_factory
+            module.knowledge_service_factory = original_factory
