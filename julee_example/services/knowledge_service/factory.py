@@ -65,6 +65,7 @@ def knowledge_service_factory(
     )
 
     # Route to appropriate implementation based on service_api
+    service: KnowledgeService
     if knowledge_service_config.service_api == ServiceApi.ANTHROPIC:
         service = AnthropicKnowledgeService(knowledge_service_config)
     else:
