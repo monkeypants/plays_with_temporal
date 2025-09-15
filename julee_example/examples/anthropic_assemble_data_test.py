@@ -49,6 +49,7 @@ import sys
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 import multihash
 
 from julee_example.domain import (
@@ -149,7 +150,7 @@ Examples:
 
 
 async def create_meeting_transcript_document(
-    input_file_path: str = None,
+    input_file_path: Optional[str] = None,
 ) -> Document:
     """Create a meeting transcript document for testing.
 
@@ -214,7 +215,7 @@ async def create_meeting_transcript_document(
 
 
 async def create_assembly_specification(
-    spec_file_path: str = None,
+    spec_file_path: Optional[str] = None,
 ) -> AssemblySpecification:
     """Create an assembly specification for meeting minutes.
 
@@ -294,7 +295,7 @@ async def create_knowledge_service_config() -> KnowledgeServiceConfig:
 async def create_knowledge_service_queries(
     knowledge_service_id: str,
     assembly_spec: AssemblySpecification,
-    base_path: Path = None,
+    base_path: Optional[Path] = None,
 ) -> list[KnowledgeServiceQuery]:
     """Create knowledge service queries by loading from external files.
 
@@ -361,7 +362,8 @@ async def create_knowledge_service_queries(
 
 
 async def setup_repositories_with_test_data(
-    input_file_path: str = None, spec_file_path: str = None
+    input_file_path: Optional[str] = None,
+    spec_file_path: Optional[str] = None,
 ) -> tuple:
     """Set up in-memory repositories with test data.
 
@@ -416,7 +418,8 @@ async def setup_repositories_with_test_data(
 
 
 async def test_assemble_data_use_case(
-    input_file_path: str = None, spec_file_path: str = None
+    input_file_path: Optional[str] = None,
+    spec_file_path: Optional[str] = None,
 ) -> None:
     """Test the ExtractAssembleDataUseCase with Anthropic knowledge
     services.
