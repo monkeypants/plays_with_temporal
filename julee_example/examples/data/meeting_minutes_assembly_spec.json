@@ -1,0 +1,97 @@
+{
+  "name": "Meeting Minutes Assembly",
+  "applicability": "Meeting transcripts from video conferences or in-person meetings that need to be structured into formal meeting minutes",
+  "jsonschema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Meeting Minutes",
+    "type": "object",
+    "properties": {
+      "meeting_info": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              },
+              "required": ["name", "role"]
+            }
+          }
+        },
+        "required": ["title", "date", "attendees"]
+      },
+      "agenda_items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string"
+            },
+            "discussion_points": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "decisions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["topic"]
+        }
+      },
+      "action_items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "task": {
+              "type": "string"
+            },
+            "assignee": {
+              "type": "string"
+            },
+            "due_date": {
+              "type": "string"
+            },
+            "priority": {
+              "type": "string",
+              "enum": ["low", "medium", "high"]
+            }
+          },
+          "required": ["task", "assignee"]
+        }
+      }
+    },
+    "required": ["meeting_info", "agenda_items"]
+  },
+  "knowledge_service_queries": {
+    "/properties/meeting_info": "extract-meeting-info-query",
+    "/properties/agenda_items": "extract-agenda-items-query",
+    "/properties/action_items": "extract-action-items-query"
+  }
+}

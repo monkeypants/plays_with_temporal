@@ -1,0 +1,10 @@
+{
+  "name": "Extract Action Items",
+  "knowledge_service_id": "anthropic-ks",
+  "prompt": "Identify and extract action items from the meeting transcript, including the specific task, who it's assigned to, any mentioned due dates, and the priority level.",
+  "query_metadata": {
+    "max_tokens": 1500,
+    "temperature": 0.1
+  },
+  "assistant_prompt": "From the meeting transcript, here are the identified action items formatted according to the provided schema, without surrounding ```json ... ``` markers:"
+}

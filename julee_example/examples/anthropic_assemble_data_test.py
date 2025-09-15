@@ -4,29 +4,52 @@ Example script to test ExtractAssembleDataUseCase with Anthropic knowledge
 services.
 
 This script demonstrates how to:
-1. Create test documents and assembly specifications
-2. Set up knowledge service configurations and queries
-3. Use the ExtractAssembleDataUseCase to extract and assemble documents using
+1. Load a meeting transcript from an external data file
+2. Create test documents and assembly specifications
+3. Set up knowledge service configurations and queries
+4. Use the ExtractAssembleDataUseCase to extract and assemble documents using
    Anthropic
-4. View the complete assembled output
+5. View the complete assembled output
 
 Requirements:
     - Set ANTHROPIC_API_KEY environment variable
     - Install dependencies: pip install anthropic
+    - Meeting transcript data file: data/meeting_transcript.txt
 
 Usage:
     export ANTHROPIC_API_KEY="your-api-key-here"
+    python -m julee_example.examples.anthropic_assemble_data_test [options]
+
+Options:
+    --input, -i FILE    Use custom meeting transcript file
+    --spec, -s FILE     Use custom assembly specification file
+    --help, -h          Show help message
+
+Examples:
+    # Use default meeting transcript and schema
     python -m julee_example.examples.anthropic_assemble_data_test
+
+    # Use custom transcript file
+    python -m julee_example.examples.anthropic_assemble_data_test \
+        --input my_meeting.txt
+
+    # Use custom assembly specification file
+    python -m julee_example.examples.anthropic_assemble_data_test \
+        --spec my_assembly_spec.json
 """
 
+import argparse
 import asyncio
 import hashlib
-import io
+
 import json
 import logging
 import os
+import sys
 import traceback
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
 import multihash
 
 from julee_example.domain import (
@@ -53,7 +76,7 @@ from julee_example.use_cases.extract_assemble_data import (
 
 def setup_logging() -> None:
     """Configure logging to see debug output."""
-    log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+    log_level = os.environ.get("LOG_LEVEL", "ERROR").upper()
 
     # Validate log level
     numeric_level = getattr(logging, log_level, None)
@@ -70,68 +93,111 @@ def setup_logging() -> None:
     print(f"Logging configured at {log_level} level")
 
 
-async def create_meeting_transcript_document() -> Document:
-    """Create a meeting transcript document for testing."""
-    # Create sample meeting transcript
-    content_text = """Meeting Transcript - Q1 Planning Session
-Date: March 15, 2024
-Time: 2:00 PM - 3:30 PM
-Attendees: Sarah Chen (Product Manager), Mike Rodriguez (Engineering Lead),
-Lisa Wang (Designer)
+def parse_arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description=(
+            "Test ExtractAssembleDataUseCase with Anthropic knowledge "
+            "services"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Use default meeting transcript and schema
+  python -m julee_example.examples.anthropic_assemble_data_test
 
-Sarah: Thanks everyone for joining. Let's kick off our Q1 planning. Mike,
-can you give us an update on the current sprint?
+  # Use custom transcript file
+  python -m julee_example.examples.anthropic_assemble_data_test \
+      --input my_meeting.txt
 
-Mike: Sure, we're about 80% through sprint 23. We've completed the user
-authentication module and are working on the data migration tool. Should be
-done by Friday.
+  # Use custom assembly specification file
+  python -m julee_example.examples.anthropic_assemble_data_test \
+      --spec my_assembly_spec.json
 
-Lisa: Great! I've finished the mockups for the dashboard redesign. Sarah,
-have you had a chance to review them?
+  # Use both custom transcript and specification
+  python -m julee_example.examples.anthropic_assemble_data_test \
+      --input my_meeting.txt --spec my_assembly_spec.json
 
-Sarah: Yes, they look fantastic. I especially like the new navigation
-structure. When can we start implementation?
+  # Enable debug logging
+  LOG_LEVEL=DEBUG \
+      python -m julee_example.examples.anthropic_assemble_data_test
+        """,
+    )
 
-Mike: I'd estimate 2 weeks for the frontend work, plus another week for
-backend API changes.
+    parser.add_argument(
+        "--input",
+        "-i",
+        type=str,
+        help=(
+            "Path to meeting transcript file "
+            "(default: data/meeting_transcript.txt)"
+        ),
+        default=None,
+    )
 
-Lisa: I can start on the component library updates while Mike works on the
-APIs.
+    parser.add_argument(
+        "--spec",
+        "-s",
+        type=str,
+        help=(
+            "Path to assembly specification file "
+            "(default: data/meeting_minutes_assembly_spec.json)"
+        ),
+        default=None,
+    )
 
-Sarah: Perfect. Let's also discuss the customer feedback integration. We had
-47 responses to our survey.
+    return parser.parse_args()
 
-Mike: The main requests were for better reporting and mobile optimization.
 
-Sarah: Those should be our next priorities then. Lisa, can you start
-sketching mobile designs?
+async def create_meeting_transcript_document(
+    input_file_path: Optional[str] = None,
+) -> Document:
+    """Create a meeting transcript document for testing.
 
-Lisa: Absolutely. I'll have initial concepts by next Tuesday.
+    Loads the meeting transcript content from the specified file or the
+    default data/meeting_transcript.txt to make the demo more modular and
+    allow for easy customization of the input content.
 
-Sarah: Excellent. Any other items?
+    Args:
+        input_file_path: Optional path to transcript file. If None, uses
+            default.
+    """
+    # Load meeting transcript from specified file or default
+    if input_file_path:
+        transcript_file = Path(input_file_path)
+    else:
+        current_dir = Path(__file__).parent
+        transcript_file = current_dir / "data" / "meeting_transcript.txt"
 
-Mike: Just a heads up that we'll need to schedule downtime for the database
-migration, probably next weekend.
-
-Sarah: Noted. I'll coordinate with support. Meeting adjourned at 3:30 PM."""
-
-    # Create content stream from text
-    content_bytes = content_text.encode("utf-8")
-    content_stream = ContentStream(io.BytesIO(content_bytes))
+    if not transcript_file.exists():
+        raise FileNotFoundError(
+            f"Meeting transcript file not found: {transcript_file}"
+        )
 
     # Generate document ID
     document_id = f"meeting-transcript-{int(datetime.now().timestamp())}"
 
-    # Create document with proper multihash
-    sha256_hash = hashlib.sha256(content_bytes).digest()
+    # Open file and create content stream directly from file handle
+    file_handle = transcript_file.open("rb")
+    content_stream = ContentStream(file_handle)
+
+    # Calculate size and multihash from file
+    file_size = transcript_file.stat().st_size
+
+    # Calculate multihash using streaming approach
+    sha256_hasher = hashlib.sha256()
+    with transcript_file.open("rb") as f:
+        while chunk := f.read(8192):  # Read in 8KB chunks
+            sha256_hasher.update(chunk)
+    sha256_hash = sha256_hasher.digest()
     mhash = multihash.encode(sha256_hash, multihash.SHA2_256)
     proper_multihash = str(mhash.hex())
 
     document = Document(
         document_id=document_id,
-        original_filename="meeting_transcript.txt",
+        original_filename=transcript_file.name,
         content_type="text/plain",
-        size_bytes=len(content_bytes),
+        size_bytes=file_size,
         content_multihash=proper_multihash,
         status=DocumentStatus.CAPTURED,
         content=content_stream,
@@ -143,95 +209,48 @@ Sarah: Noted. I'll coordinate with support. Meeting adjourned at 3:30 PM."""
     print(f"   Filename: {document.original_filename}")
     print(f"   Size: {document.size_bytes} bytes")
     print(f"   Content type: {document.content_type}")
+    print(f"   Loaded from: {transcript_file}")
 
     return document
 
 
-async def create_assembly_specification() -> AssemblySpecification:
-    """Create an assembly specification for meeting minutes."""
+async def create_assembly_specification(
+    spec_file_path: Optional[str] = None,
+) -> AssemblySpecification:
+    """Create an assembly specification for meeting minutes.
 
-    # Define JSON schema for meeting minutes
-    meeting_minutes_schema = {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Meeting Minutes",
-        "type": "object",
-        "properties": {
-            "meeting_info": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "date": {"type": "string", "format": "date"},
-                    "start_time": {"type": "string"},
-                    "end_time": {"type": "string"},
-                    "attendees": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": "string"},
-                                "role": {"type": "string"},
-                            },
-                            "required": ["name", "role"],
-                        },
-                    },
-                },
-                "required": ["title", "date", "attendees"],
-            },
-            "agenda_items": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "topic": {"type": "string"},
-                        "discussion_points": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                        },
-                        "decisions": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                        },
-                    },
-                    "required": ["topic"],
-                },
-            },
-            "action_items": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "task": {"type": "string"},
-                        "assignee": {"type": "string"},
-                        "due_date": {"type": "string"},
-                        "priority": {
-                            "type": "string",
-                            "enum": ["low", "medium", "high"],
-                        },
-                    },
-                    "required": ["task", "assignee"],
-                },
-            },
-        },
-        "required": ["meeting_info", "agenda_items"],
-    }
+    Args:
+        spec_file_path: Optional path to assembly specification file. If None,
+            uses default.
+    """
+
+    # Load assembly specification from specified file or default
+    if spec_file_path:
+        spec_file = Path(spec_file_path)
+    else:
+        current_dir = Path(__file__).parent
+        spec_file = (
+            current_dir / "data" / "meeting_minutes_assembly_spec.json"
+        )
+
+    if not spec_file.exists():
+        raise FileNotFoundError(
+            f"Assembly specification file not found: {spec_file}"
+        )
+
+    with spec_file.open("r", encoding="utf-8") as f:
+        spec_data = json.load(f)
 
     # Create assembly specification
     spec_id = f"meeting-minutes-spec-{int(datetime.now().timestamp())}"
 
     assembly_spec = AssemblySpecification(
         assembly_specification_id=spec_id,
-        name="Meeting Minutes Assembly",
-        applicability=(
-            "Meeting transcripts from video conferences or in-person "
-            "meetings that need to be structured into formal meeting minutes"
-        ),
-        jsonschema=meeting_minutes_schema,
+        name=spec_data["name"],
+        applicability=spec_data["applicability"],
+        jsonschema=spec_data["jsonschema"],
         status=AssemblySpecificationStatus.ACTIVE,
-        knowledge_service_queries={
-            "/properties/meeting_info": "extract-meeting-info-query",
-            "/properties/agenda_items": "extract-agenda-items-query",
-            "/properties/action_items": "extract-action-items-query",
-        },
+        knowledge_service_queries=spec_data["knowledge_service_queries"],
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -242,6 +261,7 @@ async def create_assembly_specification() -> AssemblySpecification:
     print(
         f"   Query mappings: {len(assembly_spec.knowledge_service_queries)}"
     )
+    print(f"   Loaded from: {spec_file}")
 
     return assembly_spec
 
@@ -274,82 +294,83 @@ async def create_knowledge_service_config() -> KnowledgeServiceConfig:
 
 async def create_knowledge_service_queries(
     knowledge_service_id: str,
+    assembly_spec: AssemblySpecification,
+    base_path: Optional[Path] = None,
 ) -> list[KnowledgeServiceQuery]:
-    """Create knowledge service queries for meeting minutes parts."""
+    """Create knowledge service queries by loading from external files.
+
+    Args:
+        knowledge_service_id: ID of the knowledge service to use
+        assembly_spec: Assembly specification containing query IDs
+        base_path: Base path for resolving relative query file paths
+    """
 
     queries = []
 
-    # Query for meeting info extraction
-    meeting_info_query = KnowledgeServiceQuery(
-        query_id="extract-meeting-info-query",
-        name="Extract Meeting Information",
-        knowledge_service_id=knowledge_service_id,
-        prompt=(
-            "Extract the basic meeting information from this transcript "
-            "including title, date, times, and attendees with their roles."
-        ),
-        query_metadata={"max_tokens": 1000, "temperature": 0.1},
-        assistant_prompt=(
-            "Looking at the meeting transcript, here's the extracted meeting "
-            "information that conforms to the provided schema, without "
-            "surrounding ```json ... ``` markers:"
-        ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
-    queries.append(meeting_info_query)
+    if base_path is None:
+        base_path = Path(__file__).parent
 
-    # Query for agenda items extraction
-    agenda_query = KnowledgeServiceQuery(
-        query_id="extract-agenda-items-query",
-        name="Extract Agenda Items",
-        knowledge_service_id=knowledge_service_id,
-        prompt=(
-            "Analyze the meeting transcript and extract the main agenda "
-            "items discussed, including the topic, key discussion points, "
-            "and any decisions made for each item."
-        ),
-        query_metadata={"max_tokens": 2000, "temperature": 0.1},
-        assistant_prompt=(
-            "Analyzing the meeting transcript, here are the agenda items "
-            "with discussion points and decisions that conform to the "
-            "provided schema, without surrounding ```json ... ``` markers:"
-        ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
-    queries.append(agenda_query)
+    # Define mapping from query IDs to their external file paths
+    query_file_mapping = {
+        "extract-meeting-info-query": "data/extract_meeting_info_query.json",
+        "extract-agenda-items-query": "data/extract_agenda_items_query.json",
+        "extract-action-items-query": "data/extract_action_items_query.json",
+    }
 
-    # Query for action items extraction
-    action_query = KnowledgeServiceQuery(
-        query_id="extract-action-items-query",
-        name="Extract Action Items",
-        knowledge_service_id=knowledge_service_id,
-        prompt=(
-            "Identify and extract action items from the meeting transcript, "
-            "including the specific task, who it's assigned to, any "
-            "mentioned due dates, and the priority level."
-        ),
-        query_metadata={"max_tokens": 1500, "temperature": 0.1},
-        assistant_prompt=(
-            "From the meeting transcript, here are the identified action "
-            "items formatted according to the provided schema, without "
-            "surrounding ```json ... ``` markers:"
-        ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
-    queries.append(action_query)
+    # Load queries from external files based on what's referenced in spec
+    for (
+        schema_pointer,
+        query_id,
+    ) in assembly_spec.knowledge_service_queries.items():
+        if query_id not in query_file_mapping:
+            raise ValueError(
+                f"No query file mapping found for query ID: {query_id}"
+            )
 
-    print(f"✅ Created {len(queries)} knowledge service queries:")
+        query_file_path = query_file_mapping[query_id]
+        query_file = base_path / query_file_path
+
+        if not query_file.exists():
+            raise FileNotFoundError(f"Query file not found: {query_file}")
+
+        # Load query data from file
+        with query_file.open("r", encoding="utf-8") as f:
+            query_data = json.load(f)
+
+        # Create query object with the correct ID expected by the use case
+        query = KnowledgeServiceQuery(
+            query_id=query_id,
+            name=query_data["name"],
+            knowledge_service_id=knowledge_service_id,
+            prompt=query_data["prompt"],
+            query_metadata=query_data.get("query_metadata", {}),
+            assistant_prompt=query_data.get("assistant_prompt", ""),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        queries.append(query)
+        print(f"   📋 Loaded query from {query_file.name} -> {query_id}")
+
+    print(
+        f"✅ Created {len(queries)} knowledge service queries from external "
+        f"files:"
+    )
     for query in queries:
         print(f"   - {query.name} ({query.query_id})")
 
     return queries
 
 
-async def setup_repositories_with_test_data() -> tuple:
-    """Set up in-memory repositories with test data."""
+async def setup_repositories_with_test_data(
+    input_file_path: Optional[str] = None,
+    spec_file_path: Optional[str] = None,
+) -> tuple:
+    """Set up in-memory repositories with test data.
+
+    Args:
+        input_file_path: Optional path to transcript file to load.
+        spec_file_path: Optional path to assembly specification file to load.
+    """
 
     print("\n🔧 Setting up repositories with test data...")
 
@@ -361,11 +382,18 @@ async def setup_repositories_with_test_data() -> tuple:
     ks_query_repo = MemoryKnowledgeServiceQueryRepository()
 
     # Create test data
-    document = await create_meeting_transcript_document()
-    assembly_spec = await create_assembly_specification()
+    document = await create_meeting_transcript_document(input_file_path)
+    assembly_spec = await create_assembly_specification(spec_file_path)
     ks_config = await create_knowledge_service_config()
+
+    # Determine base path for query files
+    if spec_file_path:
+        base_path = Path(spec_file_path).parent
+    else:
+        base_path = Path(__file__).parent
+
     ks_queries = await create_knowledge_service_queries(
-        ks_config.knowledge_service_id
+        ks_config.knowledge_service_id, assembly_spec, base_path
     )
 
     # Store test data in repositories
@@ -389,9 +417,17 @@ async def setup_repositories_with_test_data() -> tuple:
     )
 
 
-async def test_assemble_data_use_case() -> None:
+async def test_assemble_data_use_case(
+    input_file_path: Optional[str] = None,
+    spec_file_path: Optional[str] = None,
+) -> None:
     """Test the ExtractAssembleDataUseCase with Anthropic knowledge
-    services."""
+    services.
+
+    Args:
+        input_file_path: Optional path to transcript file to load.
+        spec_file_path: Optional path to assembly specification file to load.
+    """
 
     # Check for API key
     if not os.getenv("ANTHROPIC_API_KEY"):
@@ -403,6 +439,14 @@ async def test_assemble_data_use_case() -> None:
         "🚀 Testing ExtractAssembleDataUseCase with Anthropic knowledge "
         "services"
     )
+    if input_file_path:
+        print(f"📁 Using input file: {input_file_path}")
+    else:
+        print("📁 Using default meeting transcript")
+    if spec_file_path:
+        print(f"📄 Using assembly spec file: {spec_file_path}")
+    else:
+        print("📄 Using default assembly specification")
     print("=" * 70)
 
     try:
@@ -415,7 +459,9 @@ async def test_assemble_data_use_case() -> None:
             ks_query_repo,
             document,
             assembly_spec,
-        ) = await setup_repositories_with_test_data()
+        ) = await setup_repositories_with_test_data(
+            input_file_path, spec_file_path
+        )
 
         # Create the use case
         use_case = ExtractAssembleDataUseCase(
@@ -505,11 +551,34 @@ async def main() -> None:
     print("Anthropic Extract Assemble Data Use Case Test")
     print("=============================================")
 
+    # Parse command-line arguments
+    args = parse_arguments()
+
+    # Validate input file if provided
+    if args.input:
+        input_path = Path(args.input)
+        if not input_path.exists():
+            print(f"❌ Error: Input file does not exist: {args.input}")
+            sys.exit(1)
+        if not input_path.is_file():
+            print(f"❌ Error: Input path is not a file: {args.input}")
+            sys.exit(1)
+
+    # Validate assembly specification file if provided
+    if args.spec:
+        spec_path = Path(args.spec)
+        if not spec_path.exists():
+            print(f"❌ Error: Assembly spec file does not exist: {args.spec}")
+            sys.exit(1)
+        if not spec_path.is_file():
+            print(f"❌ Error: Assembly spec path is not a file: {args.spec}")
+            sys.exit(1)
+
     # Setup logging first
     setup_logging()
     print()
 
-    await test_assemble_data_use_case()
+    await test_assemble_data_use_case(args.input, args.spec)
 
 
 if __name__ == "__main__":
