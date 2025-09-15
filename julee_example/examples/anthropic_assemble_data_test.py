@@ -129,8 +129,8 @@ Examples:
         "-i",
         type=str,
         help=(
-            "Path to meeting transcript file "
-            "(default: data/meeting_transcript.txt)"
+            "Path to meeting transcript file. Can be absolute or relative "
+            "to script directory (default: data/meeting_transcript.txt)"
         ),
         default=None,
     )
@@ -140,7 +140,8 @@ Examples:
         "-s",
         type=str,
         help=(
-            "Path to assembly specification file "
+            "Path to assembly specification file. Can be absolute or "
+            "relative to script directory "
             "(default: data/meeting_minutes_assembly_spec.json)"
         ),
         default=None,
@@ -310,24 +311,13 @@ async def create_knowledge_service_queries(
     if base_path is None:
         base_path = Path(__file__).parent
 
-    # Define mapping from query IDs to their external file paths
-    query_file_mapping = {
-        "extract-meeting-info-query": "data/extract_meeting_info_query.json",
-        "extract-agenda-items-query": "data/extract_agenda_items_query.json",
-        "extract-action-items-query": "data/extract_action_items_query.json",
-    }
-
     # Load queries from external files based on what's referenced in spec
     for (
         schema_pointer,
         query_id,
     ) in assembly_spec.knowledge_service_queries.items():
-        if query_id not in query_file_mapping:
-            raise ValueError(
-                f"No query file mapping found for query ID: {query_id}"
-            )
-
-        query_file_path = query_file_mapping[query_id]
+        # Dynamically construct filename from query ID
+        query_file_path = f"{query_id}.json"
         query_file = base_path / query_file_path
 
         if not query_file.exists():
@@ -390,7 +380,7 @@ async def setup_repositories_with_test_data(
     if spec_file_path:
         base_path = Path(spec_file_path).parent
     else:
-        base_path = Path(__file__).parent
+        base_path = Path(__file__).parent / "data"
 
     ks_queries = await create_knowledge_service_queries(
         ks_config.knowledge_service_id, assembly_spec, base_path
@@ -554,31 +544,43 @@ async def main() -> None:
     # Parse command-line arguments
     args = parse_arguments()
 
+    # Get script directory for resolving relative paths
+    script_dir = Path(__file__).parent
+
+    # Convert relative paths to be relative to script directory
+    input_file_path = args.input
+    if input_file_path and not Path(input_file_path).is_absolute():
+        input_file_path = str(script_dir / input_file_path)
+
+    spec_file_path = args.spec
+    if spec_file_path and not Path(spec_file_path).is_absolute():
+        spec_file_path = str(script_dir / spec_file_path)
+
     # Validate input file if provided
-    if args.input:
-        input_path = Path(args.input)
+    if input_file_path:
+        input_path = Path(input_file_path)
         if not input_path.exists():
-            print(f"❌ Error: Input file does not exist: {args.input}")
+            print(f"❌ Error: Input file does not exist: {input_path}")
             sys.exit(1)
         if not input_path.is_file():
-            print(f"❌ Error: Input path is not a file: {args.input}")
+            print(f"❌ Error: Input path is not a file: {input_path}")
             sys.exit(1)
 
     # Validate assembly specification file if provided
-    if args.spec:
-        spec_path = Path(args.spec)
+    if spec_file_path:
+        spec_path = Path(spec_file_path)
         if not spec_path.exists():
-            print(f"❌ Error: Assembly spec file does not exist: {args.spec}")
+            print(f"❌ Error: Assembly spec file does not exist: {spec_path}")
             sys.exit(1)
         if not spec_path.is_file():
-            print(f"❌ Error: Assembly spec path is not a file: {args.spec}")
+            print(f"❌ Error: Assembly spec path is not a file: {spec_path}")
             sys.exit(1)
 
     # Setup logging first
     setup_logging()
     print()
 
-    await test_assemble_data_use_case(args.input, args.spec)
+    await test_assemble_data_use_case(input_file_path, spec_file_path)
 
 
 if __name__ == "__main__":

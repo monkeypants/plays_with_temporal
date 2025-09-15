@@ -1,0 +1,10 @@
+{
+  "name": "Extract Session Info",
+  "knowledge_service_id": "anthropic-ks",
+  "prompt": "Extract the basic session info from this transcript including the session title, date, times, and crew members with their roles. Use skateboarding terminology where appropriate - think of this as a skateboarding IT project team session.",
+  "query_metadata": {
+    "max_tokens": 1000,
+    "temperature": 0.1
+  },
+  "assistant_prompt": "Yo! Looking at this session transcript, here's the extracted session info that conforms to the provided schema, presented with some sk8r style, without surrounding ```json ... ``` markers:"
+}
