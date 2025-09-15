@@ -22,7 +22,7 @@ Usage:
 
 Options:
     --input, -i FILE    Use custom meeting transcript file
-    --schema, -s FILE   Use custom JSON schema file
+    --spec, -s FILE     Use custom assembly specification file
     --help, -h          Show help message
 
 Examples:
@@ -33,9 +33,9 @@ Examples:
     python -m julee_example.examples.anthropic_assemble_data_test \
         --input my_meeting.txt
 
-    # Use custom schema file
+    # Use custom assembly specification file
     python -m julee_example.examples.anthropic_assemble_data_test \
-        --schema my_schema.json
+        --spec my_assembly_spec.json
 """
 
 import argparse
@@ -109,13 +109,13 @@ Examples:
   python -m julee_example.examples.anthropic_assemble_data_test \
       --input my_meeting.txt
 
-  # Use custom schema file
+  # Use custom assembly specification file
   python -m julee_example.examples.anthropic_assemble_data_test \
-      --schema my_schema.json
+      --spec my_assembly_spec.json
 
-  # Use both custom transcript and schema
+  # Use both custom transcript and specification
   python -m julee_example.examples.anthropic_assemble_data_test \
-      --input my_meeting.txt --schema my_schema.json
+      --input my_meeting.txt --spec my_assembly_spec.json
 
   # Enable debug logging
   LOG_LEVEL=DEBUG \
@@ -135,12 +135,12 @@ Examples:
     )
 
     parser.add_argument(
-        "--schema",
+        "--spec",
         "-s",
         type=str,
         help=(
-            "Path to JSON schema file "
-            "(default: data/meeting_minutes_schema.json)"
+            "Path to assembly specification file "
+            "(default: data/meeting_minutes_assembly_spec.json)"
         ),
         default=None,
     )
@@ -214,46 +214,42 @@ async def create_meeting_transcript_document(
 
 
 async def create_assembly_specification(
-    schema_file_path: str = None,
+    spec_file_path: str = None,
 ) -> AssemblySpecification:
     """Create an assembly specification for meeting minutes.
 
     Args:
-        schema_file_path: Optional path to schema file. If None, uses default.
+        spec_file_path: Optional path to assembly specification file. If None,
+            uses default.
     """
 
-    # Load JSON schema from specified file or default
-    if schema_file_path:
-        schema_file = Path(schema_file_path)
+    # Load assembly specification from specified file or default
+    if spec_file_path:
+        spec_file = Path(spec_file_path)
     else:
         current_dir = Path(__file__).parent
-        schema_file = current_dir / "data" / "meeting_minutes_schema.json"
-
-    if not schema_file.exists():
-        raise FileNotFoundError(
-            f"Meeting minutes schema file not found: {schema_file}"
+        spec_file = (
+            current_dir / "data" / "meeting_minutes_assembly_spec.json"
         )
 
-    with schema_file.open("r", encoding="utf-8") as f:
-        meeting_minutes_schema = json.load(f)
+    if not spec_file.exists():
+        raise FileNotFoundError(
+            f"Assembly specification file not found: {spec_file}"
+        )
+
+    with spec_file.open("r", encoding="utf-8") as f:
+        spec_data = json.load(f)
 
     # Create assembly specification
     spec_id = f"meeting-minutes-spec-{int(datetime.now().timestamp())}"
 
     assembly_spec = AssemblySpecification(
         assembly_specification_id=spec_id,
-        name="Meeting Minutes Assembly",
-        applicability=(
-            "Meeting transcripts from video conferences or in-person "
-            "meetings that need to be structured into formal meeting minutes"
-        ),
-        jsonschema=meeting_minutes_schema,
+        name=spec_data["name"],
+        applicability=spec_data["applicability"],
+        jsonschema=spec_data["jsonschema"],
         status=AssemblySpecificationStatus.ACTIVE,
-        knowledge_service_queries={
-            "/properties/meeting_info": "extract-meeting-info-query",
-            "/properties/agenda_items": "extract-agenda-items-query",
-            "/properties/action_items": "extract-action-items-query",
-        },
+        knowledge_service_queries=spec_data["knowledge_service_queries"],
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -264,7 +260,7 @@ async def create_assembly_specification(
     print(
         f"   Query mappings: {len(assembly_spec.knowledge_service_queries)}"
     )
-    print(f"   Loaded schema from: {schema_file}")
+    print(f"   Loaded from: {spec_file}")
 
     return assembly_spec
 
@@ -372,13 +368,13 @@ async def create_knowledge_service_queries(
 
 
 async def setup_repositories_with_test_data(
-    input_file_path: str = None, schema_file_path: str = None
+    input_file_path: str = None, spec_file_path: str = None
 ) -> tuple:
     """Set up in-memory repositories with test data.
 
     Args:
         input_file_path: Optional path to transcript file to load.
-        schema_file_path: Optional path to schema file to load.
+        spec_file_path: Optional path to assembly specification file to load.
     """
 
     print("\n🔧 Setting up repositories with test data...")
@@ -392,7 +388,7 @@ async def setup_repositories_with_test_data(
 
     # Create test data
     document = await create_meeting_transcript_document(input_file_path)
-    assembly_spec = await create_assembly_specification(schema_file_path)
+    assembly_spec = await create_assembly_specification(spec_file_path)
     ks_config = await create_knowledge_service_config()
     ks_queries = await create_knowledge_service_queries(
         ks_config.knowledge_service_id
@@ -420,14 +416,14 @@ async def setup_repositories_with_test_data(
 
 
 async def test_assemble_data_use_case(
-    input_file_path: str = None, schema_file_path: str = None
+    input_file_path: str = None, spec_file_path: str = None
 ) -> None:
     """Test the ExtractAssembleDataUseCase with Anthropic knowledge
     services.
 
     Args:
         input_file_path: Optional path to transcript file to load.
-        schema_file_path: Optional path to schema file to load.
+        spec_file_path: Optional path to assembly specification file to load.
     """
 
     # Check for API key
@@ -444,10 +440,10 @@ async def test_assemble_data_use_case(
         print(f"📁 Using input file: {input_file_path}")
     else:
         print("📁 Using default meeting transcript")
-    if schema_file_path:
-        print(f"📄 Using schema file: {schema_file_path}")
+    if spec_file_path:
+        print(f"📄 Using assembly spec file: {spec_file_path}")
     else:
-        print("📄 Using default schema")
+        print("📄 Using default assembly specification")
     print("=" * 70)
 
     try:
@@ -461,7 +457,7 @@ async def test_assemble_data_use_case(
             document,
             assembly_spec,
         ) = await setup_repositories_with_test_data(
-            input_file_path, schema_file_path
+            input_file_path, spec_file_path
         )
 
         # Create the use case
@@ -565,21 +561,21 @@ async def main() -> None:
             print(f"❌ Error: Input path is not a file: {args.input}")
             sys.exit(1)
 
-    # Validate schema file if provided
-    if args.schema:
-        schema_path = Path(args.schema)
-        if not schema_path.exists():
-            print(f"❌ Error: Schema file does not exist: {args.schema}")
+    # Validate assembly specification file if provided
+    if args.spec:
+        spec_path = Path(args.spec)
+        if not spec_path.exists():
+            print(f"❌ Error: Assembly spec file does not exist: {args.spec}")
             sys.exit(1)
-        if not schema_path.is_file():
-            print(f"❌ Error: Schema path is not a file: {args.schema}")
+        if not spec_path.is_file():
+            print(f"❌ Error: Assembly spec path is not a file: {args.spec}")
             sys.exit(1)
 
     # Setup logging first
     setup_logging()
     print()
 
-    await test_assemble_data_use_case(args.input, args.schema)
+    await test_assemble_data_use_case(args.input, args.spec)
 
 
 if __name__ == "__main__":
