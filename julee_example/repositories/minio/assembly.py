@@ -51,8 +51,6 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
 
         return assembly
 
-
-
     async def save(self, assembly: Assembly) -> None:
         """Save assembly metadata (status, updated_at, etc.)."""
         # Update timestamp

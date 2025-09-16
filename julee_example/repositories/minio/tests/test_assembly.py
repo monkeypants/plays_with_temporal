@@ -92,8 +92,6 @@ class TestMinioAssemblyRepositoryBasicOperations:
         assert len(id2) > 0
 
 
-
-
 class TestMinioAssemblyRepositoryDirectCompletion:
     """Test assembly completion using direct field assignment."""
 
@@ -103,7 +101,7 @@ class TestMinioAssemblyRepositoryDirectCompletion:
         assembly_repo: MinioAssemblyRepository,
         sample_assembly: Assembly,
     ) -> None:
-        """Test completing an assembly using direct field assignment + save."""
+        """Test completing assembly using direct field assignment + save."""
         # Save initial assembly
         await assembly_repo.save(sample_assembly)
 
@@ -135,12 +133,12 @@ class TestMinioAssemblyRepositoryDirectCompletion:
 
         first_updated_at = sample_assembly.updated_at
 
-        # "Complete" same assembly again with same values (should be idempotent)
+        # "Complete" same assembly again with same values (idempotent)
         sample_assembly.assembled_document_id = "output-doc-456"
         sample_assembly.status = AssemblyStatus.COMPLETED
         await assembly_repo.save(sample_assembly)
 
-        # Verify state and that updated_at changed (save always updates timestamp)
+        # Verify state and that updated_at changed (save updates timestamp)
         retrieved = await assembly_repo.get(sample_assembly.assembly_id)
         assert retrieved is not None
         assert retrieved.assembled_document_id == "output-doc-456"
@@ -259,7 +257,9 @@ class TestMinioAssemblyRepositoryEdgeCases:
         await assembly_repo.save(sample_assembly)
 
         # Verify final state
-        updated_assembly = await assembly_repo.get(sample_assembly.assembly_id)
+        updated_assembly = await assembly_repo.get(
+            sample_assembly.assembly_id
+        )
         assert updated_assembly is not None
 
         # Verify final state
