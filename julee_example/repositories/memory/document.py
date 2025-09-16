@@ -74,6 +74,4 @@ class MemoryDocumentRepository(
     ) -> None:
         """Add document-specific data to log entries."""
         super()._add_entity_specific_log_data(entity, log_data)
-        log_data["content_length"] = (
-            len(entity.content.read()) if entity.content else 0
-        )
+        log_data["content_length"] = entity.size_bytes
