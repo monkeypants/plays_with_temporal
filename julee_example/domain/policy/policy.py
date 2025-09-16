@@ -70,9 +70,7 @@ class Policy(BaseModel):
     created_at: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
-    updated_at: Optional[datetime] = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    updated_at: Optional[datetime] = Field(default=None)
 
     @field_validator("policy_id")
     @classmethod
@@ -198,10 +196,7 @@ class Policy(BaseModel):
         Returns True if no transformation queries are defined or if the
         transformation queries list is empty.
         """
-        return (
-            self.transformation_queries is None
-            or len(self.transformation_queries) == 0
-        )
+        return not self.transformation_queries
 
     @property
     def has_transformations(self) -> bool:

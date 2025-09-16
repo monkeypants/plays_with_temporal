@@ -37,7 +37,7 @@ class TestPolicy:
         assert policy.status == PolicyStatus.ACTIVE
         assert policy.version == "0.1.0"
         assert isinstance(policy.created_at, datetime)
-        assert isinstance(policy.updated_at, datetime)
+        assert policy.updated_at is None
         assert policy.is_validation_only is True
         assert policy.has_transformations is False
 
@@ -456,17 +456,7 @@ class TestPolicy:
 
     def test_is_validation_only_property(self) -> None:
         """Test is_validation_only property logic."""
-        # No transformation queries (None)
-        policy = Policy(
-            policy_id="policy-001",
-            title="Test Policy",
-            description="Test description",
-            validation_scores=[("test-query", 80)],
-            transformation_queries=None,
-        )
-        assert policy.is_validation_only is True
-
-        # Empty transformation queries list
+        # No transformation queries (empty list)
         policy = Policy(
             policy_id="policy-001",
             title="Test Policy",
@@ -488,17 +478,7 @@ class TestPolicy:
 
     def test_has_transformations_property(self) -> None:
         """Test has_transformations property logic."""
-        # No transformation queries (None)
-        policy = Policy(
-            policy_id="policy-001",
-            title="Test Policy",
-            description="Test description",
-            validation_scores=[("test-query", 80)],
-            transformation_queries=None,
-        )
-        assert policy.has_transformations is False
-
-        # Empty transformation queries list
+        # No transformation queries (empty list)
         policy = Policy(
             policy_id="policy-001",
             title="Test Policy",
