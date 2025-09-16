@@ -15,6 +15,7 @@ from .assembly_specification import MemoryAssemblySpecificationRepository
 from .document import MemoryDocumentRepository
 from .knowledge_service_config import MemoryKnowledgeServiceConfigRepository
 from .knowledge_service_query import MemoryKnowledgeServiceQueryRepository
+from .policy import MemoryPolicyRepository
 
 __all__ = [
     "MemoryAssemblyRepository",
@@ -22,4 +23,5 @@ __all__ = [
     "MemoryDocumentRepository",
     "MemoryKnowledgeServiceConfigRepository",
     "MemoryKnowledgeServiceQueryRepository",
+    "MemoryPolicyRepository",
 ]

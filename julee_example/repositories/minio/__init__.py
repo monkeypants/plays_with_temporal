@@ -15,6 +15,7 @@ from .assembly_specification import MinioAssemblySpecificationRepository
 from .document import MinioDocumentRepository
 from .knowledge_service_config import MinioKnowledgeServiceConfigRepository
 from .knowledge_service_query import MinioKnowledgeServiceQueryRepository
+from .policy import MinioPolicyRepository
 
 __all__ = [
     "MinioAssemblyRepository",
@@ -22,4 +23,5 @@ __all__ = [
     "MinioDocumentRepository",
     "MinioKnowledgeServiceConfigRepository",
     "MinioKnowledgeServiceQueryRepository",
+    "MinioPolicyRepository",
 ]
