@@ -20,58 +20,25 @@ prompts, assistant prompts, metadata, and service configurations
 that are used during the assembly process.
 """
 
-from typing import Protocol, runtime_checkable, Optional
+from typing import Protocol, runtime_checkable
 
 from julee_example.domain.assembly_specification import KnowledgeServiceQuery
+from .base import BaseRepository
 
 
 @runtime_checkable
-class KnowledgeServiceQueryRepository(Protocol):
+class KnowledgeServiceQueryRepository(
+    BaseRepository[KnowledgeServiceQuery], Protocol
+):
     """Handles knowledge service query persistence and retrieval.
 
     This repository manages the storage and retrieval of
     KnowledgeServiceQuery domain objects within the Capture, Extract,
     Assemble, Publish workflow. These queries define how to extract
     specific data using external knowledge services during assembly.
+
+    Inherits common CRUD operations (get, save, generate_id) from
+    BaseRepository.
     """
 
-    async def get(self, query_id: str) -> Optional[KnowledgeServiceQuery]:
-        """Retrieve a knowledge service query by ID.
-
-        Args:
-            query_id: Unique query identifier
-
-        Returns:
-            KnowledgeServiceQuery object if found, None otherwise
-
-        Implementation Notes:
-        - Must be idempotent: multiple calls return same result
-        - Should handle missing queries gracefully (return None)
-        """
-        ...
-
-    async def save(self, query: KnowledgeServiceQuery) -> None:
-        """Store or update a knowledge service query.
-
-        Args:
-            query: KnowledgeServiceQuery object to store
-
-        Implementation Notes:
-        - Must be idempotent: saving same query multiple times is safe
-        - Should update the updated_at timestamp
-        - Creates new query if it doesn't exist, updates if it does
-        """
-        ...
-
-    async def generate_id(self) -> str:
-        """Generate a unique query identifier.
-
-        Returns:
-            Unique string identifier for a new query
-
-        Implementation Notes:
-        - Must generate globally unique identifiers
-        - Should be deterministic within the same process for testing
-        - Format should be consistent across implementations
-        """
-        ...
+    pass

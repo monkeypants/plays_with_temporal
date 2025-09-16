@@ -139,10 +139,10 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
             )
             return None
 
-    async def store(self, document: Document) -> None:
-        """Store a new document with its content and metadata."""
+    async def save(self, document: Document) -> None:
+        """Save a document with its content and metadata."""
         self.logger.info(
-            "Storing document",
+            "Saving document",
             extra={
                 "document_id": document.document_id,
                 "original_filename": document.original_filename,
@@ -151,6 +151,9 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
                 "status": document.status.value,
             },
         )
+
+        # Update timestamp
+        self.update_timestamps(document)
 
         try:
             # Store content first and get calculated multihash
@@ -173,7 +176,7 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
             await self._store_metadata(document)
 
             self.logger.info(
-                "Document stored successfully",
+                "Document saved successfully",
                 extra={
                     "document_id": document.document_id,
                     "content_multihash": calculated_multihash,
@@ -182,59 +185,7 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
 
         except Exception as e:
             self.logger.error(
-                "Failed to store document",
-                extra={
-                    "document_id": document.document_id,
-                    "error": str(e),
-                },
-                exc_info=True,
-            )
-            raise
-
-    async def update(self, document: Document) -> None:
-        """Update a complete document with content and metadata."""
-        self.logger.info(
-            "Updating document",
-            extra={
-                "document_id": document.document_id,
-                "original_filename": document.original_filename,
-                "status": document.status.value,
-            },
-        )
-
-        # Update timestamp
-        self.update_timestamps(document)
-
-        try:
-            # Store content and get calculated multihash
-            calculated_multihash = await self._store_content(document)
-
-            # Update multihash if needed
-            if document.content_multihash != calculated_multihash:
-                self.logger.warning(
-                    "Content changed during update, updating multihash",
-                    extra={
-                        "document_id": document.document_id,
-                        "old_multihash": document.content_multihash,
-                        "new_multihash": calculated_multihash,
-                    },
-                )
-                document.content_multihash = calculated_multihash
-
-            # Store updated metadata
-            await self._store_metadata(document)
-
-            self.logger.info(
-                "Document updated successfully",
-                extra={
-                    "document_id": document.document_id,
-                    "content_multihash": calculated_multihash,
-                },
-            )
-
-        except Exception as e:
-            self.logger.error(
-                "Failed to update document",
+                "Failed to save document",
                 extra={
                     "document_id": document.document_id,
                     "error": str(e),

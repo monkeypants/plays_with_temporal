@@ -192,7 +192,7 @@ class TestExtractAssembleDataUseCase:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
-        await document_repo.store(document)
+        await document_repo.save(document)
 
         # Create assembly specification with simple schema
         schema = {
@@ -380,7 +380,7 @@ class TestExtractAssembleDataUseCase:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
-        await document_repo.store(document)
+        await document_repo.save(document)
 
         assembly_spec = AssemblySpecification(
             assembly_specification_id="spec-123",
@@ -432,7 +432,7 @@ class TestExtractAssembleDataUseCase:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
-        await document_repo.store(document)
+        await document_repo.save(document)
 
         # Create assembly specification with strict schema
         schema = {

@@ -29,74 +29,24 @@ In Temporal workflow contexts, these protocols are implemented by workflow
 stubs that delegate to activities for durability and proper error handling.
 """
 
-from typing import Protocol, Optional, runtime_checkable
+from typing import Protocol, runtime_checkable
 from julee_example.domain import AssemblySpecification
+from .base import BaseRepository
 
 
 @runtime_checkable
-class AssemblySpecificationRepository(Protocol):
+class AssemblySpecificationRepository(
+    BaseRepository[AssemblySpecification], Protocol
+):
     """Handles assembly specification storage and retrieval operations.
 
     This repository manages AssemblySpecification entities within the Capture,
     Extract, Assemble, Publish workflow. Specifications define how to assemble
     documents of specific types, including JSON schemas and knowledge service
     query configurations.
+
+    Inherits common CRUD operations (get, save, generate_id) from
+    BaseRepository.
     """
 
-    async def get(
-        self, assembly_specification_id: str
-    ) -> Optional[AssemblySpecification]:
-        """Retrieve an assembly specification by ID.
-
-        Args:
-            assembly_specification_id: Unique specification identifier
-
-        Returns:
-            AssemblySpecification if found, None otherwise
-
-        Implementation Notes:
-        - Must be idempotent: multiple calls return same result
-        - Should handle missing specifications gracefully (return None)
-        - Must load complete specification including JSON schema and
-          knowledge service queries
-        """
-        ...
-
-    async def save(
-        self, assembly_specification: AssemblySpecification
-    ) -> None:
-        """Save an assembly specification.
-
-        Args:
-            assembly_specification: Complete AssemblySpecification to save
-
-        Implementation Notes:
-        - Must be idempotent: saving same specification state is safe
-        - Should update the updated_at timestamp
-        - Must save complete specification including JSON schema and
-          knowledge service query configurations
-        - Handles both new specifications and updates to existing ones
-        """
-        ...
-
-    async def generate_id(self) -> str:
-        """Generate a unique assembly specification identifier.
-
-        This operation is non-deterministic and must be called from
-        workflow activities, not directly from workflow code.
-
-        Returns:
-            Unique assembly specification ID string
-
-        Implementation Notes:
-        - Must generate globally unique identifiers
-        - May use UUIDs, database sequences, or distributed ID generators
-        - Should be fast and reliable
-        - Failure here should be rare but handled gracefully
-
-        Workflow Context:
-        In Temporal workflows, this method is implemented as an activity
-        to ensure the generated ID is durably stored and consistent
-        across workflow replays.
-        """
-        ...
+    pass

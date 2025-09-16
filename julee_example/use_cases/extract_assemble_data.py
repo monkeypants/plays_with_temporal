@@ -206,11 +206,9 @@ class ExtractAssembleDataUseCase:
             )
 
             # Step 8: Set the assembled document and return
-            assembly_with_document = (
-                await self.assembly_repo.set_assembled_document(
-                    assembly_id, assembled_document_id
-                )
-            )
+            assembly.assembled_document_id = assembled_document_id
+            assembly.status = AssemblyStatus.COMPLETED
+            await self.assembly_repo.save(assembly)
 
             logger.info(
                 "Assembly completed successfully",
@@ -220,12 +218,11 @@ class ExtractAssembleDataUseCase:
                 },
             )
 
-            return assembly_with_document
+            return assembly
 
         except Exception as e:
             # Mark assembly as failed
             assembly.status = AssemblyStatus.FAILED
-            assembly.updated_at = datetime.now(timezone.utc)
             await self.assembly_repo.save(assembly)
 
             logger.error(
@@ -595,7 +592,7 @@ text or markdown formatting."""
         )
 
         # Save the document
-        await self.document_repo.store(assembled_document)
+        await self.document_repo.save(assembled_document)
 
         return document_id
 

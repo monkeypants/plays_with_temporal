@@ -30,69 +30,23 @@ In Temporal workflow contexts, these protocols are implemented by workflow
 stubs that delegate to activities for durability and proper error handling.
 """
 
-from typing import Protocol, Optional, runtime_checkable
+from typing import Protocol, runtime_checkable
 from julee_example.domain import KnowledgeServiceConfig
+from .base import BaseRepository
 
 
 @runtime_checkable
-class KnowledgeServiceConfigRepository(Protocol):
+class KnowledgeServiceConfigRepository(
+    BaseRepository[KnowledgeServiceConfig], Protocol
+):
     """Handles knowledge service configuration persistence.
 
     This repository manages knowledge service metadata and configuration
     storage within the Capture, Extract, Assemble, Publish workflow.
     External service operations are handled separately by the service layer.
+
+    Inherits common CRUD operations (get, save, generate_id) from
+    BaseRepository.
     """
 
-    async def get(
-        self, knowledge_service_id: str
-    ) -> Optional[KnowledgeServiceConfig]:
-        """Retrieve a knowledge service configuration by ID.
-
-        Args:
-            knowledge_service_id: Unique knowledge service identifier
-
-        Returns:
-            KnowledgeServiceConfig object if found, None otherwise
-
-        Implementation Notes:
-        - Must be idempotent: multiple calls return same result
-        - Should handle missing services gracefully (return None)
-        - Must load complete service configuration
-        """
-        ...
-
-    async def save(self, knowledge_service: KnowledgeServiceConfig) -> None:
-        """Save a knowledge service configuration.
-
-        Args:
-            knowledge_service: Complete KnowledgeServiceConfig to save
-
-        Implementation Notes:
-        - Must be idempotent: saving same service state is safe
-        - Should update the updated_at timestamp
-        - Must save complete service configuration
-        - Handles both new services and updates to existing ones
-        """
-        ...
-
-    async def generate_id(self) -> str:
-        """Generate a unique knowledge service identifier.
-
-        This operation is non-deterministic and must be called from
-        workflow activities, not directly from workflow code.
-
-        Returns:
-            Unique knowledge service ID string
-
-        Implementation Notes:
-        - Must generate globally unique identifiers
-        - May use UUIDs, database sequences, or distributed ID generators
-        - Should be fast and reliable
-        - Failure here should be rare but handled gracefully
-
-        Workflow Context:
-        In Temporal workflows, this method is implemented as an activity
-        to ensure the generated ID is durably stored and consistent
-        across workflow replays.
-        """
-        ...
+    pass

@@ -92,100 +92,60 @@ class TestMinioAssemblyRepositoryBasicOperations:
         assert len(id2) > 0
 
 
-class TestMinioAssemblyRepositoryDocumentManagement:
-    """Test assembled document management operations."""
+class TestMinioAssemblyRepositoryDirectCompletion:
+    """Test assembly completion using direct field assignment."""
 
     @pytest.mark.asyncio
-    async def test_set_assembled_document(
+    async def test_complete_assembly_with_direct_assignment(
         self,
         assembly_repo: MinioAssemblyRepository,
         sample_assembly: Assembly,
     ) -> None:
-        """Test setting assembled document for an assembly."""
-        # Save assembly first
+        """Test completing assembly using direct field assignment + save."""
+        # Save initial assembly
         await assembly_repo.save(sample_assembly)
 
-        # Set assembled document
-        updated_assembly = await assembly_repo.set_assembled_document(
-            sample_assembly.assembly_id, "output-doc-1"
-        )
+        # Complete assembly using direct assignment (new approach)
+        sample_assembly.assembled_document_id = "output-doc-123"
+        sample_assembly.status = AssemblyStatus.COMPLETED
+        await assembly_repo.save(sample_assembly)
 
-        assert updated_assembly.assembled_document_id == "output-doc-1"
-        assert updated_assembly.status == AssemblyStatus.COMPLETED
-
-        # Verify persistence by retrieving again
+        # Verify completion by retrieving again
         retrieved = await assembly_repo.get(sample_assembly.assembly_id)
         assert retrieved is not None
-        assert retrieved.assembled_document_id == "output-doc-1"
+        assert retrieved.assembled_document_id == "output-doc-123"
         assert retrieved.status == AssemblyStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_set_assembled_document_idempotency(
+    async def test_assembly_completion_idempotency(
         self,
         assembly_repo: MinioAssemblyRepository,
         sample_assembly: Assembly,
     ) -> None:
-        """Test that setting same document_id is idempotent."""
-        # Save assembly first
+        """Test that direct assignment approach maintains idempotency."""
+        # Save initial assembly
         await assembly_repo.save(sample_assembly)
 
-        # Set assembled document first time
-        updated_assembly1 = await assembly_repo.set_assembled_document(
-            sample_assembly.assembly_id, "output-doc-1"
-        )
-        assert updated_assembly1.assembled_document_id == "output-doc-1"
-        assert updated_assembly1.status == AssemblyStatus.COMPLETED
-
-        # Set same document_id again - should be idempotent
-        updated_assembly2 = await assembly_repo.set_assembled_document(
-            sample_assembly.assembly_id, "output-doc-1"
-        )
-        assert updated_assembly2.assembled_document_id == "output-doc-1"
-        assert updated_assembly2.status == AssemblyStatus.COMPLETED
-
-        # Verify persistence - should still have same document
-        retrieved = await assembly_repo.get(sample_assembly.assembly_id)
-        assert retrieved is not None
-        assert retrieved.assembled_document_id == "output-doc-1"
-
-    @pytest.mark.asyncio
-    async def test_set_assembled_document_overwrites_previous(
-        self,
-        assembly_repo: MinioAssemblyRepository,
-        sample_assembly: Assembly,
-    ) -> None:
-        """Test that setting assembled document overwrites previous value."""
-        # Save assembly first
+        # Complete assembly first time
+        sample_assembly.assembled_document_id = "output-doc-456"
+        sample_assembly.status = AssemblyStatus.COMPLETED
         await assembly_repo.save(sample_assembly)
 
-        # Set first assembled document
-        updated_assembly1 = await assembly_repo.set_assembled_document(
-            sample_assembly.assembly_id, "output-doc-1"
-        )
-        assert updated_assembly1.assembled_document_id == "output-doc-1"
+        first_updated_at = sample_assembly.updated_at
 
-        # Set different assembled document - should overwrite
-        updated_assembly2 = await assembly_repo.set_assembled_document(
-            sample_assembly.assembly_id, "output-doc-2"
-        )
-        assert updated_assembly2.assembled_document_id == "output-doc-2"
-        assert updated_assembly2.status == AssemblyStatus.COMPLETED
+        # "Complete" same assembly again with same values (idempotent)
+        sample_assembly.assembled_document_id = "output-doc-456"
+        sample_assembly.status = AssemblyStatus.COMPLETED
+        await assembly_repo.save(sample_assembly)
 
-        # Verify persistence
+        # Verify state and that updated_at changed (save updates timestamp)
         retrieved = await assembly_repo.get(sample_assembly.assembly_id)
         assert retrieved is not None
-        assert retrieved.assembled_document_id == "output-doc-2"
-
-    @pytest.mark.asyncio
-    async def test_set_assembled_document_for_nonexistent_assembly(
-        self, assembly_repo: MinioAssemblyRepository
-    ) -> None:
-        """Test setting assembled document for non-existent assembly raises
-        error."""
-        with pytest.raises(ValueError, match="Assembly not found"):
-            await assembly_repo.set_assembled_document(
-                "nonexistent-assembly", "doc-123"
-            )
+        assert retrieved.assembled_document_id == "output-doc-456"
+        assert retrieved.status == AssemblyStatus.COMPLETED
+        assert retrieved.updated_at is not None
+        assert first_updated_at is not None
+        assert retrieved.updated_at > first_updated_at
 
 
 class TestMinioAssemblyRepositoryStatusUpdates:
@@ -291,10 +251,16 @@ class TestMinioAssemblyRepositoryEdgeCases:
         sample_assembly.status = AssemblyStatus.IN_PROGRESS
         await assembly_repo.save(sample_assembly)
 
-        # Set assembled document
-        updated_assembly = await assembly_repo.set_assembled_document(
-            sample_assembly.assembly_id, "final-output-doc"
+        # Set assembled document using direct assignment
+        sample_assembly.assembled_document_id = "final-output-doc"
+        sample_assembly.status = AssemblyStatus.COMPLETED
+        await assembly_repo.save(sample_assembly)
+
+        # Verify final state
+        updated_assembly = await assembly_repo.get(
+            sample_assembly.assembly_id
         )
+        assert updated_assembly is not None
 
         # Verify final state
         assert updated_assembly.assembled_document_id == "final-output-doc"
@@ -360,9 +326,12 @@ class TestMinioAssemblyRepositoryRoundtrip:
         await assembly_repo.save(assembly)
 
         # Complete assembly with output document
-        final_assembly = await assembly_repo.set_assembled_document(
-            assembly_id, "final-output-document"
-        )
+        assembly.assembled_document_id = "final-output-document"
+        assembly.status = AssemblyStatus.COMPLETED
+        await assembly_repo.save(assembly)
+
+        final_assembly = await assembly_repo.get(assembly_id)
+        assert final_assembly is not None
 
         # Final verification
         assert final_assembly.status == AssemblyStatus.COMPLETED

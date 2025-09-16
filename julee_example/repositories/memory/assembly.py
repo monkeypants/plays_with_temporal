@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict
 
-from julee_example.domain import Assembly, AssemblyStatus
+from julee_example.domain import Assembly
 from julee_example.repositories.assembly import AssemblyRepository
 
 logger = logging.getLogger(__name__)
@@ -71,63 +71,6 @@ class MemoryAssemblyRepository(AssemblyRepository):
         )
 
         return assembly
-
-    async def set_assembled_document(
-        self, assembly_id: str, document_id: str
-    ) -> Assembly:
-        """Set the assembled document for an assembly.
-
-        Args:
-            assembly_id: ID of the assembly to update
-            document_id: ID of the assembled document produced
-
-        Returns:
-            Updated Assembly with the assembled_document_id set
-        """
-        logger.debug(
-            "MemoryAssemblyRepository: Setting assembled document for "
-            "assembly",
-            extra={
-                "assembly_id": assembly_id,
-                "document_id": document_id,
-            },
-        )
-
-        assembly = self._assemblies.get(assembly_id)
-        if assembly is None:
-            raise ValueError(f"Assembly not found: {assembly_id}")
-
-        # Check for idempotency - if document_id already set
-        if assembly.assembled_document_id == document_id:
-            logger.debug(
-                "MemoryAssemblyRepository: Assembled document already set "
-                "to this value, returning unchanged",
-                extra={
-                    "assembly_id": assembly_id,
-                    "document_id": document_id,
-                },
-            )
-            return assembly
-
-        # Update assembly with assembled document
-        assembly_dict = assembly.model_dump()
-        assembly_dict["assembled_document_id"] = document_id
-        assembly_dict["status"] = AssemblyStatus.COMPLETED
-        assembly_dict["updated_at"] = datetime.now(timezone.utc)
-        updated_assembly = Assembly(**assembly_dict)
-
-        # Store updated assembly
-        self._assemblies[assembly_id] = updated_assembly
-
-        logger.info(
-            "MemoryAssemblyRepository: Assembled document set successfully",
-            extra={
-                "assembly_id": assembly_id,
-                "document_id": document_id,
-            },
-        )
-
-        return updated_assembly
 
     async def save(self, assembly: Assembly) -> None:
         """Save assembly metadata (status, updated_at, etc.).
