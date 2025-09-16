@@ -387,7 +387,7 @@ async def setup_repositories_with_test_data(
     )
 
     # Store test data in repositories
-    await document_repo.store(document)
+    await document_repo.save(document)
     await assembly_spec_repo.save(assembly_spec)
     await ks_config_repo.save(ks_config)
 

@@ -27,34 +27,22 @@ In Temporal workflow contexts, these protocols are implemented by workflow
 stubs that delegate to activities for durability and proper error handling.
 """
 
-from typing import Protocol, Optional, runtime_checkable
+from typing import runtime_checkable, Protocol
 from julee_example.domain import Assembly
+from .base import BaseRepository
 
 
 @runtime_checkable
-class AssemblyRepository(Protocol):
+class AssemblyRepository(BaseRepository[Assembly], Protocol):
     """Handles assembly storage and retrieval operations.
 
     This repository manages Assembly entities within the Capture, Extract,
     Assemble, Publish workflow. Each Assembly produces a single assembled
     document.
+
+    Inherits common CRUD operations (get, save, generate_id) from
+    BaseRepository.
     """
-
-    async def get(self, assembly_id: str) -> Optional[Assembly]:
-        """Retrieve an assembly by ID.
-
-        Args:
-            assembly_id: Unique assembly identifier
-
-        Returns:
-            Assembly if found, None otherwise
-
-        Implementation Notes:
-        - Must be idempotent: multiple calls return same result
-        - Should handle missing assemblies gracefully (return None)
-        - Loads complete assembly including assembled_document_id
-        """
-        ...
 
     async def set_assembled_document(
         self, assembly_id: str, document_id: str
@@ -73,41 +61,5 @@ class AssemblyRepository(Protocol):
         - Updates assembly's updated_at timestamp
         - Updates assembly status to COMPLETED if successful
         - Returns complete assembly with assembled_document_id set
-        """
-        ...
-
-    async def save(self, assembly: Assembly) -> None:
-        """Save assembly metadata (status, updated_at, etc.).
-
-        Args:
-            assembly: Assembly entity
-
-        Implementation Notes:
-        - Must be idempotent: saving same assembly state is safe
-        - Should update the updated_at timestamp
-        - Saves complete assembly including assembled_document_id
-        - Use for status changes, metadata updates, etc.
-        """
-        ...
-
-    async def generate_id(self) -> str:
-        """Generate a unique assembly identifier.
-
-        This operation is non-deterministic and must be called from
-        workflow activities, not directly from workflow code.
-
-        Returns:
-            Unique assembly ID string
-
-        Implementation Notes:
-        - Must generate globally unique identifiers
-        - May use UUIDs, database sequences, or distributed ID generators
-        - Should be fast and reliable
-        - Failure here should be rare but handled gracefully
-
-        Workflow Context:
-        In Temporal workflows, this method is implemented as an activity
-        to ensure the generated ID is durably stored and consistent
-        across workflow replays.
         """
         ...

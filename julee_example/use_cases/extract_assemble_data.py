@@ -595,7 +595,7 @@ text or markdown formatting."""
         )
 
         # Save the document
-        await self.document_repo.store(assembled_document)
+        await self.document_repo.save(assembled_document)
 
         return document_id
 

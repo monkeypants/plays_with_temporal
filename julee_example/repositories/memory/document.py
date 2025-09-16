@@ -74,41 +74,14 @@ class MemoryDocumentRepository(DocumentRepository):
 
         return document
 
-    async def update(self, document: Document) -> None:
-        """Update a complete document with content and metadata.
+    async def save(self, document: Document) -> None:
+        """Save a document with its content and metadata.
 
         Args:
-            document: Updated Document object
+            document: Document object to save
         """
         logger.debug(
-            "MemoryDocumentRepository: Updating document",
-            extra={"document_id": document.document_id},
-        )
-
-        # Update timestamp
-        document.updated_at = datetime.now(timezone.utc)
-
-        # Store the updated document
-        self._documents[document.document_id] = document
-
-        logger.info(
-            "MemoryDocumentRepository: Document updated successfully",
-            extra={
-                "document_id": document.document_id,
-                "content_length": (
-                    len(document.content.read()) if document.content else 0
-                ),
-            },
-        )
-
-    async def store(self, document: Document) -> None:
-        """Store a new document with its content and metadata.
-
-        Args:
-            document: Document object with ContentStream
-        """
-        logger.debug(
-            "MemoryDocumentRepository: Storing new document",
+            "MemoryDocumentRepository: Saving document",
             extra={"document_id": document.document_id},
         )
 
@@ -122,7 +95,7 @@ class MemoryDocumentRepository(DocumentRepository):
         self._documents[document.document_id] = document
 
         logger.info(
-            "MemoryDocumentRepository: Document stored successfully",
+            "MemoryDocumentRepository: Document saved successfully",
             extra={
                 "document_id": document.document_id,
                 "content_length": (

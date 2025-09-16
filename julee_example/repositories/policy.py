@@ -29,69 +29,21 @@ In Temporal workflow contexts, these protocols are implemented by workflow
 stubs that delegate to activities for durability and proper error handling.
 """
 
-from typing import Protocol, Optional, runtime_checkable
+from typing import runtime_checkable, Protocol
 from julee_example.domain import Policy
+from .base import BaseRepository
 
 
 @runtime_checkable
-class PolicyRepository(Protocol):
+class PolicyRepository(BaseRepository[Policy], Protocol):
     """Handles policy storage and retrieval operations.
 
     This repository manages Policy entities within the Capture, Extract,
     Assemble, Publish workflow. Policies define validation criteria and
     optional transformations for documents in the quality assurance process.
+
+    Inherits common CRUD operations (get, save, generate_id) from
+    BaseRepository.
     """
 
-    async def get(self, policy_id: str) -> Optional[Policy]:
-        """Retrieve a policy by ID.
-
-        Args:
-            policy_id: Unique policy identifier
-
-        Returns:
-            Policy if found, None otherwise
-
-        Implementation Notes:
-        - Must be idempotent: multiple calls return same result
-        - Should handle missing policies gracefully (return None)
-        - Loads complete policy including validation scores and
-          transformation queries
-        """
-        ...
-
-    async def save(self, policy: Policy) -> None:
-        """Save a policy.
-
-        Args:
-            policy: Complete Policy to save
-
-        Implementation Notes:
-        - Must be idempotent: saving same policy state is safe
-        - Should update the updated_at timestamp
-        - Must save complete policy including validation scores and
-          transformation queries
-        - Handles both new policies and updates to existing ones
-        """
-        ...
-
-    async def generate_id(self) -> str:
-        """Generate a unique policy identifier.
-
-        This operation is non-deterministic and must be called from
-        workflow activities, not directly from workflow code.
-
-        Returns:
-            Unique policy ID string
-
-        Implementation Notes:
-        - Must generate globally unique identifiers
-        - May use UUIDs, database sequences, or distributed ID generators
-        - Should be fast and reliable
-        - Failure here should be rare but handled gracefully
-
-        Workflow Context:
-        In Temporal workflows, this method is implemented as an activity
-        to ensure the generated ID is durably stored and consistent
-        across workflow replays.
-        """
-        ...
+    pass

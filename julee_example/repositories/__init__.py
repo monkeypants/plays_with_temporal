@@ -6,6 +6,7 @@ Extract, Assemble, Publish workflow, following the Clean Architecture
 patterns established in the Fun-Police framework.
 """
 
+from .base import BaseRepository
 from .document import DocumentRepository
 from .assembly import AssemblyRepository
 from .assembly_specification import AssemblySpecificationRepository
@@ -14,6 +15,7 @@ from .knowledge_service_query import KnowledgeServiceQueryRepository
 from .policy import PolicyRepository
 
 __all__ = [
+    "BaseRepository",
     "DocumentRepository",
     "AssemblyRepository",
     "AssemblySpecificationRepository",

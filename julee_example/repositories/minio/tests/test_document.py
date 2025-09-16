@@ -133,7 +133,7 @@ class TestMinioDocumentRepositoryStore:
         assert fake_minio_client.get_object_count("documents-content") == 0
 
         # Act
-        await repository.store(sample_document)
+        await repository.save(sample_document)
 
         # Assert content and metadata were stored
         assert fake_minio_client.get_object_count("documents") == 1
@@ -157,7 +157,7 @@ class TestMinioDocumentRepositoryStore:
         repository = MinioDocumentRepository(fake_minio_client)
 
         # Store first document
-        await repository.store(sample_document)
+        await repository.save(sample_document)
 
         # Verify first document was stored with correct multihash
         stored_multihash = sample_document.content_multihash
@@ -178,7 +178,7 @@ class TestMinioDocumentRepositoryStore:
         )
 
         # Store second document - should reuse existing content
-        await repository.store(second_document)
+        await repository.save(second_document)
 
         # Assert: 2 metadata objects, but only 1 content object (worked)
         assert fake_minio_client.get_object_count("documents") == 2
@@ -208,7 +208,7 @@ class TestMinioDocumentRepositoryStore:
         sample_document.content_multihash = "incorrect_hash_12345"
 
         # Act
-        await repository.store(sample_document)
+        await repository.save(sample_document)
 
         # Assert multihash was corrected to the calculated value
         assert sample_document.content_multihash == correct_multihash
@@ -254,7 +254,7 @@ class TestMinioDocumentRepositoryStore:
 
         # Act & Assert
         with pytest.raises(S3Error):
-            await repository.store(sample_document)
+            await repository.save(sample_document)
 
         # Verify no objects were stored
         assert fake_minio_client.get_object_count("documents") == 0
@@ -269,7 +269,7 @@ class TestMinioDocumentRepositoryGet:
     ) -> None:
         """Test retrieving an existing document with content."""
         # Store a document first
-        await repository.store(sample_document)
+        await repository.save(sample_document)
 
         # Act - retrieve the document
         result = await repository.get(sample_document.document_id)
@@ -362,14 +362,14 @@ class TestMinioDocumentRepositoryUpdate:
     ) -> None:
         """Test updating a document."""
         # Store document initially
-        await repository.store(sample_document)
+        await repository.save(sample_document)
         original_updated_at = sample_document.updated_at
 
         # Modify document
         sample_document.status = DocumentStatus.EXTRACTED
 
         # Act
-        await repository.update(sample_document)
+        await repository.save(sample_document)
 
         # Assert updated_at was changed
         assert sample_document.updated_at != original_updated_at
@@ -476,7 +476,7 @@ class TestMinioDocumentRepositoryErrorHandling:
 
         # Act & Assert
         with pytest.raises(S3Error):
-            await repository.store(sample_document)
+            await repository.save(sample_document)
 
         # Verify content was stored but metadata was not
         assert fake_minio_client.get_object_count("documents-content") == 1
