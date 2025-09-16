@@ -14,20 +14,20 @@ interface compatibility.
 """
 
 import logging
-import uuid
-from datetime import datetime, timezone
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from julee_example.domain import KnowledgeServiceConfig
 from julee_example.repositories.knowledge_service_config import (
     KnowledgeServiceConfigRepository,
 )
+from .base import MemoryRepositoryMixin
 
 logger = logging.getLogger(__name__)
 
 
 class MemoryKnowledgeServiceConfigRepository(
-    KnowledgeServiceConfigRepository
+    KnowledgeServiceConfigRepository,
+    MemoryRepositoryMixin[KnowledgeServiceConfig],
 ):
     """
     Memory implementation of KnowledgeServiceConfigRepository using Python
@@ -43,10 +43,11 @@ class MemoryKnowledgeServiceConfigRepository(
 
     def __init__(self) -> None:
         """Initialize repository with empty in-memory storage."""
-        logger.debug("Initializing MemoryKnowledgeServiceConfigRepository")
+        self.logger = logger
+        self.entity_name = "KnowledgeServiceConfig"
+        self.storage_dict: Dict[str, KnowledgeServiceConfig] = {}
 
-        # Storage dictionary
-        self._knowledge_services: Dict[str, KnowledgeServiceConfig] = {}
+        logger.debug("Initializing MemoryKnowledgeServiceConfigRepository")
 
     async def get(
         self, knowledge_service_id: str
@@ -59,32 +60,7 @@ class MemoryKnowledgeServiceConfigRepository(
         Returns:
             KnowledgeServiceConfig object if found, None otherwise
         """
-        logger.debug(
-            "MemoryKnowledgeServiceConfigRepository: Attempting to retrieve "
-            "knowledge service",
-            extra={"knowledge_service_id": knowledge_service_id},
-        )
-
-        knowledge_service = self._knowledge_services.get(knowledge_service_id)
-        if knowledge_service is None:
-            logger.debug(
-                "MemoryKnowledgeServiceConfigRepository: Knowledge service "
-                "not found",
-                extra={"knowledge_service_id": knowledge_service_id},
-            )
-            return None
-
-        logger.info(
-            "MemoryKnowledgeServiceConfigRepository: Knowledge service "
-            "retrieved successfully",
-            extra={
-                "knowledge_service_id": knowledge_service_id,
-                "service_name": knowledge_service.name,
-                "service_api": knowledge_service.service_api.value,
-            },
-        )
-
-        return knowledge_service
+        return self.get_entity(knowledge_service_id)
 
     async def save(self, knowledge_service: KnowledgeServiceConfig) -> None:
         """Save a knowledge service configuration.
@@ -92,39 +68,7 @@ class MemoryKnowledgeServiceConfigRepository(
         Args:
             knowledge_service: Complete KnowledgeServiceConfig to save
         """
-        logger.debug(
-            "MemoryKnowledgeServiceConfigRepository: Saving knowledge "
-            "service",
-            extra={
-                "knowledge_service_id": (
-                    knowledge_service.knowledge_service_id
-                )
-            },
-        )
-
-        # Update timestamp
-        knowledge_service.updated_at = datetime.now(timezone.utc)
-
-        # Ensure created_at is set for new services
-        if knowledge_service.created_at is None:
-            knowledge_service.created_at = datetime.now(timezone.utc)
-
-        # Store the knowledge service (idempotent - will overwrite if exists)
-        self._knowledge_services[knowledge_service.knowledge_service_id] = (
-            knowledge_service
-        )
-
-        logger.info(
-            "MemoryKnowledgeServiceConfigRepository: Knowledge service "
-            "saved successfully",
-            extra={
-                "knowledge_service_id": (
-                    knowledge_service.knowledge_service_id
-                ),
-                "service_name": knowledge_service.name,
-                "service_api": knowledge_service.service_api.value,
-            },
-        )
+        self.save_entity(knowledge_service, "knowledge_service_id")
 
     async def generate_id(self) -> str:
         """Generate a unique knowledge service identifier.
@@ -132,12 +76,12 @@ class MemoryKnowledgeServiceConfigRepository(
         Returns:
             Unique knowledge service ID string
         """
-        knowledge_service_id = f"ks-{uuid.uuid4()}"
+        return self.generate_entity_id("ks")
 
-        logger.debug(
-            "MemoryKnowledgeServiceConfigRepository: Generated knowledge "
-            "service ID",
-            extra={"knowledge_service_id": knowledge_service_id},
-        )
-
-        return knowledge_service_id
+    def _add_entity_specific_log_data(
+        self, entity: KnowledgeServiceConfig, log_data: Dict[str, Any]
+    ) -> None:
+        """Add knowledge service config-specific data to log entries."""
+        super()._add_entity_specific_log_data(entity, log_data)
+        log_data["service_name"] = entity.name
+        log_data["service_api"] = entity.service_api.value

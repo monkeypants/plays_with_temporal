@@ -12,17 +12,16 @@ All operations are still async to maintain interface compatibility.
 """
 
 import logging
-import uuid
-from datetime import datetime, timezone
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from julee_example.domain import Policy
 from julee_example.repositories.policy import PolicyRepository
+from .base import MemoryRepositoryMixin
 
 logger = logging.getLogger(__name__)
 
 
-class MemoryPolicyRepository(PolicyRepository):
+class MemoryPolicyRepository(PolicyRepository, MemoryRepositoryMixin[Policy]):
     """
     Memory implementation of PolicyRepository using Python dictionaries.
 
@@ -33,10 +32,11 @@ class MemoryPolicyRepository(PolicyRepository):
 
     def __init__(self) -> None:
         """Initialize repository with empty in-memory storage."""
-        logger.debug("Initializing MemoryPolicyRepository")
+        self.logger = logger
+        self.entity_name = "Policy"
+        self.storage_dict: Dict[str, Policy] = {}
 
-        # Storage dictionary
-        self._policies: Dict[str, Policy] = {}
+        logger.debug("Initializing MemoryPolicyRepository")
 
     async def get(self, policy_id: str) -> Optional[Policy]:
         """Retrieve a policy by ID.
@@ -47,32 +47,7 @@ class MemoryPolicyRepository(PolicyRepository):
         Returns:
             Policy if found, None otherwise
         """
-        logger.debug(
-            "MemoryPolicyRepository: Attempting to retrieve policy",
-            extra={
-                "policy_id": policy_id,
-            },
-        )
-
-        policy = self._policies.get(policy_id)
-        if policy is None:
-            logger.debug(
-                "MemoryPolicyRepository: Policy not found",
-                extra={"policy_id": policy_id},
-            )
-            return None
-
-        logger.info(
-            "MemoryPolicyRepository: Policy retrieved successfully",
-            extra={
-                "policy_id": policy_id,
-                "title": policy.title,
-                "status": policy.status.value,
-                "is_validation_only": policy.is_validation_only,
-            },
-        )
-
-        return policy
+        return self.get_entity(policy_id)
 
     async def save(self, policy: Policy) -> None:
         """Save a policy.
@@ -80,33 +55,7 @@ class MemoryPolicyRepository(PolicyRepository):
         Args:
             policy: Complete Policy to save
         """
-        logger.debug(
-            "MemoryPolicyRepository: Saving policy",
-            extra={
-                "policy_id": policy.policy_id,
-                "title": policy.title,
-                "status": policy.status.value,
-            },
-        )
-
-        # Update timestamp
-        policy_dict = policy.model_dump()
-        policy_dict["updated_at"] = datetime.now(timezone.utc)
-
-        updated_policy = Policy(**policy_dict)
-        self._policies[policy.policy_id] = updated_policy
-
-        logger.info(
-            "MemoryPolicyRepository: Policy saved successfully",
-            extra={
-                "policy_id": policy.policy_id,
-                "title": policy.title,
-                "status": policy.status.value,
-                "validation_scores_count": len(policy.validation_scores),
-                "has_transformations": policy.has_transformations,
-                "updated_at": policy_dict["updated_at"].isoformat(),
-            },
-        )
+        self.save_entity(policy, "policy_id")
 
     async def generate_id(self) -> str:
         """Generate a unique policy identifier.
@@ -114,11 +63,14 @@ class MemoryPolicyRepository(PolicyRepository):
         Returns:
             Unique policy ID string
         """
-        policy_id = f"policy-{uuid.uuid4()}"
+        return self.generate_entity_id("policy")
 
-        logger.debug(
-            "MemoryPolicyRepository: Generated policy ID",
-            extra={"policy_id": policy_id},
-        )
-
-        return policy_id
+    def _add_entity_specific_log_data(
+        self, entity: Policy, log_data: Dict[str, Any]
+    ) -> None:
+        """Add policy-specific data to log entries."""
+        super()._add_entity_specific_log_data(entity, log_data)
+        log_data["title"] = entity.title
+        log_data["validation_scores_count"] = len(entity.validation_scores)
+        log_data["has_transformations"] = entity.has_transformations
+        log_data["is_validation_only"] = entity.is_validation_only

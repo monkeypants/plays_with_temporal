@@ -13,19 +13,21 @@ should be avoided.
 """
 
 import logging
-import uuid
-from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 from julee_example.domain.assembly_specification import KnowledgeServiceQuery
 from julee_example.repositories.knowledge_service_query import (
     KnowledgeServiceQueryRepository,
 )
+from .base import MemoryRepositoryMixin
 
 logger = logging.getLogger(__name__)
 
 
-class MemoryKnowledgeServiceQueryRepository(KnowledgeServiceQueryRepository):
+class MemoryKnowledgeServiceQueryRepository(
+    KnowledgeServiceQueryRepository,
+    MemoryRepositoryMixin[KnowledgeServiceQuery],
+):
     """
     Memory implementation of KnowledgeServiceQueryRepository using Python
     dictionaries.
@@ -40,10 +42,11 @@ class MemoryKnowledgeServiceQueryRepository(KnowledgeServiceQueryRepository):
 
     def __init__(self) -> None:
         """Initialize repository with empty in-memory storage."""
-        logger.debug("Initializing MemoryKnowledgeServiceQueryRepository")
+        self.logger = logger
+        self.entity_name = "KnowledgeServiceQuery"
+        self.storage_dict: Dict[str, KnowledgeServiceQuery] = {}
 
-        # Storage dictionary
-        self._queries: Dict[str, KnowledgeServiceQuery] = {}
+        logger.debug("Initializing MemoryKnowledgeServiceQueryRepository")
 
     async def get(self, query_id: str) -> Optional[KnowledgeServiceQuery]:
         """Retrieve a knowledge service query by ID.
@@ -54,31 +57,7 @@ class MemoryKnowledgeServiceQueryRepository(KnowledgeServiceQueryRepository):
         Returns:
             KnowledgeServiceQuery object if found, None otherwise
         """
-        logger.debug(
-            "MemoryKnowledgeServiceQueryRepository: Attempting to retrieve "
-            "query",
-            extra={"query_id": query_id},
-        )
-
-        query = self._queries.get(query_id)
-        if not query:
-            logger.debug(
-                "MemoryKnowledgeServiceQueryRepository: Query not found",
-                extra={"query_id": query_id},
-            )
-            return None
-
-        logger.info(
-            "MemoryKnowledgeServiceQueryRepository: Query retrieved "
-            "successfully",
-            extra={
-                "query_id": query_id,
-                "query_name": query.name,
-                "knowledge_service_id": query.knowledge_service_id,
-            },
-        )
-
-        return query
+        return self.get_entity(query_id)
 
     async def save(self, query: KnowledgeServiceQuery) -> None:
         """Store or update a knowledge service query.
@@ -86,27 +65,7 @@ class MemoryKnowledgeServiceQueryRepository(KnowledgeServiceQueryRepository):
         Args:
             query: KnowledgeServiceQuery object to store
         """
-        logger.debug(
-            "MemoryKnowledgeServiceQueryRepository: Saving query",
-            extra={"query_id": query.query_id},
-        )
-
-        # Update the updated_at timestamp using proper Pydantic pattern
-        updated_query = query.model_copy(
-            update={"updated_at": datetime.now(timezone.utc)}
-        )
-
-        # Store in memory
-        self._queries[query.query_id] = updated_query
-
-        logger.info(
-            "MemoryKnowledgeServiceQueryRepository: Query saved successfully",
-            extra={
-                "query_id": query.query_id,
-                "query_name": query.name,
-                "knowledge_service_id": query.knowledge_service_id,
-            },
-        )
+        self.save_entity(query, "query_id")
 
     async def generate_id(self) -> str:
         """Generate a unique query identifier.
@@ -114,11 +73,12 @@ class MemoryKnowledgeServiceQueryRepository(KnowledgeServiceQueryRepository):
         Returns:
             Unique string identifier for a new query
         """
-        query_id = f"query-{uuid.uuid4().hex[:12]}"
+        return self.generate_entity_id("query")
 
-        logger.debug(
-            "MemoryKnowledgeServiceQueryRepository: Generated query ID",
-            extra={"query_id": query_id},
-        )
-
-        return query_id
+    def _add_entity_specific_log_data(
+        self, entity: KnowledgeServiceQuery, log_data: Dict[str, Any]
+    ) -> None:
+        """Add knowledge service query-specific data to log entries."""
+        super()._add_entity_specific_log_data(entity, log_data)
+        log_data["query_name"] = entity.name
+        log_data["knowledge_service_id"] = entity.knowledge_service_id
