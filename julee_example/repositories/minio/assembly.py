@@ -11,10 +11,9 @@ the large payload handling pattern from the architectural guidelines.
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import Optional
 
-from julee_example.domain import Assembly, AssemblyStatus
+from julee_example.domain import Assembly
 from julee_example.repositories.assembly import AssemblyRepository
 from .client import MinioClient, MinioRepositoryMixin
 
@@ -52,31 +51,7 @@ class MinioAssemblyRepository(AssemblyRepository, MinioRepositoryMixin):
 
         return assembly
 
-    async def set_assembled_document(
-        self, assembly_id: str, document_id: str
-    ) -> Assembly:
-        """Set the assembled document for an assembly."""
 
-        # Get current assembly
-        assembly = await self.get(assembly_id)
-        if not assembly:
-            raise ValueError(f"Assembly not found: {assembly_id}")
-
-        # Check idempotency - if document_id already set to this value
-        if assembly.assembled_document_id == document_id:
-            return assembly
-
-        # Update assembly with assembled document
-        assembly_dict = assembly.model_dump()
-        assembly_dict["assembled_document_id"] = document_id
-        assembly_dict["status"] = AssemblyStatus.COMPLETED
-        assembly_dict["updated_at"] = datetime.now(timezone.utc)
-        updated_assembly = Assembly(**assembly_dict)
-
-        # Save the updated assembly
-        await self.save(updated_assembly)
-
-        return updated_assembly
 
     async def save(self, assembly: Assembly) -> None:
         """Save assembly metadata (status, updated_at, etc.)."""

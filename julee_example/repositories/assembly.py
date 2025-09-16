@@ -43,23 +43,3 @@ class AssemblyRepository(BaseRepository[Assembly], Protocol):
     Inherits common CRUD operations (get, save, generate_id) from
     BaseRepository.
     """
-
-    async def set_assembled_document(
-        self, assembly_id: str, document_id: str
-    ) -> Assembly:
-        """Set the assembled document for an assembly.
-
-        Args:
-            assembly_id: ID of the assembly to update
-            document_id: ID of the assembled document produced
-
-        Returns:
-            Updated Assembly with the assembled_document_id set
-
-        Implementation Notes:
-        - Idempotent: setting same document_id multiple times is safe
-        - Updates assembly's updated_at timestamp
-        - Updates assembly status to COMPLETED if successful
-        - Returns complete assembly with assembled_document_id set
-        """
-        ...
