@@ -7,6 +7,10 @@ from .assembly_specification import (
 )
 from .assembly import Assembly, AssemblyStatus
 from .knowledge_service_config import KnowledgeServiceConfig
+from .policy import (
+    Policy,
+    PolicyStatus,
+)
 
 __all__ = [
     "Document",
@@ -18,4 +22,6 @@ __all__ = [
     "Assembly",
     "AssemblyStatus",
     "KnowledgeServiceConfig",
+    "Policy",
+    "PolicyStatus",
 ]
