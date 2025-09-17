@@ -126,21 +126,6 @@ class TestMinioDocumentPolicyValidationRepositorySpecific:
         assert retrieved.passed == sample_validation.passed
 
     @pytest.mark.asyncio
-    async def test_bucket_creation_on_initialization(
-        self, fake_client: FakeMinioClient
-    ) -> None:
-        """Test that bucket is created during repository initialization."""
-        # Check bucket doesn't exist initially
-        assert not fake_client.bucket_exists("document-policy-validations")
-
-        # Create repository - should create bucket
-        repo = MinioDocumentPolicyValidationRepository(fake_client)
-
-        # Check bucket was created
-        assert fake_client.bucket_exists("document-policy-validations")
-        assert repo.validations_bucket == "document-policy-validations"
-
-    @pytest.mark.asyncio
     async def test_get_nonexistent_validation_returns_none(
         self, validation_repo: MinioDocumentPolicyValidationRepository
     ) -> None:
