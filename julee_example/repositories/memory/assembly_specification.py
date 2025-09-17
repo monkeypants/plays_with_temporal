@@ -14,19 +14,21 @@ avoided. All operations are still async to maintain interface compatibility.
 """
 
 import logging
-import uuid
-from datetime import datetime, timezone
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from julee_example.domain import AssemblySpecification
 from julee_example.repositories.assembly_specification import (
     AssemblySpecificationRepository,
 )
+from .base import MemoryRepositoryMixin
 
 logger = logging.getLogger(__name__)
 
 
-class MemoryAssemblySpecificationRepository(AssemblySpecificationRepository):
+class MemoryAssemblySpecificationRepository(
+    AssemblySpecificationRepository,
+    MemoryRepositoryMixin[AssemblySpecification],
+):
     """
     Memory implementation of AssemblySpecificationRepository using Python
     dictionaries.
@@ -41,10 +43,11 @@ class MemoryAssemblySpecificationRepository(AssemblySpecificationRepository):
 
     def __init__(self) -> None:
         """Initialize repository with empty in-memory storage."""
-        logger.debug("Initializing MemoryAssemblySpecificationRepository")
+        self.logger = logger
+        self.entity_name = "AssemblySpecification"
+        self.storage_dict: Dict[str, AssemblySpecification] = {}
 
-        # Storage dictionary
-        self._specifications: Dict[str, AssemblySpecification] = {}
+        logger.debug("Initializing MemoryAssemblySpecificationRepository")
 
     async def get(
         self, assembly_specification_id: str
@@ -57,37 +60,7 @@ class MemoryAssemblySpecificationRepository(AssemblySpecificationRepository):
         Returns:
             AssemblySpecification if found, None otherwise
         """
-        logger.debug(
-            "MemoryAssemblySpecificationRepository: Attempting to retrieve "
-            "specification",
-            extra={
-                "assembly_specification_id": assembly_specification_id,
-            },
-        )
-
-        specification = self._specifications.get(assembly_specification_id)
-        if specification is None:
-            logger.debug(
-                "MemoryAssemblySpecificationRepository: Specification not "
-                "found",
-                extra={
-                    "assembly_specification_id": assembly_specification_id
-                },
-            )
-            return None
-
-        logger.info(
-            "MemoryAssemblySpecificationRepository: Specification "
-            "retrieved successfully",
-            extra={
-                "assembly_specification_id": assembly_specification_id,
-                "spec_name": specification.name,
-                "status": specification.status.value,
-                "version": specification.version,
-            },
-        )
-
-        return specification
+        return self.get_entity(assembly_specification_id)
 
     async def save(
         self, assembly_specification: AssemblySpecification
@@ -97,38 +70,7 @@ class MemoryAssemblySpecificationRepository(AssemblySpecificationRepository):
         Args:
             assembly_specification: Complete AssemblySpecification to save
         """
-        logger.debug(
-            "MemoryAssemblySpecificationRepository: Saving specification",
-            extra={
-                "assembly_specification_id": (
-                    assembly_specification.assembly_specification_id
-                ),
-                "spec_name": assembly_specification.name,
-                "status": assembly_specification.status.value,
-            },
-        )
-
-        # Update timestamp
-        assembly_specification.updated_at = datetime.now(timezone.utc)
-
-        # Store the specification (idempotent - will overwrite if exists)
-        self._specifications[
-            assembly_specification.assembly_specification_id
-        ] = assembly_specification
-
-        logger.info(
-            "MemoryAssemblySpecificationRepository: Specification saved "
-            "successfully",
-            extra={
-                "assembly_specification_id": (
-                    assembly_specification.assembly_specification_id
-                ),
-                "spec_name": assembly_specification.name,
-                "status": assembly_specification.status.value,
-                "version": assembly_specification.version,
-                "updated_at": (assembly_specification.updated_at.isoformat()),
-            },
-        )
+        self.save_entity(assembly_specification, "assembly_specification_id")
 
     async def generate_id(self) -> str:
         """Generate a unique assembly specification identifier.
@@ -136,12 +78,12 @@ class MemoryAssemblySpecificationRepository(AssemblySpecificationRepository):
         Returns:
             Unique assembly specification ID string
         """
-        specification_id = f"spec-{uuid.uuid4()}"
+        return self.generate_entity_id("spec")
 
-        logger.debug(
-            "MemoryAssemblySpecificationRepository: Generated specification "
-            "ID",
-            extra={"assembly_specification_id": specification_id},
-        )
-
-        return specification_id
+    def _add_entity_specific_log_data(
+        self, entity: AssemblySpecification, log_data: Dict[str, Any]
+    ) -> None:
+        """Add assembly specification-specific data to log entries."""
+        super()._add_entity_specific_log_data(entity, log_data)
+        log_data["spec_name"] = entity.name
+        log_data["version"] = entity.version

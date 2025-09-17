@@ -12,17 +12,18 @@ All operations are still async to maintain interface compatibility.
 """
 
 import logging
-import uuid
-from datetime import datetime, timezone
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from julee_example.domain import Assembly
 from julee_example.repositories.assembly import AssemblyRepository
+from .base import MemoryRepositoryMixin
 
 logger = logging.getLogger(__name__)
 
 
-class MemoryAssemblyRepository(AssemblyRepository):
+class MemoryAssemblyRepository(
+    AssemblyRepository, MemoryRepositoryMixin[Assembly]
+):
     """
     Memory implementation of AssemblyRepository using Python dictionaries.
 
@@ -33,10 +34,11 @@ class MemoryAssemblyRepository(AssemblyRepository):
 
     def __init__(self) -> None:
         """Initialize repository with empty in-memory storage."""
-        logger.debug("Initializing MemoryAssemblyRepository")
+        self.logger = logger
+        self.entity_name = "Assembly"
+        self.storage_dict: Dict[str, Assembly] = {}
 
-        # Storage dictionary
-        self._assemblies: Dict[str, Assembly] = {}
+        logger.debug("Initializing MemoryAssemblyRepository")
 
     async def get(self, assembly_id: str) -> Optional[Assembly]:
         """Retrieve an assembly by ID.
@@ -47,30 +49,7 @@ class MemoryAssemblyRepository(AssemblyRepository):
         Returns:
             Assembly if found, None otherwise
         """
-        logger.debug(
-            "MemoryAssemblyRepository: Attempting to retrieve assembly",
-            extra={
-                "assembly_id": assembly_id,
-            },
-        )
-
-        assembly = self._assemblies.get(assembly_id)
-        if assembly is None:
-            logger.debug(
-                "MemoryAssemblyRepository: Assembly not found",
-                extra={"assembly_id": assembly_id},
-            )
-            return None
-
-        logger.info(
-            "MemoryAssemblyRepository: Assembly retrieved successfully",
-            extra={
-                "assembly_id": assembly_id,
-                "assembled_document_id": assembly.assembled_document_id,
-            },
-        )
-
-        return assembly
+        return self.get_entity(assembly_id)
 
     async def save(self, assembly: Assembly) -> None:
         """Save assembly metadata (status, updated_at, etc.).
@@ -78,29 +57,7 @@ class MemoryAssemblyRepository(AssemblyRepository):
         Args:
             assembly: Assembly entity
         """
-        logger.debug(
-            "MemoryAssemblyRepository: Saving assembly",
-            extra={
-                "assembly_id": assembly.assembly_id,
-                "status": assembly.status.value,
-            },
-        )
-
-        # Update timestamp
-        assembly_dict = assembly.model_dump()
-        assembly_dict["updated_at"] = datetime.now(timezone.utc)
-
-        updated_assembly = Assembly(**assembly_dict)
-        self._assemblies[assembly.assembly_id] = updated_assembly
-
-        logger.info(
-            "MemoryAssemblyRepository: Assembly saved successfully",
-            extra={
-                "assembly_id": assembly.assembly_id,
-                "status": assembly.status.value,
-                "assembled_document_id": assembly.assembled_document_id,
-            },
-        )
+        self.save_entity(assembly, "assembly_id")
 
     async def generate_id(self) -> str:
         """Generate a unique assembly identifier.
@@ -108,11 +65,11 @@ class MemoryAssemblyRepository(AssemblyRepository):
         Returns:
             Unique assembly ID string
         """
-        assembly_id = f"assembly-{uuid.uuid4()}"
+        return self.generate_entity_id("assembly")
 
-        logger.debug(
-            "MemoryAssemblyRepository: Generated assembly ID",
-            extra={"assembly_id": assembly_id},
-        )
-
-        return assembly_id
+    def _add_entity_specific_log_data(
+        self, entity: Assembly, log_data: Dict[str, Any]
+    ) -> None:
+        """Add assembly-specific data to log entries."""
+        super()._add_entity_specific_log_data(entity, log_data)
+        log_data["assembled_document_id"] = entity.assembled_document_id

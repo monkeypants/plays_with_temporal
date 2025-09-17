@@ -12,17 +12,18 @@ All operations are still async to maintain interface compatibility.
 """
 
 import logging
-import uuid
-from datetime import datetime, timezone
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from julee_example.domain import Document
 from julee_example.repositories.document import DocumentRepository
+from .base import MemoryRepositoryMixin
 
 logger = logging.getLogger(__name__)
 
 
-class MemoryDocumentRepository(DocumentRepository):
+class MemoryDocumentRepository(
+    DocumentRepository, MemoryRepositoryMixin[Document]
+):
     """
     Memory implementation of DocumentRepository using Python dictionaries.
 
@@ -35,10 +36,11 @@ class MemoryDocumentRepository(DocumentRepository):
 
     def __init__(self) -> None:
         """Initialize repository with empty in-memory storage."""
-        logger.debug("Initializing MemoryDocumentRepository")
+        self.logger = logger
+        self.entity_name = "Document"
+        self.storage_dict: Dict[str, Document] = {}
 
-        # Storage dictionary
-        self._documents: Dict[str, Document] = {}
+        logger.debug("Initializing MemoryDocumentRepository")
 
     async def get(self, document_id: str) -> Optional[Document]:
         """Retrieve a document with metadata and content.
@@ -49,30 +51,7 @@ class MemoryDocumentRepository(DocumentRepository):
         Returns:
             Document object if found, None otherwise
         """
-        logger.debug(
-            "MemoryDocumentRepository: Attempting to retrieve document",
-            extra={"document_id": document_id},
-        )
-
-        document = self._documents.get(document_id)
-        if document is None:
-            logger.debug(
-                "MemoryDocumentRepository: Document not found",
-                extra={"document_id": document_id},
-            )
-            return None
-
-        logger.info(
-            "MemoryDocumentRepository: Document retrieved successfully",
-            extra={
-                "document_id": document_id,
-                "content_length": (
-                    len(document.content.read()) if document.content else 0
-                ),
-            },
-        )
-
-        return document
+        return self.get_entity(document_id)
 
     async def save(self, document: Document) -> None:
         """Save a document with its content and metadata.
@@ -80,29 +59,7 @@ class MemoryDocumentRepository(DocumentRepository):
         Args:
             document: Document object to save
         """
-        logger.debug(
-            "MemoryDocumentRepository: Saving document",
-            extra={"document_id": document.document_id},
-        )
-
-        # Ensure timestamps are set
-        now = datetime.now(timezone.utc)
-        if document.created_at is None:
-            document.created_at = now
-        document.updated_at = now
-
-        # Store the document (idempotent - will overwrite if exists)
-        self._documents[document.document_id] = document
-
-        logger.info(
-            "MemoryDocumentRepository: Document saved successfully",
-            extra={
-                "document_id": document.document_id,
-                "content_length": (
-                    len(document.content.read()) if document.content else 0
-                ),
-            },
-        )
+        self.save_entity(document, "document_id")
 
     async def generate_id(self) -> str:
         """Generate a unique document identifier.
@@ -110,11 +67,11 @@ class MemoryDocumentRepository(DocumentRepository):
         Returns:
             Unique document ID string
         """
-        document_id = f"doc-{uuid.uuid4()}"
+        return self.generate_entity_id("doc")
 
-        logger.debug(
-            "MemoryDocumentRepository: Generated document ID",
-            extra={"document_id": document_id},
-        )
-
-        return document_id
+    def _add_entity_specific_log_data(
+        self, entity: Document, log_data: Dict[str, Any]
+    ) -> None:
+        """Add document-specific data to log entries."""
+        super()._add_entity_specific_log_data(entity, log_data)
+        log_data["content_length"] = entity.size_bytes
