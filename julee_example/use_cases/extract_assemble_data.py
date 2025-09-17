@@ -484,17 +484,15 @@ text or markdown formatting."""
         if not response_text:
             raise ValueError("Empty response from knowledge service")
 
-        # Try to parse as JSON
+        # Response must be valid JSON
         try:
             parsed_result = json.loads(response_text.strip())
             return parsed_result
         except json.JSONDecodeError as e:
-            logger.warning(
-                "Failed to parse JSON response, returning as text",
-                extra={"response": response_text, "error": str(e)},
+            raise ValueError(
+                f"Knowledge service response must be valid JSON, got: "
+                f"{response_text[:100]}... Parse error: {e}"
             )
-            # If it's not valid JSON, return as a string value
-            return response_text.strip()
 
     def _store_result_in_assembled_data(
         self,
