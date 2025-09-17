@@ -19,12 +19,10 @@ from julee_example.domain.policy import (
 )
 from julee_example.repositories import (
     DocumentRepository,
-    KnowledgeServiceQueryRepository,
-    KnowledgeServiceConfigRepository,
-)
-from julee_example.repositories import (
-    PolicyRepository,
     DocumentPolicyValidationRepository,
+    KnowledgeServiceConfigRepository,
+    KnowledgeServiceQueryRepository,
+    PolicyRepository,
 )
 from julee_example.services import knowledge_service_factory, KnowledgeService
 from sample.validation import ensure_repository_protocol
