@@ -13,6 +13,7 @@ from .assembly_specification import AssemblySpecificationRepository
 from .knowledge_service_config import KnowledgeServiceConfigRepository
 from .knowledge_service_query import KnowledgeServiceQueryRepository
 from .policy import PolicyRepository
+from .document_policy_validation import DocumentPolicyValidationRepository
 
 __all__ = [
     "BaseRepository",
@@ -22,4 +23,5 @@ __all__ = [
     "KnowledgeServiceConfigRepository",
     "KnowledgeServiceQueryRepository",
     "PolicyRepository",
+    "DocumentPolicyValidationRepository",
 ]
