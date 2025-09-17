@@ -15,7 +15,12 @@ import multihash
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
 
-from julee_example.domain import Document, KnowledgeServiceQuery
+from julee_example.domain import (
+    Document,
+    DocumentStatus,
+    ContentStream,
+    KnowledgeServiceQuery,
+)
 from julee_example.domain.policy import (
     DocumentPolicyValidation,
     DocumentPolicyValidationStatus,
@@ -270,6 +275,11 @@ class ValidateDocumentUseCase:
             )
 
             # Step 12: Apply transformations
+            validation.status = (
+                DocumentPolicyValidationStatus.TRANSFORMATION_IN_PROGRESS
+            )
+            await self.document_policy_validation_repo.save(validation)
+
             transformed_document = await self._apply_transformations(
                 document,
                 policy,
@@ -294,9 +304,7 @@ class ValidateDocumentUseCase:
             )
 
             # Step 14: Re-run validation queries on transformed document
-            validation.status = (
-                DocumentPolicyValidationStatus.TRANSFORMATION_IN_PROGRESS
-            )
+            validation.status = DocumentPolicyValidationStatus.IN_PROGRESS
             await self.document_policy_validation_repo.save(validation)
 
             post_transform_validation_scores = (
@@ -689,7 +697,7 @@ class ValidateDocumentUseCase:
                 "Transformation query applied",
                 extra={
                     "query_id": query_id,
-                    "original_length": len(transformed_content),
+                    "original_length": document.size_bytes,
                     "transformed_length": len(transformed_content),
                 },
             )
@@ -707,12 +715,6 @@ class ValidateDocumentUseCase:
         sha256_hash = sha256_hasher.digest()
         mhash = multihash.encode(sha256_hash, multihash.SHA2_256)
         proper_multihash = str(mhash.hex())
-
-        from julee_example.domain import (
-            Document,
-            DocumentStatus,
-            ContentStream,
-        )
 
         transformed_document = Document(
             document_id=transformed_document_id,
