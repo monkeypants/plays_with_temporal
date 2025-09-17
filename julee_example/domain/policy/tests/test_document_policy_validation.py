@@ -382,8 +382,6 @@ class TestPostTransformValidationScores:
 class TestDocumentPolicyValidationStatusEnum:
     """Test DocumentPolicyValidationStatus enum usage."""
 
-
-
     def test_default_status_is_pending(self) -> None:
         """Test that default status is PENDING."""
         validation = DocumentPolicyValidation(
