@@ -41,6 +41,7 @@ Examples:
 import argparse
 import asyncio
 import hashlib
+import io
 
 import json
 import logging
@@ -178,9 +179,10 @@ async def create_meeting_minutes_document(
     # Generate document ID
     document_id = f"meeting-minutes-{int(datetime.now().timestamp())}"
 
-    # Open file and create content stream directly from file handle
-    file_handle = minutes_file.open("rb")
-    content_stream = ContentStream(file_handle)
+    # Read file content and create content stream
+    with minutes_file.open("rb") as file_handle:
+        file_content = file_handle.read()
+    content_stream = ContentStream(io.BytesIO(file_content))
 
     # Calculate size and multihash from file
     file_size = minutes_file.stat().st_size
@@ -527,7 +529,6 @@ async def test_validate_document_use_case(
                 transformed_doc.content.seek(0)
                 content_bytes = transformed_doc.content.read()
                 content_text = content_bytes.decode("utf-8")
-                transformed_doc.content.seek(0)
 
                 try:
                     transformed_data = json.loads(content_text)
