@@ -1,0 +1,9 @@
+{
+  "title": "Offensive Language Policy",
+  "description": "Policy to validate that documents do not contain offensive, inappropriate, or unprofessional language",
+  "validation_scores": [
+    ["offensive_language_check", 80],
+    ["professionalism_check", 70]
+  ],
+  "transformation_queries": null
+}
