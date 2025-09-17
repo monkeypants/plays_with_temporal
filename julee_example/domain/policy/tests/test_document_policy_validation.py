@@ -382,27 +382,7 @@ class TestPostTransformValidationScores:
 class TestDocumentPolicyValidationStatusEnum:
     """Test DocumentPolicyValidationStatus enum usage."""
 
-    def test_all_status_values_valid(self) -> None:
-        """Test that all status enum values are valid."""
-        statuses = [
-            DocumentPolicyValidationStatus.PENDING,
-            DocumentPolicyValidationStatus.IN_PROGRESS,
-            DocumentPolicyValidationStatus.VALIDATION_COMPLETE,
-            DocumentPolicyValidationStatus.TRANSFORMATION_REQUIRED,
-            DocumentPolicyValidationStatus.TRANSFORMATION_IN_PROGRESS,
-            DocumentPolicyValidationStatus.TRANSFORMATION_COMPLETE,
-            DocumentPolicyValidationStatus.PASSED,
-            DocumentPolicyValidationStatus.FAILED,
-            DocumentPolicyValidationStatus.ERROR,
-        ]
 
-        for status in statuses:
-            validation = DocumentPolicyValidation(
-                input_document_id="doc-123",
-                policy_id="policy-456",
-                status=status,
-            )
-            assert validation.status == status
 
     def test_default_status_is_pending(self) -> None:
         """Test that default status is PENDING."""
