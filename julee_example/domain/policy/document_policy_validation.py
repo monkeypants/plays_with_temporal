@@ -56,9 +56,8 @@ class DocumentPolicyValidation(BaseModel):
     """
 
     # Core validation identification
-    validation_id: Optional[str] = Field(
-        default=None,
-        description="Unique identifier for this validation instance",
+    validation_id: str = Field(
+        description="Unique identifier for this validation instance"
     )
     input_document_id: str = Field(
         description="ID of the document being validated against the policy"
