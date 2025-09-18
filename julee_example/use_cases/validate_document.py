@@ -7,11 +7,20 @@ remaining framework-agnostic. Dependencies are injected via repository
 instances following the Clean Architecture principles.
 """
 
+import hashlib
+import io
+import json
 import logging
+import multihash
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
 
-from julee_example.domain import Document, KnowledgeServiceQuery
+from julee_example.domain import (
+    Document,
+    DocumentStatus,
+    ContentStream,
+    KnowledgeServiceQuery,
+)
 from julee_example.domain.policy import (
     DocumentPolicyValidation,
     DocumentPolicyValidationStatus,
@@ -174,18 +183,18 @@ class ValidateDocumentUseCase:
             validation.status = DocumentPolicyValidationStatus.IN_PROGRESS
             await self.document_policy_validation_repo.save(validation)
 
-            # Step 5: Retrieve all validation queries needed for this policy
-            queries = await self._retrieve_validation_queries(policy)
+            # Step 5: Retrieve all queries needed for this policy
+            all_queries = await self._retrieve_all_queries(policy)
 
             # Step 6: Retrieve all knowledge services needed for validation
             knowledge_services = await self._retrieve_all_knowledge_services(
-                queries
+                all_queries
             )
 
             # Step 7: Register the document with knowledge services
             document_registrations = (
                 await self._register_document_with_services(
-                    document, queries, knowledge_services
+                    document, all_queries, knowledge_services
                 )
             )
 
@@ -194,46 +203,160 @@ class ValidateDocumentUseCase:
                 document,
                 policy,
                 document_registrations,
-                queries,
+                all_queries,
                 knowledge_services,
             )
 
-            # Step 9: Update validation with scores and determine pass/fail
-            passed = self._determine_validation_result(
+            # Step 9: Update validation with scores
+            validation.validation_scores = validation_scores
+            validation.status = (
+                DocumentPolicyValidationStatus.VALIDATION_COMPLETE
+            )
+            await self.document_policy_validation_repo.save(validation)
+
+            # Step 10: Check if transformations are needed
+            initial_passed = self._determine_validation_result(
                 validation_scores, policy.validation_scores
+            )
+
+            if initial_passed or not policy.has_transformations:
+                # No transformations needed - either passed or no
+                # transformations available
+                final_status = (
+                    DocumentPolicyValidationStatus.PASSED
+                    if initial_passed
+                    else DocumentPolicyValidationStatus.FAILED
+                )
+
+                validation = DocumentPolicyValidation(
+                    validation_id=validation.validation_id,
+                    input_document_id=validation.input_document_id,
+                    policy_id=validation.policy_id,
+                    validation_scores=validation_scores,
+                    transformed_document_id=validation.transformed_document_id,
+                    post_transform_validation_scores=validation.post_transform_validation_scores,
+                    started_at=validation.started_at,
+                    completed_at=datetime.now(timezone.utc),
+                    error_message=validation.error_message,
+                    status=final_status,
+                    passed=initial_passed,
+                )
+
+                await self.document_policy_validation_repo.save(validation)
+
+                logger.info(
+                    "Document validation completed without transformations",
+                    extra={
+                        "validation_id": validation_id,
+                        "document_id": document_id,
+                        "policy_id": policy_id,
+                        "passed": initial_passed,
+                        "validation_scores": validation_scores,
+                    },
+                )
+
+                return validation
+
+            # Step 11: Initial validation failed and transformations are
+            # available
+            validation.status = (
+                DocumentPolicyValidationStatus.TRANSFORMATION_REQUIRED
+            )
+            await self.document_policy_validation_repo.save(validation)
+
+            logger.info(
+                "Initial validation failed, applying transformations",
+                extra={
+                    "validation_id": validation_id,
+                    "document_id": document_id,
+                    "policy_id": policy_id,
+                    "initial_scores": validation_scores,
+                },
+            )
+
+            # Step 12: Apply transformations
+            validation.status = (
+                DocumentPolicyValidationStatus.TRANSFORMATION_IN_PROGRESS
+            )
+            await self.document_policy_validation_repo.save(validation)
+
+            transformed_document = await self._apply_transformations(
+                document,
+                policy,
+                all_queries,
+                document_registrations,
+                knowledge_services,
+            )
+
+            validation.transformed_document_id = (
+                transformed_document.document_id
+            )
+            validation.status = (
+                DocumentPolicyValidationStatus.TRANSFORMATION_COMPLETE
+            )
+            await self.document_policy_validation_repo.save(validation)
+
+            # Step 13: Register transformed document with knowledge services
+            transformed_document_registrations = (
+                await self._register_document_with_services(
+                    transformed_document, all_queries, knowledge_services
+                )
+            )
+
+            # Step 14: Re-run validation queries on transformed document
+            validation.status = DocumentPolicyValidationStatus.IN_PROGRESS
+            await self.document_policy_validation_repo.save(validation)
+
+            post_transform_validation_scores = (
+                await self._execute_validation_queries(
+                    transformed_document,
+                    policy,
+                    transformed_document_registrations,
+                    all_queries,
+                    knowledge_services,
+                )
+            )
+
+            # Step 15: Determine final result based on post-transformation
+            # scores
+            final_passed = self._determine_validation_result(
+                post_transform_validation_scores, policy.validation_scores
             )
 
             final_status = (
                 DocumentPolicyValidationStatus.PASSED
-                if passed
+                if final_passed
                 else DocumentPolicyValidationStatus.FAILED
             )
 
-            # Create new validation instance with updated scores
             validation = DocumentPolicyValidation(
                 validation_id=validation.validation_id,
                 input_document_id=validation.input_document_id,
                 policy_id=validation.policy_id,
-                validation_scores=validation_scores,  # Triggers validation
-                transformed_document_id=validation.transformed_document_id,
-                post_transform_validation_scores=validation.post_transform_validation_scores,
+                validation_scores=validation_scores,
+                transformed_document_id=transformed_document.document_id,
+                post_transform_validation_scores=post_transform_validation_scores,
                 started_at=validation.started_at,
                 completed_at=datetime.now(timezone.utc),
                 error_message=validation.error_message,
                 status=final_status,
-                passed=passed,
+                passed=final_passed,
             )
 
             await self.document_policy_validation_repo.save(validation)
 
             logger.info(
-                "Document validation completed",
+                "Document validation completed with transformations",
                 extra={
                     "validation_id": validation_id,
                     "document_id": document_id,
                     "policy_id": policy_id,
-                    "passed": passed,
-                    "validation_scores": validation_scores,
+                    "passed": final_passed,
+                    "initial_scores": validation_scores,
+                    "final_scores": post_transform_validation_scores,
+                    "transformed_document_id": (
+                        transformed_document.document_id
+                    ),
                 },
             )
 
@@ -275,29 +398,42 @@ class ValidateDocumentUseCase:
             raise ValueError(f"Policy not found: {policy_id}")
         return policy
 
-    @try_use_case_step("validation_queries_retrieval")
-    async def _retrieve_validation_queries(
+    @try_use_case_step("all_queries_retrieval")
+    async def _retrieve_all_queries(
         self, policy: Policy
     ) -> Dict[str, KnowledgeServiceQuery]:
-        """Retrieve all knowledge service queries needed for validation."""
-        queries = {}
+        """Retrieve all knowledge service queries needed for validation and
+        transformation."""
+        all_queries = {}
+
+        # Get validation queries
         for query_id, required_score in policy.validation_scores:
             query = await self.knowledge_service_query_repo.get(query_id)
             if not query:
-                raise ValueError(
-                    f"Knowledge service query not found: {query_id}"
-                )
-            queries[query_id] = query
-        return queries
+                raise ValueError(f"Validation query not found: {query_id}")
+            all_queries[query_id] = query
+
+        # Get transformation queries
+        if policy.transformation_queries:
+            for query_id in policy.transformation_queries:
+                query = await self.knowledge_service_query_repo.get(query_id)
+                if not query:
+                    raise ValueError(
+                        f"Transformation query not found: {query_id}"
+                    )
+                all_queries[query_id] = query
+
+        return all_queries
 
     @try_use_case_step("knowledge_services_retrieval")
     async def _retrieve_all_knowledge_services(
-        self, queries: Dict[str, KnowledgeServiceQuery]
+        self, all_queries: Dict[str, KnowledgeServiceQuery]
     ) -> Dict[str, KnowledgeService]:
-        """Retrieve all unique knowledge services needed for validation."""
+        """Retrieve all unique knowledge services needed for validation and
+        transformation."""
         knowledge_services = {}
         unique_service_ids = {
-            query.knowledge_service_id for query in queries.values()
+            query.knowledge_service_id for query in all_queries.values()
         }
 
         for service_id in unique_service_ids:
@@ -482,3 +618,158 @@ class ValidateDocumentUseCase:
                 return False
 
         return True
+
+    @try_use_case_step("document_transformation")
+    async def _apply_transformations(
+        self,
+        document: Document,
+        policy: Policy,
+        all_queries: Dict[str, KnowledgeServiceQuery],
+        document_registrations: Dict[str, str],
+        knowledge_services: Dict[str, KnowledgeService],
+    ) -> Document:
+        """
+        Apply transformation queries to a document and return the
+        transformed document.
+
+        Args:
+            document: The original document to transform
+            policy: The policy containing transformation query IDs
+            all_queries: Dict of all queries (validation and transformation)
+            document_registrations: Mapping of service_id to service_file_id
+            knowledge_services: Dict of service_id to KnowledgeService
+                instances
+
+        Returns:
+            New Document object with transformed content
+
+        Raises:
+            ValueError: If transformation queries are not found or fail
+            RuntimeError: If document transformation fails
+        """
+        if not policy.transformation_queries:
+            raise ValueError("No transformation queries provided")
+
+        logger.debug(
+            "Applying transformations to document",
+            extra={
+                "document_id": document.document_id,
+                "transformation_query_ids": policy.transformation_queries,
+            },
+        )
+
+        # Apply transformations sequentially
+        current_content = document.content
+        current_content.seek(0)
+        transformed_content = current_content.read().decode("utf-8")
+        current_content.seek(0)
+
+        for query_id in policy.transformation_queries:
+            query = all_queries[query_id]
+
+            # Get the knowledge service for this query
+            knowledge_service = knowledge_services[query.knowledge_service_id]
+
+            # Get the service file ID from our registrations
+            service_file_id = document_registrations.get(
+                query.knowledge_service_id
+            )
+            if not service_file_id:
+                raise ValueError(
+                    f"Document not registered with service "
+                    f"{query.knowledge_service_id}"
+                )
+
+            # Execute the transformation query
+            transformation_result = await knowledge_service.execute_query(
+                query_text=query.prompt,
+                service_file_ids=[service_file_id],
+                query_metadata=query.query_metadata,
+                assistant_prompt=query.assistant_prompt,
+            )
+
+            # Extract transformed content from result
+            transformed_content = self._extract_transformed_content(
+                transformation_result.result_data
+            )
+
+            logger.debug(
+                "Transformation query applied",
+                extra={
+                    "query_id": query_id,
+                    "original_length": document.size_bytes,
+                    "transformed_length": len(transformed_content),
+                },
+            )
+
+        # Create new document with transformed content
+        transformed_document_id = await self.document_repo.generate_id()
+
+        # Create content stream from transformed text
+        transformed_bytes = transformed_content.encode("utf-8")
+        transformed_stream = io.BytesIO(transformed_bytes)
+
+        # Calculate multihash for transformed content
+        sha256_hasher = hashlib.sha256()
+        sha256_hasher.update(transformed_bytes)
+        sha256_hash = sha256_hasher.digest()
+        mhash = multihash.encode(sha256_hash, multihash.SHA2_256)
+        proper_multihash = str(mhash.hex())
+
+        transformed_document = Document(
+            document_id=transformed_document_id,
+            original_filename=f"transformed_{document.original_filename}",
+            content_type=document.content_type,
+            size_bytes=len(transformed_bytes),
+            content_multihash=proper_multihash,
+            status=DocumentStatus.CAPTURED,
+            content=ContentStream(transformed_stream),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        # Save the transformed document
+        await self.document_repo.save(transformed_document)
+
+        logger.info(
+            "Document transformation completed",
+            extra={
+                "original_document_id": document.document_id,
+                "transformed_document_id": transformed_document.document_id,
+                "original_size": document.size_bytes,
+                "transformed_size": transformed_document.size_bytes,
+            },
+        )
+
+        return transformed_document
+
+    def _extract_transformed_content(self, result_data: Dict) -> str:
+        """
+        Extract transformed document content from knowledge service result.
+
+        Args:
+            result_data: Result data from knowledge service transformation
+                query
+
+        Returns:
+            Transformed document content as valid JSON string
+
+        Raises:
+            ValueError: If no valid JSON content can be extracted from result
+        """
+        response_text = result_data.get("response", "")
+        if not response_text:
+            raise ValueError("Empty response from transformation query")
+
+        # The response must be valid JSON
+        stripped_response: str = response_text.strip()
+        try:
+            # Parse to validate JSON structure
+            json.loads(stripped_response)
+            # Return the original response text (preserving formatting)
+            return stripped_response
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Transformation result must be valid JSON, got: "
+                f"{response_text[:100]}... Parse error: {e}"
+            )
