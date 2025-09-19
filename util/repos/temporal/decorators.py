@@ -30,15 +30,15 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-def _discover_async_methods(
+def _discover_protocol_methods(
     cls_hierarchy: tuple[type, ...],
 ) -> dict[str, Any]:
     """
-    Common function to discover async methods that should be wrapped.
+    Common function to discover protocol methods that should be wrapped.
 
     This function is used by both temporal_activity_registration and
     temporal_workflow_proxy to ensure they operate on the exact same
-    set of methods.
+    set of methods by finding async methods defined in protocol interfaces.
 
     Args:
         cls_hierarchy: The class MRO (method resolution order)
@@ -48,24 +48,49 @@ def _discover_async_methods(
     """
     methods_to_wrap = {}
 
+    # Look for protocol interfaces (classes with runtime_checkable/Protocol)
     for base_class in cls_hierarchy:
         # Skip object base class
         if base_class is object:
             continue
 
-        # Get methods defined in this class (not inherited ones we've
-        # already seen)
-        for name in base_class.__dict__:
-            if name in methods_to_wrap:
-                continue  # Already found this method in a subclass
+        # Check if this is a protocol class
+        is_protocol = (
+            hasattr(base_class, "__protocol__")
+            or getattr(base_class, "_is_protocol", False)
+            or "Protocol" in str(base_class)
+        )
 
-            method = getattr(base_class, name)
+        if is_protocol:
+            # Get methods defined in this protocol
+            for name in base_class.__dict__:
+                if name in methods_to_wrap:
+                    continue  # Already found this method
 
-            # Only wrap async methods that don't start with underscore
-            if inspect.iscoroutinefunction(method) and not name.startswith(
-                "_"
-            ):
-                methods_to_wrap[name] = method
+                method = getattr(base_class, name)
+
+                # Only wrap async methods that don't start with underscore
+                if inspect.iscoroutinefunction(
+                    method
+                ) and not name.startswith("_"):
+                    methods_to_wrap[name] = method
+
+    # If no protocol methods found, fall back to all async methods
+    # (for backward compatibility with non-protocol base classes)
+    if not methods_to_wrap:
+        for base_class in cls_hierarchy:
+            if base_class is object:
+                continue
+
+            for name in base_class.__dict__:
+                if name in methods_to_wrap:
+                    continue
+
+                method = getattr(base_class, name)
+                if inspect.iscoroutinefunction(
+                    method
+                ) and not name.startswith("_"):
+                    methods_to_wrap[name] = method
 
     return methods_to_wrap
 
@@ -115,7 +140,7 @@ def temporal_activity_registration(
         wrapped_methods = []
 
         # Use common method discovery
-        async_methods_to_wrap = _discover_async_methods(cls.__mro__)
+        async_methods_to_wrap = _discover_protocol_methods(cls.__mro__)
 
         # Now wrap all the async methods we found
         for name, method in async_methods_to_wrap.items():
@@ -225,7 +250,7 @@ def temporal_workflow_proxy(
         )
 
         # Use the same method discovery as temporal_activity_registration
-        methods_to_implement = _discover_async_methods(cls.__mro__)
+        methods_to_implement = _discover_protocol_methods(cls.__mro__)
 
         # Generate workflow proxy methods
         wrapped_methods = []
