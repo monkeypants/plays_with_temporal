@@ -2,7 +2,7 @@
 Temporal decorators for automatically creating activities and workflow proxies
 
 This module provides decorators that automatically:
-1. Wrap repository methods as Temporal activities
+1. Wrap async protocol methods as Temporal activities
 2. Generate workflow proxy classes that delegate to activities
 Both reduce boilerplate and ensure consistent patterns.
 """
@@ -311,17 +311,14 @@ def temporal_workflow_proxy(
 
                     # Prepare arguments (exclude self)
                     activity_args = args if args else ()
+
+                    # Note: kwargs not currently supported by this decorator
+                    # Most repository methods use positional args only
                     if kwargs:
-                        # If there are kwargs, need to handle them
-                        # For now, assume single positional arg is the norm
-                        if len(activity_args) == 0 and len(kwargs) == 1:
-                            activity_args = tuple(kwargs.values())
-                        elif len(kwargs) > 0:
-                            # Could extend this to handle complex kwargs
-                            raise ValueError(
-                                f"Complex kwargs not yet supported in "
-                                f"workflow proxy for {method_name}"
-                            )
+                        raise ValueError(
+                            f"kwargs not supported in workflow proxy "
+                            f"for {method_name}. Use positional args."
+                        )
 
                     # Execute the activity
                     if activity_args:
@@ -434,15 +431,11 @@ def _is_optional_type(annotation: Any) -> bool:
         args = get_args(annotation)
         # Optional[T] is Union[T, None]
         return (
-            origin is type(None)
-            or (
-                hasattr(origin, "__name__") and origin.__name__ == "UnionType"
-            )
-            or (
-                str(origin) == "typing.Union"
-                and len(args) == 2
-                and type(None) in args
-            )
+            hasattr(origin, "__name__") and origin.__name__ == "UnionType"
+        ) or (
+            str(origin) == "typing.Union"
+            and len(args) == 2
+            and type(None) in args
         )
     return False
 
@@ -456,4 +449,5 @@ def _get_optional_inner_type(annotation: Any) -> Any:
 
 
 # Keep old name for backwards compatibility
+# TODO: separate PR that changes existing call-sites and removes this.
 temporal_repository = temporal_activity_registration
