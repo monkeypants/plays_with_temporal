@@ -1,23 +1,63 @@
 """
-Temporal decorator for automatically wrapping repository methods as activities
+Temporal decorators for automatically creating activities and workflow proxies
 
-This module provides a decorator that automatically wraps repository methods
-as Temporal activities, reducing boilerplate and ensuring consistent patterns.
+This module provides decorators that automatically:
+1. Wrap repository methods as Temporal activities
+2. Generate workflow proxy classes that delegate to activities
+Both reduce boilerplate and ensure consistent patterns.
 """
 
 import inspect
 import functools
 import logging
-from typing import Any, Callable, Type, TypeVar
+from typing import Any, Callable, Type, TypeVar, Protocol, Optional, get_origin, get_args
 
-from temporalio import activity
+from temporalio import activity, workflow
+from temporalio.common import RetryPolicy
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
 
-def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
+def _discover_async_methods(cls_hierarchy) -> dict[str, Any]:
+    """
+    Common function to discover async methods that should be wrapped.
+
+    This function is used by both temporal_activity_registration and
+    temporal_workflow_proxy to ensure they operate on the exact same
+    set of methods.
+
+    Args:
+        cls_hierarchy: The class MRO (method resolution order)
+
+    Returns:
+        Dict mapping method names to method objects
+    """
+    methods_to_wrap = {}
+
+    for base_class in cls_hierarchy:
+        # Skip object base class
+        if base_class is object:
+            continue
+
+        # Get methods defined in this class (not inherited ones we've
+        # already seen)
+        for name in base_class.__dict__:
+            if name in methods_to_wrap:
+                continue  # Already found this method in a subclass
+
+            method = getattr(base_class, name)
+
+            # Only wrap async methods that don't start with underscore
+            if inspect.iscoroutinefunction(method) and not name.startswith("_"):
+                methods_to_wrap[name] = method
+
+    return methods_to_wrap
+
+
+def temporal_activity_registration(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
     """
     Class decorator that automatically wraps all async methods as Temporal
     activities.
@@ -37,7 +77,7 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
         activities
 
     Example:
-        @temporal_repository("sample.payment_repo.minio")
+        @temporal_activity_registration("sample.payment_repo.minio")
         class TemporalMinioPaymentRepository(MinioPaymentRepository):
             pass
 
@@ -52,33 +92,14 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
 
     def decorator(cls: Type[T]) -> Type[T]:
         logger.debug(
-            f"Applying temporal_repository decorator to {cls.__name__}"
+            f"Applying temporal_activity_registration decorator to {cls.__name__}"
         )
 
         # Track which methods we wrap for logging
         wrapped_methods = []
 
-        # Look at all classes in the MRO to find async methods to wrap
-        async_methods_to_wrap = {}
-
-        for base_class in cls.__mro__:
-            # Skip object base class
-            if base_class is object:
-                continue
-
-            # Get methods defined in this class (not inherited ones we've
-            # already seen)
-            for name in base_class.__dict__:
-                if name in async_methods_to_wrap:
-                    continue  # Already found this method in a subclass
-
-                method = getattr(base_class, name)
-
-                # Only wrap async methods that don't start with underscore
-                if inspect.iscoroutinefunction(
-                    method
-                ) and not name.startswith("_"):
-                    async_methods_to_wrap[name] = method
+        # Use common method discovery
+        async_methods_to_wrap = _discover_async_methods(cls.__mro__)
 
         # Now wrap all the async methods we found
         for name, method in async_methods_to_wrap.items():
@@ -121,7 +142,7 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
             wrapped_methods.append(name)
 
         logger.info(
-            f"Temporal repository decorator applied to {cls.__name__}",
+            f"Temporal activity registration decorator applied to {cls.__name__}",
             extra={
                 "wrapped_methods": wrapped_methods,
                 "activity_prefix": activity_prefix,
@@ -131,3 +152,226 @@ def temporal_repository(activity_prefix: str) -> Callable[[Type[T]], Type[T]]:
         return cls
 
     return decorator
+
+
+def temporal_workflow_proxy(
+    activity_base: str,
+    default_timeout_seconds: int = 30,
+    retry_methods: Optional[list[str]] = None,
+) -> Callable[[Type[T]], Type[T]]:
+    """
+    Class decorator that automatically creates workflow proxy methods that
+    delegate to Temporal activities.
+
+    This decorator inspects the protocol/interface being implemented and
+    generates methods that call workflow.execute_activity with the appropriate
+    activity names, timeouts, and retry policies.
+
+    Args:
+        activity_base: Base activity name (e.g., "julee.document_repo.minio")
+        default_timeout_seconds: Default timeout for activities in seconds
+        retry_methods: List of method names that should use retry policies
+
+    Returns:
+        The decorated class with all protocol methods implemented as
+        workflow activity calls
+
+    Example:
+        @temporal_workflow_proxy(
+            "julee.document_repo.minio",
+            default_timeout_seconds=30,
+            retry_methods=["save", "generate_id"]
+        )
+        class WorkflowDocumentRepositoryProxy(DocumentRepository):
+            pass
+
+        # This automatically creates workflow methods for all protocol methods:
+        # - get() -> calls "julee.document_repo.minio.get" activity
+        # - save() -> calls "julee.document_repo.minio.save" activity with retry
+        # - generate_id() -> calls "julee.document_repo.minio.generate_id" with retry
+    """
+
+    def decorator(cls: Type[T]) -> Type[T]:
+        logger.debug(
+            f"Applying temporal_workflow_proxy decorator to {cls.__name__}"
+        )
+
+        retry_methods_set = set(retry_methods or [])
+
+        # Create default retry policy for methods that need it
+        fail_fast_retry_policy = RetryPolicy(
+            initial_interval=workflow.timedelta(seconds=1),
+            maximum_attempts=1,
+            backoff_coefficient=1.0,
+            maximum_interval=workflow.timedelta(seconds=1),
+        )
+
+        # Use the same method discovery as temporal_activity_registration
+        methods_to_implement = _discover_async_methods(cls.__mro__)
+
+        # Generate workflow proxy methods
+        wrapped_methods = []
+
+        for method_name, original_method in methods_to_implement.items():
+            logger.debug(
+                f"Creating workflow proxy method {method_name} -> {activity_base}.{method_name}"
+            )
+
+            # Get method signature for type hints
+            sig = inspect.signature(original_method)
+            return_annotation = sig.return_annotation
+
+            # Determine if return type needs Pydantic validation
+            needs_validation = _needs_pydantic_validation(return_annotation)
+            is_optional = _is_optional_type(return_annotation)
+            inner_type = _get_optional_inner_type(return_annotation) if is_optional else return_annotation
+
+            def create_workflow_method(
+                method_name: str,
+                needs_validation: bool,
+                is_optional: bool,
+                inner_type: Any,
+                original_method: Any,
+            ) -> Callable[..., Any]:
+
+                @functools.wraps(original_method)
+                async def workflow_method(self, *args: Any, **kwargs: Any) -> Any:
+                    # Create activity name
+                    activity_name = f"{activity_base}.{method_name}"
+
+                    # Set up activity options
+                    activity_timeout = workflow.timedelta(seconds=default_timeout_seconds)
+                    activity_options = {
+                        "start_to_close_timeout": activity_timeout,
+                    }
+
+                    # Add retry policy if this method needs it
+                    if method_name in retry_methods_set:
+                        activity_options["retry_policy"] = fail_fast_retry_policy
+
+                    # Log the call
+                    logger.debug(
+                        f"Workflow: Calling {method_name} activity",
+                        extra={
+                            "activity_name": activity_name,
+                            "args_count": len(args),
+                            "kwargs_count": len(kwargs),
+                        },
+                    )
+
+                    # Prepare arguments (exclude self)
+                    activity_args = args if args else ()
+                    if kwargs:
+                        # If there are kwargs, need to handle them appropriately
+                        # For now, assume single positional arg is the norm
+                        if len(activity_args) == 0 and len(kwargs) == 1:
+                            activity_args = tuple(kwargs.values())
+                        elif len(kwargs) > 0:
+                            # Could extend this to handle complex kwargs scenarios
+                            raise ValueError(f"Complex kwargs not yet supported in workflow proxy for {method_name}")
+
+                    # Execute the activity
+                    raw_result = await workflow.execute_activity(
+                        activity_name,
+                        *activity_args,
+                        **activity_options,
+                    )
+
+                    # Handle return value validation
+                    result = raw_result
+                    if needs_validation and raw_result is not None:
+                        if hasattr(inner_type, 'model_validate'):
+                            result = inner_type.model_validate(raw_result)
+                        else:
+                            # For other types, just return as-is
+                            result = raw_result
+                    elif is_optional and raw_result is not None and hasattr(inner_type, 'model_validate'):
+                        result = inner_type.model_validate(raw_result)
+
+                    # Log completion
+                    logger.debug(
+                        f"Workflow: {method_name} activity completed",
+                        extra={
+                            "activity_name": activity_name,
+                            "result_type": type(result).__name__,
+                        },
+                    )
+
+                    return result
+
+                return workflow_method
+
+            # Create and set the method on the class
+            workflow_method = create_workflow_method(
+                method_name, needs_validation, is_optional, inner_type, original_method
+            )
+            setattr(cls, method_name, workflow_method)
+            wrapped_methods.append(method_name)
+
+        # Always generate __init__ that calls super() for consistent initialization
+        def __init__(self) -> None:
+            # Call parent __init__ to preserve any existing initialization logic
+            super().__init__()
+            # Set instance variables for consistency with manual pattern
+            self.activity_timeout = workflow.timedelta(seconds=default_timeout_seconds)
+            self.activity_fail_fast_retry_policy = fail_fast_retry_policy
+            logger.debug(f"Initialized {cls.__name__}")
+        setattr(cls, '__init__', __init__)
+
+        logger.info(
+            f"Temporal workflow proxy decorator applied to {cls.__name__}",
+            extra={
+                "wrapped_methods": wrapped_methods,
+                "activity_base": activity_base,
+                "default_timeout_seconds": default_timeout_seconds,
+                "retry_methods": list(retry_methods_set),
+            },
+        )
+
+        return cls
+
+    return decorator
+
+
+def _needs_pydantic_validation(annotation: Any) -> bool:
+    """Check if a type annotation indicates a Pydantic model."""
+    if annotation is None or annotation == inspect.Signature.empty:
+        return False
+
+    # Handle Optional types
+    if _is_optional_type(annotation):
+        inner_type = _get_optional_inner_type(annotation)
+        return _is_pydantic_model(inner_type)
+
+    return _is_pydantic_model(annotation)
+
+
+def _is_pydantic_model(type_hint: Any) -> bool:
+    """Check if a type is a Pydantic model."""
+    if inspect.isclass(type_hint) and issubclass(type_hint, BaseModel):
+        return True
+    return False
+
+
+def _is_optional_type(annotation: Any) -> bool:
+    """Check if a type annotation is Optional[T]."""
+    origin = get_origin(annotation)
+    if origin is not None:
+        args = get_args(annotation)
+        # Optional[T] is Union[T, None]
+        return origin is type(None) or (hasattr(origin, '__name__') and origin.__name__ == 'UnionType') or (
+            str(origin) == 'typing.Union' and len(args) == 2 and type(None) in args
+        )
+    return False
+
+
+def _get_optional_inner_type(annotation: Any) -> Any:
+    """Get the inner type from Optional[T]."""
+    args = get_args(annotation)
+    if len(args) == 2:
+        return args[0] if args[1] is type(None) else args[1]
+    return annotation
+
+
+# Keep old name for backwards compatibility
+temporal_repository = temporal_activity_registration
