@@ -1,0 +1,9 @@
+{
+  "name": "Offensive Language Check",
+  "prompt": "Analyze the following meeting minutes document for any offensive, inappropriate, or unprofessional language. This includes profanity, discriminatory language, personal attacks, or any content that would be considered inappropriate in a professional workplace setting.\n\nRate the document on a scale of 0-100 where:\n- 0-39: Contains significant offensive or inappropriate language\n- 40-59: Contains some questionable or unprofessional language\n- 60-79: Generally appropriate with minor issues\n- 80-100: Professional and appropriate language throughout\n\nConsider context and intent, but err on the side of maintaining professional standards.\n\nYou MUST respond with ONLY a single integer number between 0 and 100. Do not include any explanation, text, or additional characters. Just the number.",
+  "query_metadata": {
+    "max_tokens": 5,
+    "temperature": 0.0
+  },
+  "assistant_prompt": "I will analyze the document and respond with only a single number from 0 to 100:"
+}

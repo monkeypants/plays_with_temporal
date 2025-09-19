@@ -1,0 +1,9 @@
+{
+  "name": "Professionalism Check",
+  "prompt": "Evaluate the professionalism and appropriateness of the language used in the following meeting minutes document. Consider factors such as:\n\n- Use of appropriate business language and tone\n- Respectful communication between participants\n- Professional terminology and expression\n- Absence of casual or overly informal language inappropriate for business records\n- Overall tone and presentation suitable for organizational documentation\n\nRate the document on a scale of 0-100 where:\n- 0-39: Highly unprofessional language, inappropriate for business context\n- 40-59: Somewhat unprofessional or overly casual for business documentation\n- 60-69: Mostly professional with some informal elements\n- 70-89: Professional language with minor style improvements possible\n- 90-100: Exemplary professional communication throughout\n\nYou MUST respond with ONLY a single integer number between 0 and 100. Do not include any explanation, text, or additional characters. Just the number.",
+  "query_metadata": {
+    "max_tokens": 5,
+    "temperature": 0.0
+  },
+  "assistant_prompt": "I will evaluate the professionalism and respond with only a single number from 0 to 100:"
+}

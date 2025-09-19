@@ -1,0 +1,9 @@
+{
+  "name": "Sk8r Terminology Check",
+  "prompt": "Analyze the following meeting minutes document to determine how much skateboarding terminology and culture language is used throughout the content.\nRate the document on a scale of 0-100 where:\n- 0-39: No skateboarding terminology, standard business language\n- 40-59: Minimal skateboarding terminology, mostly business language\n- 60-79: Moderate use of skateboarding terminology mixed with business language\n- 80-100: Heavy use of skateboarding terminology throughout, authentic sk8r style\n\nYou MUST respond with ONLY a single integer number between 0 and 100. Do not include any explanation, text, or additional characters. Just the number.",
+  "query_metadata": {
+    "max_tokens": 5,
+    "temperature": 0.0
+  },
+  "assistant_prompt": "I will analyze the skateboarding terminology usage and respond with only a single number from 0 to 100:"
+}
