@@ -154,22 +154,22 @@ sample/repos/
 │   ├── payment.py    # No Temporal dependencies
 │   └── inventory.py  # Contains actual business logic
 ├── temporal/         # Temporal activity implementations
-│   ├── __init__.py   # Temporal classes created with @temporal_repository decorator
+│   ├── __init__.py   # Temporal classes created with @temporal_activity_registration decorator
 │   └── proxies/      # Workflow-safe delegates
 #+END_EXAMPLE
 
 *** Layer Responsibilities:
 - *Pure Backend*: Direct interaction with storage technology (Minio)
-- *Temporal Activities*: Classes created with =@temporal_repository= decorator in =__init__.py=
+- *Temporal Activities*: Classes created with =@temporal_activity_registration= decorator in =__init__.py=
 - *Workflow Proxies*: Deterministic delegates that call =workflow.execute_activity()=
 
 *** Temporal Class Creation Pattern:
 #+BEGIN_SRC python
 # In sample/repos/temporal/__init__.py
-from util.repos.temporal.decorators import temporal_repository
+from util.repos.temporal.decorators import temporal_activity_registration
 from sample.repos.minio.payment import MinioPaymentRepository
 
-@temporal_repository("sample.payment_repo.minio")
+@temporal_activity_registration("sample.payment_repo.minio")
 class TemporalMinioPaymentRepository(MinioPaymentRepository):
     """Temporal wrapper with all async methods as activities."""
     pass

@@ -1,7 +1,8 @@
 """
 Temporal repository wrappers for the julee_example domain.
 
-This package contains @temporal_repository decorated classes that wrap
+This package contains @temporal_activity_registration decorated classes that
+wrap
 pure backend repositories as Temporal activities. These classes should
 only be imported by workers to avoid workflow sandbox violations.
 """
