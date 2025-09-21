@@ -446,8 +446,3 @@ def _get_optional_inner_type(annotation: Any) -> Any:
     if len(args) == 2:
         return args[0] if args[1] is type(None) else args[1]
     return annotation
-
-
-# Keep old name for backwards compatibility
-# TODO: separate PR that changes existing call-sites and removes this.
-temporal_repository = temporal_activity_registration

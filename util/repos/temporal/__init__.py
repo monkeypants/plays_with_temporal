@@ -2,10 +2,10 @@
 Temporal repository utilities.
 
 This module provides utilities for working with Temporal repositories,
-including the temporal_repository decorator for automatically wrapping
-repository methods as Temporal activities.
+including the temporal_activity_registration decorator for automatically
+wrapping repository methods as Temporal activities.
 """
 
-from .decorators import temporal_repository
+from .decorators import temporal_activity_registration
 
-__all__ = ["temporal_repository"]
+__all__ = ["temporal_activity_registration"]

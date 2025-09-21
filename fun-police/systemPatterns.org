@@ -95,7 +95,7 @@ class PaymentRepository(Protocol):
    - may be non-deterministic, but must be idempotent
 
 2. *Temporal Activity Implementation* (=sample/repos/temporal/__init__.py=):
-   - Created using =@temporal_repository= decorator.
+   - Created using =@temporal_activity_registration= decorator.
    - Automatically wraps all async methods with =@activity.defn=
    - Imported and instantiated in worker for registration
 
@@ -107,16 +107,16 @@ class PaymentRepository(Protocol):
 
 *Decorator Implementation Details*:
 
-The =@temporal_repository= decorator creates explicit Temporal Activity classes.
+The =@temporal_activity_registration= decorator creates explicit Temporal Activity classes.
 The recommended approach is to define these classes in the temporal package's
 =__init__.py= file for clarity:
 
 #+BEGIN_SRC python
 # In sample/repos/temporal/__init__.py
-from util.repos.temporal.decorators import temporal_repository
+from util.repos.temporal.decorators import temporal_activity_registration
 from sample.repos.minio.payment import MinioPaymentRepository
 
-@temporal_repository("sample.payment_repo.minio")
+@temporal_activity_registration("sample.payment_repo.minio")
 class TemporalMinioPaymentRepository(MinioPaymentRepository):
     """
     Temporal activity wrapper for MinioPaymentRepository.
