@@ -14,7 +14,7 @@ from sample.workflow import (
     OrderFulfillmentWorkflow,
     CancelOrderWorkflow,
 )  # Added CancelOrderWorkflow
-from sample.repos.activities import (
+from sample.repos.temporal.activities import (
     TemporalMinioOrderRepository,
     TemporalMinioPaymentRepository,
     TemporalMinioInventoryRepository,
