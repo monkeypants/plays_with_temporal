@@ -19,7 +19,7 @@ from sample.validation import (
 from sample.repositories import PaymentRepository, InventoryRepository
 from sample.repos.minio.inventory import MinioInventoryRepository
 from sample.repos.minio.payment import MinioPaymentRepository
-from util.repos.temporal import temporal_repository
+from util.repos.temporal.decorators import temporal_activity_registration
 from sample.domain import Order, Payment, OrderItem
 
 
@@ -27,7 +27,7 @@ from sample.domain import Order, Payment, OrderItem
 def temporal_payment_repo() -> Generator[PaymentRepository, None, None]:
     """Fixture that provides a mocked TemporalMinioPaymentRepository."""
 
-    @temporal_repository("sample.payment_repo.minio")
+    @temporal_activity_registration("sample.payment_repo.minio")
     class TestTemporalMinioPaymentRepository(MinioPaymentRepository):
         pass
 
@@ -166,7 +166,7 @@ def test_ensure_payment_repository_failure() -> None:
 def test_inventory_repository_validation() -> None:
     """Test that inventory repository validation works"""
 
-    @temporal_repository("sample.inventory_repo.minio")
+    @temporal_activity_registration("sample.inventory_repo.minio")
     class TestTemporalMinioInventoryRepository(MinioInventoryRepository):
         pass
 
@@ -184,7 +184,7 @@ def test_inventory_repository_validation() -> None:
 def test_factory_function_metadata() -> None:
     """Test that factory function has proper metadata"""
 
-    @temporal_repository("sample.payment_repo.minio")
+    @temporal_activity_registration("sample.payment_repo.minio")
     class TestTemporalMinioPaymentRepository(MinioPaymentRepository):
         pass
 

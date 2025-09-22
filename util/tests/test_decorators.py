@@ -1,5 +1,5 @@
 """
-Tests for the temporal_repository decorator.
+Tests for the temporal_activity_registration decorator.
 
 This module tests the decorator in isolation to ensure it properly wraps
 async methods as Temporal activities without depending on the existing
@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 from temporalio import activity
 
-from util.repos.temporal.decorators import temporal_repository
+from util.repos.temporal.decorators import temporal_activity_registration
 
 
 class MockBaseRepository:
@@ -59,7 +59,7 @@ class MockRepository(MockBaseRepository):
 def test_decorator_wraps_public_async_methods() -> None:
     """Test decorator wraps all public async methods as activities."""
 
-    @temporal_repository("test.repo")
+    @temporal_activity_registration("test.repo")
     class DecoratedRepository(MockRepository):
         pass
 
@@ -110,7 +110,7 @@ def test_decorator_wraps_public_async_methods() -> None:
 def test_decorator_does_not_wrap_sync_methods() -> None:
     """Test that sync methods are not wrapped as activities."""
 
-    @temporal_repository("test.repo")
+    @temporal_activity_registration("test.repo")
     class DecoratedRepository(MockRepository):
         pass
 
@@ -126,7 +126,7 @@ def test_decorator_does_not_wrap_sync_methods() -> None:
 def test_decorator_does_not_wrap_private_methods() -> None:
     """Test that private async methods are not wrapped as activities."""
 
-    @temporal_repository("test.repo")
+    @temporal_activity_registration("test.repo")
     class DecoratedRepository(MockRepository):
         pass
 
@@ -142,7 +142,7 @@ def test_decorator_does_not_wrap_private_methods() -> None:
 def test_decorated_methods_preserve_functionality() -> None:
     """Test that decorated methods still work as expected."""
 
-    @temporal_repository("test.repo")
+    @temporal_activity_registration("test.repo")
     class DecoratedRepository(MockRepository):
         pass
 
@@ -165,7 +165,7 @@ def test_decorated_methods_preserve_functionality() -> None:
 def test_decorated_methods_preserve_metadata() -> None:
     """Test that decorated methods preserve original method metadata."""
 
-    @temporal_repository("test.repo")
+    @temporal_activity_registration("test.repo")
     class DecoratedRepository(MockRepository):
         pass
 
@@ -201,11 +201,11 @@ def test_activity_names_with_different_prefixes() -> None:
         side_effect=mock_activity_defn,
     ):
 
-        @temporal_repository("test.payment_service")
+        @temporal_activity_registration("test.payment_service")
         class PaymentServiceRepo(MockRepository):
             pass
 
-        @temporal_repository("test.inventory_service")
+        @temporal_activity_registration("test.inventory_service")
         class InventoryServiceRepo(MockRepository):
             pass
 
@@ -258,7 +258,7 @@ def test_decorator_handles_inheritance_correctly() -> None:
                 "amount": amount,
             }
 
-    @temporal_repository("test.child")
+    @temporal_activity_registration("test.child")
     class DecoratedChildRepository(ChildRepository):
         pass
 
@@ -279,7 +279,7 @@ def test_decorator_logs_wrapped_methods() -> None:
 
     with patch("util.repos.temporal.decorators.logger") as mock_logger:
 
-        @temporal_repository("test.logging")
+        @temporal_activity_registration("test.logging")
         class DecoratedRepository(MockRepository):
             pass
 
@@ -300,7 +300,7 @@ def test_empty_class_decorator() -> None:
         def sync_only(self, value: str) -> str:
             return f"sync_{value}"
 
-    @temporal_repository("test.empty")
+    @temporal_activity_registration("test.empty")
     class DecoratedEmptyRepository(EmptyRepository):
         pass
 
@@ -313,7 +313,7 @@ def test_empty_class_decorator() -> None:
 def test_decorator_type_preservation() -> None:
     """Test decorator preserves class type for isinstance checks."""
 
-    @temporal_repository("test.types")
+    @temporal_activity_registration("test.types")
     class DecoratedRepository(MockRepository):
         pass
 
@@ -328,11 +328,11 @@ def test_decorator_type_preservation() -> None:
 def test_multiple_decorations() -> None:
     """Test repository can be decorated multiple times with prefixes."""
 
-    @temporal_repository("test.first")
+    @temporal_activity_registration("test.first")
     class FirstDecoration(MockRepository):
         pass
 
-    @temporal_repository("test.second")
+    @temporal_activity_registration("test.second")
     class SecondDecoration(MockRepository):
         pass
 
