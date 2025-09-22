@@ -12,14 +12,10 @@ from sample.domain import (
 from sample.api.responses import (
     OrderStatusResponse,
 )  # Added OrderStatusResponse import
-from sample.repos.temporal.proxies.order import WorkflowOrderRepositoryProxy
-from sample.repos.temporal.proxies.payment import (
-    WorkflowPaymentRepositoryProxy,
-)
-from sample.repos.temporal.proxies.inventory import (
-    WorkflowInventoryRepositoryProxy,
-)
-from sample.repos.temporal.proxies.order_request import (
+from sample.repos.temporal.order import WorkflowOrderRepositoryProxy
+from sample.repos.temporal.payment import WorkflowPaymentRepositoryProxy
+from sample.repos.temporal.inventory import WorkflowInventoryRepositoryProxy
+from sample.repos.temporal.order_request import (
     WorkflowOrderRequestRepositoryProxy,
 )
 from util.repos.temporal.proxies.file_storage import (

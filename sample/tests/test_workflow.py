@@ -49,13 +49,13 @@ class TestOrderFulfillmentWorkflow:
                 # Mock the specific Temporal proxy classes expected by the
                 # workflow
                 with patch(
-                    "sample.repos.temporal.proxies.order.WorkflowOrderRepositoryProxy"
+                    "sample.repos.temporal.order.WorkflowOrderRepositoryProxy"
                 ), patch(
-                    "sample.repos.temporal.proxies.payment.WorkflowPaymentRepositoryProxy"
+                    "sample.repos.temporal.payment.WorkflowPaymentRepositoryProxy"
                 ), patch(
-                    "sample.repos.temporal.proxies.inventory.WorkflowInventoryRepositoryProxy"
+                    "sample.repos.temporal.inventory.WorkflowInventoryRepositoryProxy"
                 ), patch(
-                    "sample.repos.temporal.proxies.order_request.WorkflowOrderRequestRepositoryProxy"
+                    "sample.repos.temporal.order_request.WorkflowOrderRequestRepositoryProxy"
                 ):
 
                     # Import and test the workflow logic without executing it
@@ -115,11 +115,11 @@ class TestCancelOrderWorkflow:
                 # Mock the specific Temporal proxy classes expected by the
                 # workflow
                 with patch(
-                    "sample.repos.temporal.proxies.order.WorkflowOrderRepositoryProxy"
+                    "sample.repos.temporal.order.WorkflowOrderRepositoryProxy"
                 ), patch(
-                    "sample.repos.temporal.proxies.payment.WorkflowPaymentRepositoryProxy"
+                    "sample.repos.temporal.payment.WorkflowPaymentRepositoryProxy"
                 ), patch(
-                    "sample.repos.temporal.proxies.inventory.WorkflowInventoryRepositoryProxy"
+                    "sample.repos.temporal.inventory.WorkflowInventoryRepositoryProxy"
                 ), patch(
                     "temporalio.workflow.info"
                 ) as mock_workflow_info:
