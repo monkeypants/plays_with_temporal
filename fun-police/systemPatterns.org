@@ -94,12 +94,12 @@ class PaymentRepository(Protocol):
    - Contains implementation logic for data persistence, service integration, etc.
    - may be non-deterministic, but must be idempotent
 
-2. *Temporal Activity Implementation* (=sample/repos/activities.py=):
+2. *Temporal Activity Implementation* (=sample/repos/temporal/payment.py=):
    - Created using =@temporal_activity_registration= decorator.
    - Automatically wraps all async methods with =@activity.defn=
    - Imported and instantiated in worker for registration
 
-3. *Workflow Proxy* (=sample/repos/temporal/proxies/payment.py=):
+3. *Workflow Proxy* (=sample/repos/temporal/payment.py=):
    - Created using =@temporal_workflow_proxy= decorator
    - Automatically generates methods that call =workflow.execute_activity()=
    - Used inside workflows for determinism
@@ -108,36 +108,27 @@ class PaymentRepository(Protocol):
 
 *Decorator Implementation Details*:
 
-The =@temporal_activity_registration= decorator creates explicit Temporal Activity classes:
+Both decorators are used together in consolidated temporal files:
 
 #+BEGIN_SRC python
-# In sample/repos/activities.py
-from util.repos.temporal.decorators import temporal_activity_registration
+# In sample/repos/temporal/payment.py
+from util.repos.temporal.decorators import (
+    temporal_activity_registration,
+    temporal_workflow_proxy,
+)
 from sample.repos.minio.payment import MinioPaymentRepository
-
-@temporal_activity_registration("sample.payment_repo.minio")
-class TemporalMinioPaymentRepository(MinioPaymentRepository):
-    """
-    Temporal activity wrapper for MinioPaymentRepository.
-    All async methods automatically wrapped as activities.
-    """
-    pass
-
-# In sample/worker.py - Simple import and instantiation
-from sample.repos.activities import TemporalMinioPaymentRepository
-
-temporal_payment_repo = TemporalMinioPaymentRepository(endpoint=minio_endpoint)
-#+END_SRC
-
-The =@temporal_workflow_proxy= decorator creates workflow proxy classes:
-
-#+BEGIN_SRC python
-# In sample/repos/temporal/proxies/payment.py
-from util.repos.temporal.decorators import temporal_workflow_proxy
 from sample.repositories import PaymentRepository
 
+# Activity name base used by both decorators
+ACTIVITY_NAME_BASE = "sample.payment_repo.minio"
+
+@temporal_activity_registration(ACTIVITY_NAME_BASE)
+class TemporalMinioPaymentRepository(MinioPaymentRepository):
+    """Temporal activity wrapper for MinioPaymentRepository."""
+    pass
+
 @temporal_workflow_proxy(
-    "sample.payment_repo.minio",
+    activity_base=ACTIVITY_NAME_BASE,
     default_timeout_seconds=10,
     retry_methods=["process_payment", "refund_payment"]
 )
@@ -148,18 +139,24 @@ class WorkflowPaymentRepositoryProxy(PaymentRepository):
     """
     pass
 
-# In workflows - Simple instantiation
+# In sample/worker.py - Import activity class
+from sample.repos.temporal.payment import TemporalMinioPaymentRepository
+temporal_payment_repo = TemporalMinioPaymentRepository(endpoint=minio_endpoint)
+
+# In workflows - Import and instantiate proxy
+from sample.repos.temporal.payment import WorkflowPaymentRepositoryProxy
 payment_repo = WorkflowPaymentRepositoryProxy()  # type: ignore[abstract]
 #+END_SRC
 
 *Key Benefits*:
 - Eliminates ~400+ lines of boilerplate delegation code
-- Clear, explicit class definitions in dedicated modules
+- Co-locates related activity and proxy classes in single files
 - Automatically wraps all protocol methods as activities/proxies
-- Generates consistent activity names: =prefix.method_name=
-- Self-contained worker setup - all Temporal concerns explicit
+- Generates consistent activity names via shared =ACTIVITY_NAME_BASE=
+- Self-contained temporal modules - all concerns in one place
 - Automatic Pydantic validation for return values
 - Configurable timeouts and retry policies
+- Ensures activity/proxy naming consistency through shared constants
 
 *Activity Name Generation*:
 - =process_payment= → =sample.payment_repo.minio.process_payment=
