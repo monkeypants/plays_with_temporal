@@ -20,7 +20,6 @@ from sample.repos.activities import (
     TemporalMinioInventoryRepository,
     TemporalMinioOrderRequestRepository,
 )
-from util.repos.minio.file_storage import MinioFileStorageRepository
 from util.repos.temporal.minio_file_storage import (
     TemporalMinioFileStorageRepository,
 )
@@ -127,9 +126,6 @@ async def run_worker() -> None:
     # Get Minio endpoint for repositories
     logger.debug("Preparing repository configurations")
     minio_endpoint = os.environ.get("MINIO_ENDPOINT", "minio:9000")
-    minio_file_storage_repo = (
-        MinioFileStorageRepository()
-    )  # Uses its own defaults/env vars internally
 
     # Instantiate temporal repository classes (imported from sample.repos)
     logger.debug("Creating Temporal Activity repository implementations")
@@ -143,8 +139,8 @@ async def run_worker() -> None:
         endpoint=minio_endpoint
     )
     temporal_order_request_repo = TemporalMinioOrderRequestRepository()
-    temporal_file_storage_repo = TemporalMinioFileStorageRepository(
-        minio_file_storage_repo
+    temporal_file_storage_repo = (
+        TemporalMinioFileStorageRepository()
     )  # New Temporal activity repo
 
     # Create a worker that hosts workflow and activities

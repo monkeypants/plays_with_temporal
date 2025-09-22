@@ -94,25 +94,24 @@ class PaymentRepository(Protocol):
    - Contains implementation logic for data persistence, service integration, etc.
    - may be non-deterministic, but must be idempotent
 
-2. *Temporal Activity Implementation* (=sample/repos/temporal/__init__.py=):
+2. *Temporal Activity Implementation* (=sample/repos/activities.py=):
    - Created using =@temporal_activity_registration= decorator.
    - Automatically wraps all async methods with =@activity.defn=
    - Imported and instantiated in worker for registration
 
 3. *Workflow Proxy* (=sample/repos/temporal/proxies/payment.py=):
+   - Created using =@temporal_workflow_proxy= decorator
+   - Automatically generates methods that call =workflow.execute_activity()=
    - Used inside workflows for determinism
-   - Calls =workflow.execute_activity()=
    - No actual business logic
    - Ensures workflow replay safety
 
 *Decorator Implementation Details*:
 
-The =@temporal_activity_registration= decorator creates explicit Temporal Activity classes.
-The recommended approach is to define these classes in the temporal package's
-=__init__.py= file for clarity:
+The =@temporal_activity_registration= decorator creates explicit Temporal Activity classes:
 
 #+BEGIN_SRC python
-# In sample/repos/temporal/__init__.py
+# In sample/repos/activities.py
 from util.repos.temporal.decorators import temporal_activity_registration
 from sample.repos.minio.payment import MinioPaymentRepository
 
@@ -125,22 +124,52 @@ class TemporalMinioPaymentRepository(MinioPaymentRepository):
     pass
 
 # In sample/worker.py - Simple import and instantiation
-from sample.repos.temporal import TemporalMinioPaymentRepository
+from sample.repos.activities import TemporalMinioPaymentRepository
 
 temporal_payment_repo = TemporalMinioPaymentRepository(endpoint=minio_endpoint)
 #+END_SRC
 
+The =@temporal_workflow_proxy= decorator creates workflow proxy classes:
+
+#+BEGIN_SRC python
+# In sample/repos/temporal/proxies/payment.py
+from util.repos.temporal.decorators import temporal_workflow_proxy
+from sample.repositories import PaymentRepository
+
+@temporal_workflow_proxy(
+    "sample.payment_repo.minio",
+    default_timeout_seconds=10,
+    retry_methods=["process_payment", "refund_payment"]
+)
+class WorkflowPaymentRepositoryProxy(PaymentRepository):
+    """
+    Workflow proxy that delegates to Temporal activities.
+    All protocol methods automatically implemented.
+    """
+    pass
+
+# In workflows - Simple instantiation
+payment_repo = WorkflowPaymentRepositoryProxy()  # type: ignore[abstract]
+#+END_SRC
+
 *Key Benefits*:
-- Eliminates ~200+ lines of boilerplate delegation code
-- Clear, explicit class definitions in dedicated module
-- Automatically wraps all public async methods as activities
+- Eliminates ~400+ lines of boilerplate delegation code
+- Clear, explicit class definitions in dedicated modules
+- Automatically wraps all protocol methods as activities/proxies
 - Generates consistent activity names: =prefix.method_name=
 - Self-contained worker setup - all Temporal concerns explicit
+- Automatic Pydantic validation for return values
+- Configurable timeouts and retry policies
 
 *Activity Name Generation*:
 - =process_payment= → =sample.payment_repo.minio.process_payment=
 - =get_payment= → =sample.payment_repo.minio.get_payment=
 - =refund_payment= → =sample.payment_repo.minio.refund_payment=
+
+*Type Safety Note*:
+Workflow proxy instantiation requires =# type: ignore[abstract]= because mypy
+cannot statically analyze decorator-generated methods. This is the standard
+pattern for dynamic code generation decorators.
 
 *** 3. Temporal Workflow Determinism Pattern
 
@@ -150,11 +179,17 @@ temporal_payment_repo = TemporalMinioPaymentRepository(endpoint=minio_endpoint)
 class OrderFulfillmentWorkflow:
     @workflow.run
     async def run(self, request_dict: dict) -> OrderStatusResponse:
-        # Create deterministic proxies
-        payment_repo = WorkflowPaymentRepositoryProxy()
+        # Create deterministic proxies using decorator-generated classes
+        payment_repo = WorkflowPaymentRepositoryProxy()  # type: ignore[abstract]
+        inventory_repo = WorkflowInventoryRepositoryProxy()  # type: ignore[abstract]
+        order_repo = WorkflowOrderRepositoryProxy()  # type: ignore[abstract]
 
         # Use case remains unaware of Temporal
-        use_case = OrderFulfillmentUseCase(payment_repo=payment_repo)
+        use_case = OrderFulfillmentUseCase(
+            payment_repo=payment_repo,
+            inventory_repo=inventory_repo,
+            order_repo=order_repo
+        )
 
         # Business logic execution
         return await use_case.fulfill_order(request, request_id)
@@ -457,19 +492,20 @@ class CreateScheduleUseCase:
 
 *Implementation Pattern*:
 #+BEGIN_SRC python
-# Activity Definition
-@activity.defn(name="cal.calendar_sync.source_repo.get_changes")
-async def get_changes(self, calendar_id: str, sync_state: Optional[SyncState]) -> CalendarChanges:
-    return await self.concrete_repo.get_changes(calendar_id, sync_state)
+# Activity Definition (using decorator)
+@temporal_activity_registration("cal.calendar_sync.source_repo")
+class TemporalCalendarSyncSourceRepository(ConcreteCalendarRepository):
+    """Activity wrapper - automatically creates cal.calendar_sync.source_repo.get_changes"""
+    pass
 
-# Workflow Proxy
+# Workflow Proxy (using decorator)
+@temporal_workflow_proxy("cal.calendar_sync.source_repo", default_timeout_seconds=30)
 class CalendarSyncSourceRepositoryProxy(CalendarRepository):
-    async def get_changes(self, calendar_id: str, sync_state: Optional[SyncState]):
-        return await workflow.execute_activity(
-            "cal.calendar_sync.source_repo.get_changes",
-            (calendar_id, sync_state),
-            start_to_close_timeout=self.activity_timeout,
-        )
+    """Proxy class - automatically implements get_changes() method"""
+    pass
+
+# Usage in workflow
+source_repo = CalendarSyncSourceRepositoryProxy()  # type: ignore[abstract]
 #+END_SRC
 
 *Benefits*:
@@ -482,9 +518,10 @@ class CalendarSyncSourceRepositoryProxy(CalendarRepository):
 *Implementation Requirements*:
 - All Temporal activities must follow this naming convention
 - Use case constructor parameters define the semantic roles
-- Activity registration maps parameter names to activity names
-- Workflow proxies use identical naming for `workflow.execute_activity()` calls
+- =@temporal_activity_registration= decorator maps parameter names to activity prefixes
+- =@temporal_workflow_proxy= decorator uses identical naming for activity calls
 - No implementation details (google, postgresql, etc.) in activity names
+- Both decorators must use the same activity base name for consistency
 
 This pattern collection enables building complex, distributed, long-running workflows
 while maintaining clean architecture principles and ensuring system reliability
