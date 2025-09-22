@@ -81,23 +81,6 @@ def _discover_protocol_methods(
                         concrete_method = getattr(concrete_class, name)
                         methods_to_wrap[name] = concrete_method
 
-    # If no protocol methods found, fall back to all async methods
-    # (for backward compatibility with non-protocol base classes)
-    if not methods_to_wrap:
-        for base_class in cls_hierarchy:
-            if base_class is object:
-                continue
-
-            for name in base_class.__dict__:
-                if name in methods_to_wrap:
-                    continue
-
-                method = getattr(base_class, name)
-                if inspect.iscoroutinefunction(
-                    method
-                ) and not name.startswith("_"):
-                    methods_to_wrap[name] = method
-
     # Log final results
     final_method_names = list(methods_to_wrap.keys())
     logger.info(
