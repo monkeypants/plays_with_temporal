@@ -50,7 +50,7 @@ def _discover_protocol_methods(
 
     # Look for protocol interfaces (classes with runtime_checkable/Protocol)
     class_names = [cls.__name__ for cls in cls_hierarchy]
-    print(f"Protocol discovery for class hierarchy: {class_names}")
+    logger.info(f"Protocol discovery for class hierarchy: {class_names}")
 
     for base_class in cls_hierarchy:
         # Skip object base class
@@ -66,7 +66,7 @@ def _discover_protocol_methods(
             has_protocol_attr or has_is_protocol or has_protocol_in_str
         )
 
-        print(
+        logger.info(
             f"Class {base_class.__name__}: __protocol__={has_protocol_attr}, "
             f"_is_protocol={has_is_protocol}, "
             f"Protocol_in_str={has_protocol_in_str}, "
@@ -74,7 +74,7 @@ def _discover_protocol_methods(
         )
 
         if is_protocol:
-            print(f"Processing protocol class: {base_class.__name__}")
+            logger.info(f"Processing protocol class: {base_class.__name__}")
             # Get methods defined in this protocol
             for name in base_class.__dict__:
                 if name in methods_to_wrap:
@@ -84,7 +84,7 @@ def _discover_protocol_methods(
                 is_coro = inspect.iscoroutinefunction(method)
                 starts_underscore = name.startswith("_")
 
-                print(
+                logger.info(
                     f"  Method {name}: is_coroutine={is_coro}, "
                     f"starts_underscore={starts_underscore}"
                 )
@@ -92,16 +92,20 @@ def _discover_protocol_methods(
                 # Only wrap async methods that don't start with underscore
                 if is_coro and not starts_underscore:
                     methods_to_wrap[name] = method
-                    print(f"    -> Added {name} to protocol methods")
+                    logger.info(f"    -> Added {name} to protocol methods")
 
     # Protocol discovery results
     method_names = list(methods_to_wrap.keys())
-    print(f"Protocol found {len(methods_to_wrap)} methods: {method_names}")
+    logger.info(
+        f"Protocol found {len(methods_to_wrap)} methods: {method_names}"
+    )
 
     # If no protocol methods found, fall back to all async methods
     # (for backward compatibility with non-protocol base classes)
     if not methods_to_wrap:
-        print("No protocol methods found, using fallback method discovery")
+        logger.info(
+            "No protocol methods found, using fallback method discovery"
+        )
         for base_class in cls_hierarchy:
             if base_class is object:
                 continue
@@ -117,7 +121,9 @@ def _discover_protocol_methods(
                     methods_to_wrap[name] = method
 
     final_method_names = list(methods_to_wrap.keys())
-    print(f"Final: {len(methods_to_wrap)} methods: {final_method_names}")
+    logger.info(
+        f"Final: {len(methods_to_wrap)} methods: {final_method_names}"
+    )
     return methods_to_wrap
 
 
