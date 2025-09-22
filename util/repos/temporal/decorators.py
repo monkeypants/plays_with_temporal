@@ -49,36 +49,64 @@ def _discover_protocol_methods(
     methods_to_wrap = {}
 
     # Look for protocol interfaces (classes with runtime_checkable/Protocol)
+    class_names = [cls.__name__ for cls in cls_hierarchy]
+    logger.debug(f"Protocol discovery for class hierarchy: {class_names}")
+
     for base_class in cls_hierarchy:
         # Skip object base class
         if base_class is object:
             continue
 
         # Check if this is a protocol class
+        has_protocol_attr = hasattr(base_class, "__protocol__")
+        has_is_protocol = getattr(base_class, "_is_protocol", False)
+        has_protocol_in_str = "Protocol" in str(base_class)
+
         is_protocol = (
-            hasattr(base_class, "__protocol__")
-            or getattr(base_class, "_is_protocol", False)
-            or "Protocol" in str(base_class)
+            has_protocol_attr or has_is_protocol or has_protocol_in_str
+        )
+
+        logger.debug(
+            f"Class {base_class.__name__}: __protocol__={has_protocol_attr}, "
+            f"_is_protocol={has_is_protocol}, "
+            f"Protocol_in_str={has_protocol_in_str}, "
+            f"is_protocol={is_protocol}"
         )
 
         if is_protocol:
+            logger.debug(f"Processing protocol class: {base_class.__name__}")
             # Get methods defined in this protocol
             for name in base_class.__dict__:
                 if name in methods_to_wrap:
                     continue  # Already found this method
 
                 method = getattr(base_class, name)
+                is_coro = inspect.iscoroutinefunction(method)
+                starts_underscore = name.startswith("_")
+
+                logger.debug(
+                    f"  Method {name}: is_coroutine={is_coro}, "
+                    f"starts_underscore={starts_underscore}"
+                )
 
                 # Only wrap async methods that don't start with underscore
-                if inspect.iscoroutinefunction(
-                    method
-                ) and not name.startswith("_"):
+                if is_coro and not starts_underscore:
                     methods_to_wrap[name] = method
+                    logger.debug(f"    -> Added {name} to protocol methods")
 
-    # Temporarily always use fallback method discovery for debugging
-    # TODO: Remove this and restore protocol-based discovery after E2E passes
-    if True:  # Force fallback for all classes
-        methods_to_wrap = {}  # Reset to ensure we use fallback
+    # Enable protocol discovery with logging to debug E2E issue
+    method_names = list(methods_to_wrap.keys())
+    logger.debug(
+        f"Protocol discovery found {len(methods_to_wrap)} methods: "
+        f"{method_names}"
+    )
+
+    # If no protocol methods found, fall back to all async methods
+    # (for backward compatibility with non-protocol base classes)
+    if not methods_to_wrap:
+        logger.debug(
+            "No protocol methods found, using fallback method discovery"
+        )
         for base_class in cls_hierarchy:
             if base_class is object:
                 continue
@@ -93,6 +121,11 @@ def _discover_protocol_methods(
                 ) and not name.startswith("_"):
                     methods_to_wrap[name] = method
 
+    final_method_names = list(methods_to_wrap.keys())
+    logger.debug(
+        f"Final method discovery found {len(methods_to_wrap)} methods: "
+        f"{final_method_names}"
+    )
     return methods_to_wrap
 
 
