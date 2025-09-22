@@ -98,6 +98,7 @@ class PaymentRepository(Protocol):
    - Created using =@temporal_activity_registration= decorator.
    - Automatically wraps all async methods with =@activity.defn=
    - Imported and instantiated in worker for registration
+   - Pattern applies to all repositories: =order.py=, =inventory.py=, =order_request.py=
 
 3. *Workflow Proxy* (=sample/repos/temporal/payment.py=):
    - Created using =@temporal_workflow_proxy= decorator
@@ -105,6 +106,7 @@ class PaymentRepository(Protocol):
    - Used inside workflows for determinism
    - No actual business logic
    - Ensures workflow replay safety
+   - Pattern applies to all repositories: =order.py=, =inventory.py=, =order_request.py=
 
 *Decorator Implementation Details*:
 
