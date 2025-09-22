@@ -44,14 +44,12 @@ def _discover_protocol_methods(
         cls_hierarchy: The class MRO (method resolution order)
 
     Returns:
-        Dict mapping method names to method objects
+        Dict mapping method names to method objects from the concrete class
     """
     methods_to_wrap = {}
+    concrete_class = cls_hierarchy[0]  # The actual class being decorated
 
     # Look for protocol interfaces (classes with runtime_checkable/Protocol)
-    class_names = [cls.__name__ for cls in cls_hierarchy]
-    logger.info(f"Protocol discovery for class hierarchy: {class_names}")
-
     for base_class in cls_hierarchy:
         # Skip object base class
         if base_class is object:
@@ -66,46 +64,26 @@ def _discover_protocol_methods(
             has_protocol_attr or has_is_protocol or has_protocol_in_str
         )
 
-        logger.info(
-            f"Class {base_class.__name__}: __protocol__={has_protocol_attr}, "
-            f"_is_protocol={has_is_protocol}, "
-            f"Protocol_in_str={has_protocol_in_str}, "
-            f"is_protocol={is_protocol}"
-        )
-
         if is_protocol:
-            logger.info(f"Processing protocol class: {base_class.__name__}")
-            # Get methods defined in this protocol
+            # Get method names defined in this protocol, but get the actual
+            # implementation from the concrete class
             for name in base_class.__dict__:
                 if name in methods_to_wrap:
                     continue  # Already found this method
 
-                method = getattr(base_class, name)
-                is_coro = inspect.iscoroutinefunction(method)
-                starts_underscore = name.startswith("_")
-
-                logger.info(
-                    f"  Method {name}: is_coroutine={is_coro}, "
-                    f"starts_underscore={starts_underscore}"
-                )
-
+                protocol_method = getattr(base_class, name)
                 # Only wrap async methods that don't start with underscore
-                if is_coro and not starts_underscore:
-                    methods_to_wrap[name] = method
-                    logger.info(f"    -> Added {name} to protocol methods")
-
-    # Protocol discovery results
-    method_names = list(methods_to_wrap.keys())
-    logger.info(
-        f"Protocol found {len(methods_to_wrap)} methods: {method_names}"
-    )
+                if inspect.iscoroutinefunction(
+                    protocol_method
+                ) and not name.startswith("_"):
+                    # Get the concrete implementation from the actual class
+                    if hasattr(concrete_class, name):
+                        concrete_method = getattr(concrete_class, name)
+                        methods_to_wrap[name] = concrete_method
 
     # If no protocol methods found, fall back to all async methods
     # (for backward compatibility with non-protocol base classes)
     if not methods_to_wrap:
-        logger.info(
-            "No protocol methods found, using fallback method discovery"
-        )
         for base_class in cls_hierarchy:
             if base_class is object:
                 continue
@@ -120,9 +98,10 @@ def _discover_protocol_methods(
                 ) and not name.startswith("_"):
                     methods_to_wrap[name] = method
 
+    # Log final results
     final_method_names = list(methods_to_wrap.keys())
     logger.info(
-        f"Final: {len(methods_to_wrap)} methods: {final_method_names}"
+        f"Method discovery found {len(methods_to_wrap)}: {final_method_names}"
     )
     return methods_to_wrap
 
