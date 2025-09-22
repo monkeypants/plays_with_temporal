@@ -8,4 +8,5 @@ class TemporalMinioFileStorageRepository(MinioFileStorageRepository):
     Temporal activity wrapper for MinioFileStorageRepository.
     All async methods automatically wrapped as activities.
     """
+
     pass

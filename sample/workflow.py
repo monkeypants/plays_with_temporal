@@ -130,10 +130,10 @@ class OrderFulfillmentWorkflow:
                 },
             )
 
-            order_repo = WorkflowOrderRepositoryProxy()
-            payment_repo = WorkflowPaymentRepositoryProxy()
-            inventory_repo = WorkflowInventoryRepositoryProxy()
-            request_repo = WorkflowOrderRequestRepositoryProxy()
+            order_repo = WorkflowOrderRepositoryProxy()  # type: ignore[abstract]
+            payment_repo = WorkflowPaymentRepositoryProxy()  # type: ignore[abstract]
+            inventory_repo = WorkflowInventoryRepositoryProxy()  # type: ignore[abstract]
+            request_repo = WorkflowOrderRequestRepositoryProxy()  # type: ignore[abstract]
             file_storage_repo = WorkflowFileStorageRepositoryProxy()
 
             workflow.logger.debug(
@@ -302,9 +302,9 @@ class CancelOrderWorkflow:
         )
 
         # Create repository stubs for cancellation use case
-        order_repo = WorkflowOrderRepositoryProxy()
-        payment_repo = WorkflowPaymentRepositoryProxy()
-        inventory_repo = WorkflowInventoryRepositoryProxy()
+        order_repo = WorkflowOrderRepositoryProxy()  # type: ignore[abstract]
+        payment_repo = WorkflowPaymentRepositoryProxy()  # type: ignore[abstract]
+        inventory_repo = WorkflowInventoryRepositoryProxy()  # type: ignore[abstract]
 
         workflow.logger.debug(
             "Workflow repository stubs created for cancellation",

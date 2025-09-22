@@ -190,9 +190,7 @@ async def run_worker(
     temporal_local_config_repo = TemporalLocalCalendarConfigurationRepository(
         repository=local_config_repo_instance
     )
-    temporal_file_storage_repo = TemporalMinioFileStorageRepository(
-        file_storage_repo=minio_file_storage_repo_instance
-    )
+    temporal_file_storage_repo = TemporalMinioFileStorageRepository()
 
     # Initialize Google Calendar repository if credentials available
     temporal_google_calendar_repo = None

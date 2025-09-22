@@ -139,7 +139,9 @@ async def run_worker() -> None:
         endpoint=minio_endpoint
     )
     temporal_order_request_repo = TemporalMinioOrderRequestRepository()
-    temporal_file_storage_repo = TemporalMinioFileStorageRepository()  # New Temporal activity repo
+    temporal_file_storage_repo = (
+        TemporalMinioFileStorageRepository()
+    )  # New Temporal activity repo
 
     # Create a worker that hosts workflow and activities
     # The worker automatically uses the data converter from the client.
