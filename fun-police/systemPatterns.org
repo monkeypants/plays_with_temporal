@@ -94,43 +94,46 @@ class PaymentRepository(Protocol):
    - Contains implementation logic for data persistence, service integration, etc.
    - may be non-deterministic, but must be idempotent
 
-2. *Temporal Activity Implementation* (=sample/repos/temporal/payment.py=):
+2. *Temporal Activity Implementation* (=sample/repos/temporal/activities.py=):
    - Created using =@temporal_activity_registration= decorator.
    - Automatically wraps all async methods with =@activity.defn=
    - Imported and instantiated in worker for registration
-   - Pattern applies to all repositories: =order.py=, =inventory.py=, =order_request.py=
+   - Consolidated in single activities.py file for all repositories
 
-3. *Workflow Proxy* (=sample/repos/temporal/payment.py=):
+3. *Workflow Proxy* (=sample/repos/temporal/proxies.py=):
    - Created using =@temporal_workflow_proxy= decorator
    - Automatically generates methods that call =workflow.execute_activity()=
    - Used inside workflows for determinism
    - No actual business logic
    - Ensures workflow replay safety
-   - Pattern applies to all repositories: =order.py=, =inventory.py=, =order_request.py=
+   - Consolidated in single proxies.py file for all repositories
 
 *Decorator Implementation Details*:
 
-Both decorators are used together in consolidated temporal files:
+Activities and proxies are separated into dedicated modules with shared constants:
 
 #+BEGIN_SRC python
-# In sample/repos/temporal/payment.py
-from util.repos.temporal.decorators import (
-    temporal_activity_registration,
-    temporal_workflow_proxy,
-)
+# In sample/repos/temporal/activity_names.py - Shared constants
+ORDER_ACTIVITY_BASE = "sample.order_repo.minio"
+PAYMENT_ACTIVITY_BASE = "sample.payment_repo.minio"
+INVENTORY_ACTIVITY_BASE = "sample.inventory_repo.minio"
+ORDER_REQUEST_ACTIVITY_BASE = "sample.order_request_repo.minio"
+
+# In sample/repos/temporal/activities.py - Activity registrations
+from sample.repos.temporal.activity_names import PAYMENT_ACTIVITY_BASE
 from sample.repos.minio.payment import MinioPaymentRepository
-from sample.repositories import PaymentRepository
 
-# Activity name base used by both decorators
-ACTIVITY_NAME_BASE = "sample.payment_repo.minio"
-
-@temporal_activity_registration(ACTIVITY_NAME_BASE)
+@temporal_activity_registration(PAYMENT_ACTIVITY_BASE)
 class TemporalMinioPaymentRepository(MinioPaymentRepository):
     """Temporal activity wrapper for MinioPaymentRepository."""
     pass
 
+# In sample/repos/temporal/proxies.py - Workflow proxies
+from sample.repos.temporal.activity_names import PAYMENT_ACTIVITY_BASE
+from sample.repositories import PaymentRepository
+
 @temporal_workflow_proxy(
-    activity_base=ACTIVITY_NAME_BASE,
+    activity_base=PAYMENT_ACTIVITY_BASE,
     default_timeout_seconds=10,
     retry_methods=["process_payment", "refund_payment"]
 )
@@ -141,24 +144,25 @@ class WorkflowPaymentRepositoryProxy(PaymentRepository):
     """
     pass
 
-# In sample/worker.py - Import activity class
-from sample.repos.temporal.payment import TemporalMinioPaymentRepository
+# In sample/worker.py - Import activity classes
+from sample.repos.temporal.activities import TemporalMinioPaymentRepository
 temporal_payment_repo = TemporalMinioPaymentRepository(endpoint=minio_endpoint)
 
 # In workflows - Import and instantiate proxy
-from sample.repos.temporal.payment import WorkflowPaymentRepositoryProxy
+from sample.repos.temporal.proxies import WorkflowPaymentRepositoryProxy
 payment_repo = WorkflowPaymentRepositoryProxy()  # type: ignore[abstract]
 #+END_SRC
 
 *Key Benefits*:
 - Eliminates ~400+ lines of boilerplate delegation code
-- Co-locates related activity and proxy classes in single files
+- Separates activities and proxies for Temporal sandbox compliance
 - Automatically wraps all protocol methods as activities/proxies
-- Generates consistent activity names via shared =ACTIVITY_NAME_BASE=
-- Self-contained temporal modules - all concerns in one place
+- Generates consistent activity names via shared constants module
+- Consolidated temporal modules - all activities together, all proxies together
 - Automatic Pydantic validation for return values
 - Configurable timeouts and retry policies
 - Ensures activity/proxy naming consistency through shared constants
+- Prevents workflow sandbox violations by isolating backend imports
 
 *Activity Name Generation*:
 - =process_payment= → =sample.payment_repo.minio.process_payment=
@@ -170,6 +174,8 @@ Workflow proxy instantiation requires =# type: ignore[abstract]= because mypy
 cannot statically analyze decorator-generated methods. This is the standard
 pattern for dynamic code generation decorators.
 
+
+
 *** 3. Temporal Workflow Determinism Pattern
 
 *Deterministic Workflow Code*:
@@ -178,6 +184,13 @@ pattern for dynamic code generation decorators.
 class OrderFulfillmentWorkflow:
     @workflow.run
     async def run(self, request_dict: dict) -> OrderStatusResponse:
+        # Import proxies from dedicated proxies module (sandbox-safe)
+        from sample.repos.temporal.proxies import (
+            WorkflowPaymentRepositoryProxy,
+            WorkflowInventoryRepositoryProxy,
+            WorkflowOrderRepositoryProxy,
+        )
+
         # Create deterministic proxies using decorator-generated classes
         payment_repo = WorkflowPaymentRepositoryProxy()  # type: ignore[abstract]
         inventory_repo = WorkflowInventoryRepositoryProxy()  # type: ignore[abstract]
@@ -416,9 +429,9 @@ use_case = OrderFulfillmentUseCase(payment_repo=mock_payment_repo)
 Domain Protocol (PaymentRepository)
     ↑ implements
 Pure Backend (MinioPaymentRepository)
-    ↑ wraps
+    ↑ wraps (in activities.py)
 Temporal Activity (TemporalMinioPaymentRepository)
-    ↑ delegates to
+    ↑ delegates to (from proxies.py)
 Workflow Proxy (WorkflowPaymentRepositoryProxy)
 #+END_EXAMPLE
 
@@ -536,16 +549,19 @@ follow this recovery process:
 - Identify which Clean Architecture principles were violated
 - Determine which layers were incorrectly mixed or skipped
 - Review the proven patterns in sample/ for correct implementation
+- Check for temporal module import violations (workflow importing from activities.py)
 
 *** 2. Break Down the Problem
 - Split complex tasks into single-layer tasks
 - Create separate tasks for: Pure Backend → Temporal Activity → Workflow Proxy
+- Ensure proper temporal module separation: activities.py ← activity_names.py → proxies.py
 - Ensure each task has clear, testable completion criteria
 
 *** 3. Follow Proven Patterns
 - Use sample/ implementations as exact templates
 - Copy-paste-adapt rather than innovating on architecture
 - Maintain the exact same structure and naming conventions
+- Follow temporal module organization: separate activities, proxies, and constants
 
 *** 4. Validate Each Layer
 - Test each layer independently before moving to the next
