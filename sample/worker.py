@@ -14,10 +14,10 @@ from sample.workflow import (
     OrderFulfillmentWorkflow,
     CancelOrderWorkflow,
 )  # Added CancelOrderWorkflow
-from sample.repos.temporal.order import TemporalMinioOrderRepository
-from sample.repos.temporal.payment import TemporalMinioPaymentRepository
-from sample.repos.temporal.inventory import TemporalMinioInventoryRepository
-from sample.repos.temporal.order_request import (
+from sample.repos.temporal.activities import (
+    TemporalMinioOrderRepository,
+    TemporalMinioPaymentRepository,
+    TemporalMinioInventoryRepository,
     TemporalMinioOrderRequestRepository,
 )
 from util.repos.temporal.minio_file_storage import (
