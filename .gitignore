@@ -190,3 +190,4 @@ token.json
 credentials.json
 /temporal
 test_data/
+.claude
