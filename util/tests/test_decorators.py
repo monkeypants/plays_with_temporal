@@ -634,6 +634,7 @@ class TestTypeSubstitution:
 
         # Patch the functions temporarily
         import util.repos.temporal.decorators as decorators_module
+
         decorators_module.get_origin = mock_get_origin  # type: ignore[assignment]
         decorators_module.get_args = mock_get_args  # type: ignore[assignment]
 
@@ -805,7 +806,7 @@ class TestEndToEndTypeSubstitution:
         assert isinstance(activity_result_dict, dict)
         with pytest.raises(AttributeError):
             # This would fail because dict doesn't have the attribute
-            getattr(activity_result_dict, 'assembly_specification_id')
+            getattr(activity_result_dict, "assembly_specification_id")
 
         # Demonstrate the solution: reconstruct Pydantic object
         reconstructed = MockAssemblySpecification.model_validate(
