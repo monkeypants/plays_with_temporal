@@ -25,6 +25,8 @@ from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 from pydantic import BaseModel
 
+from julee_example.repositories.base import BaseRepository
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
@@ -34,8 +36,9 @@ def _extract_concrete_type_from_base(cls: type) -> Optional[type]:
     """
     Extract the concrete type argument from a generic base class.
 
-    For example, if a class inherits from BaseRepository[AssemblySpec],
-    this function will return AssemblySpecification.
+    For example, if a class inherits from
+    BaseRepository[AssemblySpecification], this function will return
+    AssemblySpecification.
 
     Args:
         cls: Class to analyze for generic base types
@@ -52,11 +55,7 @@ def _extract_concrete_type_from_base(cls: type) -> Optional[type]:
                 if origin is not None:
                     args = get_args(orig_base)
                     # Look for BaseRepository[ConcreteType] pattern
-                    if (
-                        hasattr(origin, "__name__")
-                        and "Repository" in str(origin)
-                        and len(args) == 1
-                    ):
+                    if origin is BaseRepository and len(args) == 1:
                         concrete_type = args[0]
                         # Make sure it's a concrete type, not another TypeVar
                         if not isinstance(concrete_type, TypeVar):

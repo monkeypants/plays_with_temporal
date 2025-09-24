@@ -5,11 +5,9 @@ This module tests the decorators in isolation to ensure they properly wrap
 async methods as Temporal activities and handle type substitution correctly.
 """
 
-import pytest
+# Standard library imports
 import asyncio
 import inspect
-import util.repos.temporal.decorators as decorators_module
-from unittest.mock import patch
 from typing import (
     Any,
     Optional,
@@ -20,9 +18,15 @@ from typing import (
     get_args,
     List,
 )
-from pydantic import BaseModel
+from unittest.mock import patch
 
+# Third-party imports
+import pytest
+from pydantic import BaseModel
 from temporalio import activity
+
+# Project imports
+import util.repos.temporal.decorators as decorators_module
 
 from util.repos.temporal.decorators import (
     temporal_activity_registration,
@@ -619,24 +623,22 @@ class TestTypeSubstitution:
                 return "FailingOrigin"
 
         # Mock get_origin and get_args to return our failing type
-        original_get_origin = get_origin
-        original_get_args = get_args
-
         def mock_get_origin(annotation: Any) -> Any:
             if annotation == "FAILING_TYPE":
                 return FailingOrigin()
-            return original_get_origin(annotation)
+            return get_origin(annotation)
 
         def mock_get_args(annotation: Any) -> tuple[Any, ...]:
             if annotation == "FAILING_TYPE":
                 return (T,)
-            return original_get_args(annotation)
+            return get_args(annotation)
 
-        # Patch the functions temporarily
-        decorators_module.get_origin = mock_get_origin  # type: ignore[assignment]
-        decorators_module.get_args = mock_get_args  # type: ignore[assignment]
+        with patch.object(
+            decorators_module, "get_origin", side_effect=mock_get_origin
+        ), patch.object(
+            decorators_module, "get_args", side_effect=mock_get_args
+        ):
 
-        try:
             with pytest.raises(TypeError) as exc_info:
                 _substitute_typevar_with_concrete(
                     "FAILING_TYPE", MockAssemblySpecification
@@ -647,10 +649,6 @@ class TestTypeSubstitution:
             assert "FailingOrigin" in error_message
             assert "FAILING_TYPE" in error_message
             assert "MockAssemblySpecification" in error_message
-        finally:
-            # Restore original functions
-            decorators_module.get_origin = original_get_origin
-            decorators_module.get_args = original_get_args
 
 
 class TestPydanticValidationDetection:
