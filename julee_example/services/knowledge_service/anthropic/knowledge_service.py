@@ -97,6 +97,7 @@ class AnthropicKnowledgeService(KnowledgeService):
         try:
 
             # Reset stream position and pass stream to Anthropic
+            assert document.content is not None
             document.content.seek(0)
 
             # Upload file using Anthropic beta Files API

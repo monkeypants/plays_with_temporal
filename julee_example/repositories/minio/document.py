@@ -140,7 +140,13 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
             return None
 
     async def save(self, document: Document) -> None:
-        """Save a document with its content and metadata."""
+        """Save a document with its content and metadata.
+
+        If the document has content_string, it will be converted to a
+        ContentStream and stored. The content_string field should only be
+        used for small content (few KB) when saving from workflows/use-cases.
+        Call-sites in actities should always use the content stream.
+        """
         self.logger.info(
             "Saving document",
             extra={
@@ -156,8 +162,49 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         self.update_timestamps(document)
 
         try:
+            # Fail fast if both content and content_string are provided
+            if (
+                document.content is not None
+                and document.content_string is not None
+            ):
+                raise ValueError(
+                    f"Document {document.document_id} has both content and "
+                    "content_string. Provide only one."
+                )
+
+            # Handle content_string conversion (only if no content provided)
+            if (
+                document.content is None
+                and document.content_string is not None
+            ):
+                # Convert content_string to ContentStream
+                content_bytes = document.content_string.encode("utf-8")
+                content_stream = ContentStream(io.BytesIO(content_bytes))
+
+                # Create new document with ContentStream
+                document = document.model_copy(
+                    update={
+                        "content": content_stream,
+                        "size_bytes": len(content_bytes),
+                    }
+                )
+
+                self.logger.debug(
+                    "Converted content_string to ContentStream",
+                    extra={
+                        "document_id": document.document_id,
+                        "content_length": len(content_bytes),
+                    },
+                )
+
             # Store content first and get calculated multihash
-            calculated_multihash = await self._store_content(document)
+            if document.content is not None:
+                calculated_multihash = await self._store_content(document)
+            else:
+                raise ValueError(
+                    f"Document {document.document_id} has no content or "
+                    "content_string"
+                )
 
             # Verify and update multihash if needed
             if document.content_multihash != calculated_multihash:

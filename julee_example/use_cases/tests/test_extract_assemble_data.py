@@ -305,6 +305,7 @@ class TestExtractAssembleDataUseCase:
         assert assembled_doc.status == DocumentStatus.ASSEMBLED
 
         # Check assembled content
+        assert assembled_doc.content is not None
         assembled_doc.content.seek(0)
         content = assembled_doc.content.read().decode("utf-8")
         assembled_data = json.loads(content)

@@ -89,7 +89,15 @@ class Document(BaseModel):
 
     # Additional data and content stream
     additional_metadata: Dict[str, Any] = Field(default_factory=dict)
-    content: ContentStream = Field(exclude=True)
+    content: Optional[ContentStream] = Field(default=None, exclude=True)
+    content_string: Optional[str] = Field(
+        default=None,
+        description="Small content as string (few KB max). Use for "
+        "workflow-generated content to avoid ContentStream serialization "
+        "issues. For larger content, ensure calling from concrete "
+        "implementations (ie. outside workflows and use-cases) and use "
+        "content field instead.",
+    )
 
     @field_validator("document_id")
     @classmethod
