@@ -6,8 +6,20 @@ async methods as Temporal activities and handle type substitution correctly.
 """
 
 import pytest
+import asyncio
+import inspect
+import util.repos.temporal.decorators as decorators_module
 from unittest.mock import patch
-from typing import Any, Optional, TypeVar, Protocol, runtime_checkable
+from typing import (
+    Any,
+    Optional,
+    TypeVar,
+    Protocol,
+    runtime_checkable,
+    get_origin,
+    get_args,
+    List,
+)
 from pydantic import BaseModel
 
 from temporalio import activity
@@ -201,8 +213,6 @@ def test_decorated_methods_preserve_functionality() -> None:
     async def test_private() -> None:
         result = await repo._private_method("test")
         assert result == "private_test"
-
-    import asyncio
 
     asyncio.run(test_private())
 
@@ -543,8 +553,6 @@ class TestTypeSubstitution:
         )
 
         # Should be Optional[MockAssemblySpecification]
-        from typing import get_origin, get_args
-
         origin = get_origin(result)
         args = get_args(result)
         assert origin is not None
@@ -553,16 +561,12 @@ class TestTypeSubstitution:
 
     def test_substitutes_nested_generics(self) -> None:
         """Test substitution in nested generic types."""
-        from typing import List
-
         nested_generic = List[Optional[T]]
         result = _substitute_typevar_with_concrete(
             nested_generic, MockDocument
         )
 
         # Should be List[Optional[MockDocument]]
-        from typing import get_origin, get_args
-
         outer_origin = get_origin(result)
         outer_args = get_args(result)
         assert outer_origin is list
@@ -598,8 +602,6 @@ class TestTypeSubstitution:
 
     def test_handles_signature_empty(self) -> None:
         """Test handling of inspect.Signature.empty."""
-        import inspect
-
         result = _substitute_typevar_with_concrete(
             inspect.Signature.empty, MockAssemblySpecification
         )
@@ -617,8 +619,6 @@ class TestTypeSubstitution:
                 return "FailingOrigin"
 
         # Mock get_origin and get_args to return our failing type
-        from typing import get_origin, get_args
-
         original_get_origin = get_origin
         original_get_args = get_args
 
@@ -633,8 +633,6 @@ class TestTypeSubstitution:
             return original_get_args(annotation)
 
         # Patch the functions temporarily
-        import util.repos.temporal.decorators as decorators_module
-
         decorators_module.get_origin = mock_get_origin  # type: ignore[assignment]
         decorators_module.get_args = mock_get_args  # type: ignore[assignment]
 
@@ -682,8 +680,6 @@ class TestPydanticValidationDetection:
 
     def test_handles_none_and_empty(self) -> None:
         """Test handling of None and Signature.empty."""
-        import inspect
-
         assert not _needs_pydantic_validation(None)
         assert not _needs_pydantic_validation(inspect.Signature.empty)
 
