@@ -2,7 +2,7 @@
 Temporal decorators for automatically creating activities and workflow proxies
 
 This module provides decorators that automatically:
-1. Wrap async protocol methods as Temporal activities
+1. Wrap protocol methods as Temporal activities
 2. Generate workflow proxy classes that delegate to activities
 Both reduce boilerplate and ensure consistent patterns.
 """
@@ -25,9 +25,91 @@ from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 from pydantic import BaseModel
 
+from julee_example.repositories.base import BaseRepository
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+
+def _extract_concrete_type_from_base(cls: type) -> Optional[type]:
+    """
+    Extract the concrete type argument from a generic base class.
+
+    For example, if a class inherits from
+    BaseRepository[AssemblySpecification], this function will return
+    AssemblySpecification.
+
+    Args:
+        cls: Class to analyze for generic base types
+
+    Returns:
+        The concrete type if found, None otherwise
+    """
+    # Check the class hierarchy for generic base classes
+    for base in cls.__mro__:
+        # Check if this class has __orig_bases__ (generic type information)
+        if hasattr(base, "__orig_bases__"):
+            for orig_base in base.__orig_bases__:
+                origin = get_origin(orig_base)
+                if origin is not None:
+                    args = get_args(orig_base)
+                    # Look for BaseRepository[ConcreteType] pattern
+                    if origin is BaseRepository and len(args) == 1:
+                        concrete_type = args[0]
+                        # Make sure it's a concrete type, not another TypeVar
+                        if not isinstance(concrete_type, TypeVar):
+                            logger.debug(
+                                f"Extracted concrete type {concrete_type} "
+                                f"from {orig_base}"
+                            )
+                            return concrete_type  # type: ignore[no-any-return]
+    return None
+
+
+def _substitute_typevar_with_concrete(
+    annotation: Any, concrete_type: type
+) -> Any:
+    """
+    Substitute TypeVar instances with concrete type in type annotations.
+
+    Args:
+        annotation: Type annotation that may contain TypeVars
+        concrete_type: Concrete type to substitute for TypeVars
+
+    Returns:
+        Type annotation with TypeVars replaced by concrete type
+
+    Raises:
+        TypeError: If type reconstruction fails during substitution
+    """
+    if isinstance(annotation, TypeVar):
+        return concrete_type
+
+    origin = get_origin(annotation)
+    if origin is not None:
+        args = get_args(annotation)
+        if args:
+            # Recursively substitute in generic arguments
+            new_args = tuple(
+                _substitute_typevar_with_concrete(arg, concrete_type)
+                for arg in args
+            )
+            # Reconstruct the generic type with substituted arguments
+            try:
+                return origin[new_args]  # type: ignore
+            except TypeError as e:
+                # Fail fast - type reconstruction should work if substituting
+                raise TypeError(
+                    f"Failed to reconstruct generic type {origin} with "
+                    f"args {new_args}. "
+                    f"Original annotation: {annotation}, "
+                    f"concrete type: {concrete_type}. "
+                    f"This indicates an issue with type substitution logic."
+                ) from e
+
+    # origin is None - normal for non-generic types like str, bool, etc.
+    return annotation
 
 
 def _discover_protocol_methods(
@@ -64,17 +146,18 @@ def _discover_protocol_methods(
             has_protocol_attr or has_is_protocol or has_protocol_in_str
         )
 
+        # Only process protocol classes for architectural compliance
         if is_protocol:
-            # Get method names defined in this protocol, but get the actual
+            # Get method names defined in this class, but get the actual
             # implementation from the concrete class
             for name in base_class.__dict__:
                 if name in methods_to_wrap:
                     continue  # Already found this method
 
-                protocol_method = getattr(base_class, name)
+                base_method = getattr(base_class, name)
                 # Only wrap async methods that don't start with underscore
                 if inspect.iscoroutinefunction(
-                    protocol_method
+                    base_method
                 ) and not name.startswith("_"):
                     # Get the concrete implementation from the actual class
                     if hasattr(concrete_class, name):
@@ -93,8 +176,7 @@ def temporal_activity_registration(
     activity_prefix: str,
 ) -> Callable[[Type[T]], Type[T]]:
     """
-    Class decorator that automatically wraps all async methods as Temporal
-    activities.
+    Class decorator that wraps async protocol methods as Temporal activities.
 
     This decorator inspects the class and wraps all async methods (coroutine
     functions) that don't start with underscore as Temporal activities. The
@@ -115,7 +197,7 @@ def temporal_activity_registration(
         class TemporalMinioPaymentRepository(MinioPaymentRepository):
             pass
 
-        # This automatically creates activities for all async methods:
+        # This automatically creates activities for all protocol methods:
         # - process_payment ->
         #   "sample.payment_repo.minio.process_payment"
         # - get_payment ->
@@ -133,7 +215,7 @@ def temporal_activity_registration(
         # Track which methods we wrap for logging
         wrapped_methods = []
 
-        # Use common method discovery
+        # Use common method discovery - for activities, wrap protocol methods
         async_methods_to_wrap = _discover_protocol_methods(cls.__mro__)
 
         # Now wrap all the async methods we found
@@ -243,7 +325,7 @@ def temporal_workflow_proxy(
             maximum_interval=timedelta(seconds=1),
         )
 
-        # Use the same method discovery as temporal_activity_registration
+        # Use method discovery - for workflow proxies, wrap protocol methods
         methods_to_implement = _discover_protocol_methods(cls.__mro__)
 
         # Generate workflow proxy methods
@@ -258,6 +340,28 @@ def temporal_workflow_proxy(
             # Get method signature for type hints
             sig = inspect.signature(original_method)
             return_annotation = sig.return_annotation
+
+            # Try to extract concrete type from class inheritance
+            concrete_type = _extract_concrete_type_from_base(cls)
+
+            # Substitute TypeVars with concrete type if found
+            if concrete_type is not None:
+                return_annotation = _substitute_typevar_with_concrete(
+                    return_annotation, concrete_type
+                )
+                logger.debug(
+                    f"Substituted TypeVar in {method_name} return type: "
+                    f"{sig.return_annotation} -> {return_annotation}"
+                )
+            else:
+                # Log when we couldn't extract concrete type - might indicate
+                # a repository that doesn't follow BaseRepository[T] pattern
+                logger.debug(
+                    f"No concrete type for {cls.__name__}.{method_name}. "
+                    f"Return annotation: {sig.return_annotation}. "
+                    f"If Pydantic objects returned, ensure repo inherits "
+                    f"from BaseRepository[ConcreteType]."
+                )
 
             # Determine if return type needs Pydantic validation
             needs_validation = _needs_pydantic_validation(return_annotation)

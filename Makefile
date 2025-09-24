@@ -100,7 +100,7 @@ clean:
 # Format code with black
 format:
 	@echo "Formatting code with black..."
-	black cal/ sample/ julee_example/
+	black cal/ sample/ util/ julee_example/
 
 # Help target
 help:
