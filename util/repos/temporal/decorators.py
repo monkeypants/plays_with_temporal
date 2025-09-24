@@ -2,7 +2,7 @@
 Temporal decorators for automatically creating activities and workflow proxies
 
 This module provides decorators that automatically:
-1. Wrap async protocol methods as Temporal activities
+1. Wrap protocol methods as Temporal activities
 2. Generate workflow proxy classes that delegate to activities
 Both reduce boilerplate and ensure consistent patterns.
 """
@@ -117,16 +117,14 @@ def _discover_protocol_methods(
     cls_hierarchy: tuple[type, ...],
 ) -> dict[str, Any]:
     """
-    Common function to discover methods that should be wrapped.
+    Common function to discover protocol methods that should be wrapped.
 
     This function is used by both temporal_activity_registration and
-    temporal_workflow_proxy to find async methods. The behavior can be
-    configured based on the decorator's needs.
+    temporal_workflow_proxy to ensure they operate on the exact same
+    set of methods by finding async methods defined in protocol interfaces.
 
     Args:
         cls_hierarchy: The class MRO (method resolution order)
-        protocols_only: If True, only look at Protocol classes. If False,
-                       look at all classes in the hierarchy.
 
     Returns:
         Dict mapping method names to method objects from the concrete class
@@ -134,13 +132,13 @@ def _discover_protocol_methods(
     methods_to_wrap = {}
     concrete_class = cls_hierarchy[0]  # The actual class being decorated
 
-    # Look for async methods in the class hierarchy
+    # Look for protocol interfaces (classes with runtime_checkable/Protocol)
     for base_class in cls_hierarchy:
         # Skip object base class
         if base_class is object:
             continue
 
-        # Check if this is a protocol class (for workflow proxies)
+        # Check if this is a protocol class
         has_protocol_attr = hasattr(base_class, "__protocol__")
         has_is_protocol = getattr(base_class, "_is_protocol", False)
         has_protocol_in_str = "Protocol" in str(base_class)
@@ -179,8 +177,7 @@ def temporal_activity_registration(
     activity_prefix: str,
 ) -> Callable[[Type[T]], Type[T]]:
     """
-    Class decorator that automatically wraps all async methods as Temporal
-    activities.
+    Class decorator that wraps async protocol methods as Temporal activities.
 
     This decorator inspects the class and wraps all async methods (coroutine
     functions) that don't start with underscore as Temporal activities. The
@@ -201,7 +198,7 @@ def temporal_activity_registration(
         class TemporalMinioPaymentRepository(MinioPaymentRepository):
             pass
 
-        # This automatically creates activities for all async methods:
+        # This automatically creates activities for all protocol methods:
         # - process_payment ->
         #   "sample.payment_repo.minio.process_payment"
         # - get_payment ->
