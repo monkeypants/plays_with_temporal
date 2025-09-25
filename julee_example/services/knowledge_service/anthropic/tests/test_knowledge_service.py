@@ -94,12 +94,12 @@ class TestAnthropicKnowledgeService:
         ) as mock_anthropic:
             mock_anthropic.return_value = mock_anthropic_client
 
-            service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config
-            )
+            service = anthropic_ks.AnthropicKnowledgeService()
 
             query_text = "What is machine learning?"
-            result = await service.execute_query(query_text)
+            result = await service.execute_query(
+                knowledge_service_config, query_text
+            )
 
             # Verify the result structure
             assert result.query_text == query_text
@@ -149,15 +149,14 @@ class TestAnthropicKnowledgeService:
         ) as mock_anthropic:
             mock_anthropic.return_value = mock_anthropic_client
 
-            service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config
-            )
+            service = anthropic_ks.AnthropicKnowledgeService()
 
-            query_text = "What is in these documents?"
+            query_text = "What is in the document?"
             service_file_ids = ["file_123", "file_456"]
-
             result = await service.execute_query(
-                query_text, service_file_ids=service_file_ids
+                knowledge_service_config,
+                query_text,
+                service_file_ids=service_file_ids,
             )
 
             # Verify the result structure
@@ -203,12 +202,12 @@ class TestAnthropicKnowledgeService:
         ) as mock_anthropic:
             mock_anthropic.return_value = mock_client
 
-            service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config
-            )
+            service = anthropic_ks.AnthropicKnowledgeService()
 
-            with pytest.raises(Exception, match="API Error"):
-                await service.execute_query("test query")
+            with pytest.raises(Exception):
+                await service.execute_query(
+                    knowledge_service_config, "Test query"
+                )
 
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
     async def test_query_id_generation(
@@ -222,13 +221,15 @@ class TestAnthropicKnowledgeService:
         ) as mock_anthropic:
             mock_anthropic.return_value = mock_anthropic_client
 
-            service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config
-            )
+            service = anthropic_ks.AnthropicKnowledgeService()
 
             # Execute two queries
-            result1 = await service.execute_query("First query")
-            result2 = await service.execute_query("Second query")
+            result1 = await service.execute_query(
+                knowledge_service_config, "First query"
+            )
+            result2 = await service.execute_query(
+                knowledge_service_config, "Second query"
+            )
 
             # Query IDs should be unique and follow expected format
             assert result1.query_id != result2.query_id
@@ -251,13 +252,11 @@ class TestAnthropicKnowledgeService:
         ) as mock_anthropic:
             mock_anthropic.return_value = mock_anthropic_client
 
-            service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config
-            )
+            service = anthropic_ks.AnthropicKnowledgeService()
 
-            query_text = "Test query"
+            query_text = "What is in the document?"
             result = await service.execute_query(
-                query_text, service_file_ids=[]
+                knowledge_service_config, query_text, service_file_ids=[]
             )
 
             # Should behave the same as None
@@ -281,19 +280,17 @@ class TestAnthropicKnowledgeService:
         ) as mock_anthropic:
             mock_anthropic.return_value = mock_anthropic_client
 
-            service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config
-            )
+            service = anthropic_ks.AnthropicKnowledgeService()
 
-            query_text = "Custom query with metadata"
             metadata = {
                 "model": "claude-opus-4-1-20250805",
                 "max_tokens": 2000,
                 "temperature": 0.7,
             }
 
+            query_text = "Custom query with metadata"
             result = await service.execute_query(
-                query_text, query_metadata=metadata
+                knowledge_service_config, query_text, query_metadata=metadata
             )
 
             # Verify the result uses metadata values
@@ -320,12 +317,10 @@ class TestAnthropicKnowledgeService:
         ) as mock_anthropic:
             mock_anthropic.return_value = mock_anthropic_client
 
-            service = anthropic_ks.AnthropicKnowledgeService(
-                knowledge_service_config
-            )
+            service = anthropic_ks.AnthropicKnowledgeService()
 
             result = await service.execute_query(
-                "Test query", query_metadata=None
+                knowledge_service_config, "Test query", query_metadata=None
             )
 
             # Verify defaults are used

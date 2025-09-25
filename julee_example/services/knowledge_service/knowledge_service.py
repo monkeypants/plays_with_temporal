@@ -11,9 +11,20 @@ Concrete implementations of this protocol are provided for different external
 services (Anthropic, OpenAI, etc.) and are created via factory functions.
 """
 
-from typing import Protocol, Optional, List, runtime_checkable, Dict, Any
+from typing import (
+    Protocol,
+    Optional,
+    List,
+    runtime_checkable,
+    Dict,
+    Any,
+    TYPE_CHECKING,
+)
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from julee_example.domain import KnowledgeServiceConfig
 
 from julee_example.domain import Document
 
@@ -69,7 +80,7 @@ class KnowledgeService(Protocol):
     """
 
     async def register_file(
-        self, document: Document
+        self, config: "KnowledgeServiceConfig", document: Document
     ) -> FileRegistrationResult:
         """Register a document file with the external knowledge service.
 
@@ -78,6 +89,7 @@ class KnowledgeService(Protocol):
         future queries.
 
         Args:
+            config: KnowledgeServiceConfig for the service to use
             document: Document domain object to register
 
         Returns:
@@ -100,6 +112,7 @@ class KnowledgeService(Protocol):
 
     async def execute_query(
         self,
+        config: "KnowledgeServiceConfig",
         query_text: str,
         service_file_ids: Optional[List[str]] = None,
         query_metadata: Optional[Dict[str, Any]] = None,
@@ -112,6 +125,7 @@ class KnowledgeService(Protocol):
         previously registered with the service.
 
         Args:
+            config: KnowledgeServiceConfig for the service to use
             query_text: The query to execute (natural language or structured)
             service_file_ids: Optional list of service file IDs to provide as
                              context for the query. These are the IDs returned
