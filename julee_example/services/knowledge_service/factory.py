@@ -6,17 +6,58 @@ KnowledgeService instances based on the service API configuration.
 """
 
 import logging
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from julee_example.domain import KnowledgeServiceConfig
-
+from julee_example.domain import KnowledgeServiceConfig
 from .knowledge_service import KnowledgeService
 from .anthropic import AnthropicKnowledgeService
 from julee_example.domain.knowledge_service_config import ServiceApi
+from julee_example.domain import Document
+from julee_example.services.knowledge_service import (
+    QueryResult,
+    FileRegistrationResult,
+)
+from typing import Dict, Any, List, Optional
 
 
 logger = logging.getLogger(__name__)
+
+
+class ConfigurableKnowledgeService(KnowledgeService):
+    """
+    KnowledgeService implementation that uses the factory pattern.
+
+    This class implements the KnowledgeService protocol by delegating to
+    a factory-created service instance. It can be wrapped by temporal
+    decorators while maintaining proper protocol compliance.
+
+    No constructor configuration is required - the factory is called
+    within each method using the provided config parameter.
+    """
+
+    async def register_file(
+        self, config: KnowledgeServiceConfig, document: Document
+    ) -> FileRegistrationResult:
+        """Register a document with the knowledge service."""
+        service = knowledge_service_factory(config)
+        return await service.register_file(config, document)
+
+    async def execute_query(
+        self,
+        config: KnowledgeServiceConfig,
+        query_text: str,
+        service_file_ids: Optional[List[str]] = None,
+        query_metadata: Optional[Dict[str, Any]] = None,
+        assistant_prompt: Optional[str] = None,
+    ) -> QueryResult:
+        """Execute a query against the knowledge service."""
+        service = knowledge_service_factory(config)
+        return await service.execute_query(
+            config=config,
+            query_text=query_text,
+            service_file_ids=service_file_ids,
+            query_metadata=query_metadata,
+            assistant_prompt=assistant_prompt,
+        )
 
 
 def knowledge_service_factory(
@@ -67,7 +108,7 @@ def knowledge_service_factory(
     # Route to appropriate implementation based on service_api
     service: KnowledgeService
     if knowledge_service_config.service_api == ServiceApi.ANTHROPIC:
-        service = AnthropicKnowledgeService(knowledge_service_config)
+        service = AnthropicKnowledgeService()
     else:
         raise ValueError(
             f"Unsupported service API: {knowledge_service_config.service_api}"
@@ -90,3 +131,10 @@ def knowledge_service_factory(
     )
 
     return validated_service
+
+
+# Export both the factory function and the configurable class
+__all__ = [
+    "knowledge_service_factory",
+    "ConfigurableKnowledgeService",
+]

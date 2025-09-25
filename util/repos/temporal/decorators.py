@@ -410,12 +410,14 @@ def temporal_workflow_proxy(
                     # Prepare arguments (exclude self)
                     activity_args = args if args else ()
 
-                    # Note: kwargs not currently supported by this decorator
-                    # Most repository methods use positional args only
+                    # Handle kwargs - Temporal doesn't support kwargs directly
                     if kwargs:
                         raise ValueError(
-                            f"kwargs not supported in workflow proxy "
-                            f"for {method_name}. Use positional args."
+                            f"Keyword arguments not supported in workflow "
+                            f"proxy for {method_name}. Temporal activities "
+                            f"only accept positional arguments. Please "
+                            f"modify the calling code to use positional "
+                            f"arguments instead of: {list(kwargs.keys())}"
                         )
 
                     # Execute the activity

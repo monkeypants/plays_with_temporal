@@ -69,6 +69,9 @@ from julee_example.repositories.memory import (
     MemoryKnowledgeServiceConfigRepository,
     MemoryKnowledgeServiceQueryRepository,
 )
+from julee_example.services.knowledge_service.memory import (
+    MemoryKnowledgeService,
+)
 from julee_example.use_cases.extract_assemble_data import (
     ExtractAssembleDataUseCase,
 )
@@ -453,13 +456,25 @@ async def test_assemble_data_use_case(
             input_file_path, spec_file_path
         )
 
-        # Create the use case
+        # Create the use case with knowledge service
+        # Create a test config for the memory knowledge service
+        test_config = KnowledgeServiceConfig(
+            knowledge_service_id="ks-example",
+            name="Example Knowledge Service",
+            description="Memory service for example",
+            service_api=ServiceApi.ANTHROPIC,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        knowledge_service = MemoryKnowledgeService(test_config)
+
         use_case = ExtractAssembleDataUseCase(
             document_repo=document_repo,
             assembly_repo=assembly_repo,
             assembly_specification_repo=assembly_spec_repo,
             knowledge_service_query_repo=ks_query_repo,
             knowledge_service_config_repo=ks_config_repo,
+            knowledge_service=knowledge_service,
         )
 
         print("\n✅ Created ExtractAssembleDataUseCase with all repositories")

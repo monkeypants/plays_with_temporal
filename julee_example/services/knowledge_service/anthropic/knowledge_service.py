@@ -14,7 +14,7 @@ import os
 import logging
 import time
 import uuid
-from typing import Optional, List, Dict, Any, cast, IO
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 
 from anthropic import AsyncAnthropic
@@ -42,27 +42,27 @@ class AnthropicKnowledgeService(KnowledgeService):
     protocol with Anthropic-specific logic.
     """
 
-    def __init__(
-        self,
-        config: KnowledgeServiceConfig,
-    ) -> None:
-        """Initialize Anthropic knowledge service with configuration.
+    def __init__(self) -> None:
+        """Initialize Anthropic knowledge service without configuration.
+
+        Configuration will be provided per method call to maintain
+        stateless operation compatible with Temporal workflows.
+        """
+        # No initialization needed - everything happens per method call
+        pass
+
+    def _get_client(self, config: KnowledgeServiceConfig) -> AsyncAnthropic:
+        """Get an initialized Anthropic client.
 
         Args:
-            config: KnowledgeServiceConfig domain object containing metadata
-                   and service configuration
+            config: KnowledgeServiceConfig (for future extensibility)
+
+        Returns:
+            Configured AsyncAnthropic client instance
+
+        Raises:
+            ValueError: If ANTHROPIC_API_KEY environment variable is not set
         """
-        logger.debug(
-            "Initializing AnthropicKnowledgeService",
-            extra={
-                "knowledge_service_id": config.knowledge_service_id,
-                "service_name": config.name,
-            },
-        )
-
-        self.config = config
-
-        # Initialize Anthropic client
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError(
@@ -70,17 +70,18 @@ class AnthropicKnowledgeService(KnowledgeService):
                 "AnthropicKnowledgeService"
             )
 
-        self.client = AsyncAnthropic(
+        return AsyncAnthropic(
             api_key=api_key,
             default_headers={"anthropic-beta": "files-api-2025-04-14"},
         )
 
     async def register_file(
-        self, document: Document
+        self, config: KnowledgeServiceConfig, document: Document
     ) -> FileRegistrationResult:
         """Register a document file with Anthropic.
 
         Args:
+            config: KnowledgeServiceConfig for this operation
             document: Document domain object to register
 
         Returns:
@@ -89,23 +90,30 @@ class AnthropicKnowledgeService(KnowledgeService):
         logger.debug(
             "Registering file with Anthropic",
             extra={
-                "knowledge_service_id": self.config.knowledge_service_id,
+                "knowledge_service_id": config.knowledge_service_id,
                 "document_id": document.document_id,
             },
         )
 
         try:
+            # Get Anthropic client for this operation
+            client = self._get_client(config)
 
-            # Reset stream position and pass stream to Anthropic
-            assert document.content is not None
-            document.content.seek(0)
+            # Ensure content stream is positioned at beginning for upload
+            if document.content:
+                document.content.seek(0)
 
             # Upload file using Anthropic beta Files API
             # Use tuple format: (filename, file_stream, media_type)
-            file_response = await self.client.beta.files.upload(
+            if not document.content:
+                raise ValueError(
+                    "Document content stream is required for upload"
+                )
+
+            file_response = await client.beta.files.upload(
                 file=(
                     document.original_filename,
-                    cast(IO[bytes], document.content.stream),
+                    document.content.stream,  # type: ignore[arg-type]
                     document.content_type,
                 )
             )
@@ -130,7 +138,7 @@ class AnthropicKnowledgeService(KnowledgeService):
             logger.info(
                 "File registered with Anthropic beta Files API",
                 extra={
-                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "knowledge_service_id": config.knowledge_service_id,
                     "document_id": document.document_id,
                     "anthropic_file_id": anthropic_file_id,
                     "original_filename": document.original_filename,
@@ -144,7 +152,7 @@ class AnthropicKnowledgeService(KnowledgeService):
             logger.error(
                 "Failed to register file with Anthropic",
                 extra={
-                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "knowledge_service_id": config.knowledge_service_id,
                     "document_id": document.document_id,
                     "error": str(e),
                 },
@@ -154,6 +162,7 @@ class AnthropicKnowledgeService(KnowledgeService):
 
     async def execute_query(
         self,
+        config: KnowledgeServiceConfig,
         query_text: str,
         service_file_ids: Optional[List[str]] = None,
         query_metadata: Optional[Dict[str, Any]] = None,
@@ -162,6 +171,7 @@ class AnthropicKnowledgeService(KnowledgeService):
         """Execute a query against Anthropic.
 
         Args:
+            config: KnowledgeServiceConfig for this operation
             query_text: The query to execute
             service_file_ids: Optional list of Anthropic file IDs to provide
                              as context for the query
@@ -176,7 +186,7 @@ class AnthropicKnowledgeService(KnowledgeService):
         logger.debug(
             "Executing query with Anthropic",
             extra={
-                "knowledge_service_id": self.config.knowledge_service_id,
+                "knowledge_service_id": config.knowledge_service_id,
                 "query_text": query_text,
                 "document_count": (
                     len(service_file_ids) if service_file_ids else 0
@@ -197,6 +207,9 @@ class AnthropicKnowledgeService(KnowledgeService):
         temperature = metadata.get("temperature")
 
         try:
+            # Get Anthropic client for this operation
+            client = self._get_client(config)
+
             # Prepare the message content with file attachments if provided
             content_parts = []
 
@@ -232,7 +245,7 @@ class AnthropicKnowledgeService(KnowledgeService):
             if temperature is not None:
                 create_params["temperature"] = temperature
 
-            response = await self.client.messages.create(**create_params)
+            response = await client.messages.create(**create_params)
 
             # Calculate execution time
             execution_time_ms = int((time.time() - start_time) * 1000)
@@ -265,7 +278,7 @@ class AnthropicKnowledgeService(KnowledgeService):
             logger.debug(
                 "Single text content block validated and extracted",
                 extra={
-                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "knowledge_service_id": config.knowledge_service_id,
                     "query_id": query_id,
                     "response_length": len(response_text),
                 },
@@ -295,7 +308,7 @@ class AnthropicKnowledgeService(KnowledgeService):
             logger.info(
                 "Query executed with Anthropic successfully",
                 extra={
-                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "knowledge_service_id": config.knowledge_service_id,
                     "query_id": query_id,
                     "execution_time_ms": execution_time_ms,
                     "input_tokens": response.usage.input_tokens,
@@ -313,7 +326,7 @@ class AnthropicKnowledgeService(KnowledgeService):
             logger.error(
                 "Failed to execute query with Anthropic",
                 extra={
-                    "knowledge_service_id": self.config.knowledge_service_id,
+                    "knowledge_service_id": config.knowledge_service_id,
                     "query_id": query_id,
                     "query_text": query_text,
                     "execution_time_ms": execution_time_ms,

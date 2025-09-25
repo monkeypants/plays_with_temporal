@@ -163,7 +163,8 @@ class TestMinioDocumentRepositoryStore:
         stored_multihash = sample_document.content_multihash
 
         # Create second document with identical content but different metadata
-        assert sample_document.content is not None
+        if sample_document.content is None:
+            raise ValueError("Sample document content is required")
         sample_document.content.seek(0)  # Reset stream
         content_bytes = sample_document.content.read()
         sample_document.content.seek(0)  # Reset again
@@ -283,11 +284,13 @@ class TestMinioDocumentRepositoryGet:
         assert result.size_bytes == sample_document.size_bytes
 
         # Verify content can be read
-        assert result.content is not None
+        if result.content is None:
+            raise ValueError("Retrieved document content is required")
         retrieved_content = result.content.read()
 
         # Reset sample document content for comparison
-        assert sample_document.content is not None
+        if sample_document.content is None:
+            raise ValueError("Sample document content is required")
         sample_document.content.seek(0)
         original_content = sample_document.content.read()
 

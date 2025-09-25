@@ -68,10 +68,13 @@ from julee_example.domain.policy import (
 from julee_example.domain.knowledge_service_config import ServiceApi
 from julee_example.repositories.memory import (
     MemoryDocumentRepository,
+    MemoryDocumentPolicyValidationRepository,
     MemoryKnowledgeServiceConfigRepository,
     MemoryKnowledgeServiceQueryRepository,
     MemoryPolicyRepository,
-    MemoryDocumentPolicyValidationRepository,
+)
+from julee_example.services.knowledge_service.memory import (
+    MemoryKnowledgeService,
 )
 from julee_example.use_cases.validate_document import (
     ValidateDocumentUseCase,
@@ -466,13 +469,25 @@ async def test_validate_document_use_case(
             input_file_path, policy_file_path
         )
 
-        # Create the use case
+        # Create the use case with knowledge service
+        # Create a test config for the memory knowledge service
+        test_config = KnowledgeServiceConfig(
+            knowledge_service_id="ks-example",
+            name="Example Knowledge Service",
+            description="Memory service for example",
+            service_api=ServiceApi.ANTHROPIC,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        knowledge_service = MemoryKnowledgeService(test_config)
+
         use_case = ValidateDocumentUseCase(
             document_repo=document_repo,
             knowledge_service_query_repo=ks_query_repo,
             knowledge_service_config_repo=ks_config_repo,
             policy_repo=policy_repo,
             document_policy_validation_repo=document_policy_validation_repo,
+            knowledge_service=knowledge_service,
         )
 
         print("\n✅ Created ValidateDocumentUseCase with all repositories")
