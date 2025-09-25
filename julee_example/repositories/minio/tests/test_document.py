@@ -550,6 +550,46 @@ class TestMinioDocumentRepositoryContentString:
         ):
             await repository.save(document)
 
+    async def test_save_excludes_content_string_from_metadata(
+        self,
+        repository: MinioDocumentRepository,
+        fake_minio_client: FakeMinioClient,
+    ) -> None:
+        """Test that content_string is not stored in metadata."""
+        content = '{"test": "data that should not be in metadata"}'
+
+        document = Document(
+            document_id="test-metadata-exclusion",
+            original_filename="test.json",
+            content_type="application/json",
+            size_bytes=100,
+            content_multihash="placeholder",
+            status=DocumentStatus.CAPTURED,
+            content_string=content,
+        )
+
+        await repository.save(document)
+
+        # Check raw metadata stored in MinIO
+        metadata_response = fake_minio_client.get_object(
+            bucket_name="documents", object_name="test-metadata-exclusion"
+        )
+        metadata_data = metadata_response.read()
+        metadata_json = metadata_data.decode("utf-8")
+
+        import json
+
+        metadata_dict = json.loads(metadata_json)
+
+        # Verify content_string is not in stored metadata
+        assert "content_string" not in metadata_dict
+        assert "content" not in metadata_dict
+
+        # Verify essential fields are still present
+        assert metadata_dict["document_id"] == "test-metadata-exclusion"
+        assert "content_multihash" in metadata_dict
+        assert "status" in metadata_dict
+
 
 class TestMinioDocumentRepositoryErrorHandling:
     """Test error handling scenarios."""

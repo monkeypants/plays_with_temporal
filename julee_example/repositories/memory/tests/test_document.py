@@ -148,6 +148,45 @@ class TestMemoryDocumentRepositoryContentString:
         ):
             await repository.save(document)
 
+    async def test_save_excludes_content_string_from_storage(
+        self, repository: MemoryDocumentRepository
+    ) -> None:
+        """Test that content_string is not stored in memory storage."""
+        content = '{"test": "data that should not be in storage"}'
+
+        document = Document(
+            document_id="test-storage-exclusion",
+            original_filename="test.json",
+            content_type="application/json",
+            size_bytes=100,
+            content_multihash="placeholder",
+            status=DocumentStatus.CAPTURED,
+            content_string=content,
+        )
+
+        await repository.save(document)
+
+        # Check stored document directly from internal storage
+        stored_document = repository.storage_dict.get(
+            "test-storage-exclusion"
+        )
+        assert stored_document is not None
+
+        # Verify content_string is not in stored document
+        assert stored_document.content_string is None
+
+        # Verify essential fields are still present
+        assert stored_document.document_id == "test-storage-exclusion"
+        assert stored_document.content_multihash is not None
+        assert stored_document.content_multihash != "placeholder"
+
+        # Verify we can still retrieve with content
+        retrieved = await repository.get("test-storage-exclusion")
+        assert retrieved is not None
+        assert retrieved.content is not None
+        retrieved_content = retrieved.content.read().decode("utf-8")
+        assert retrieved_content == content
+
 
 class TestMemoryDocumentRepositoryBasicOperations:
     """Test basic repository operations."""

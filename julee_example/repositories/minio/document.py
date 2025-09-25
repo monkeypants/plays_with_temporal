@@ -337,8 +337,10 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         """Store document metadata to Minio with idempotency check."""
         object_name = document.document_id
 
-        # Serialize metadata (content stream is excluded from serialization)
-        metadata_json = document.model_dump_json().encode("utf-8")
+        # Serialize metadata (content stream and content_string excluded)
+        metadata_json = document.model_dump_json(
+            exclude={"content", "content_string"}
+        ).encode("utf-8")
 
         try:
             # Check if metadata already exists and is identical (idempotency)

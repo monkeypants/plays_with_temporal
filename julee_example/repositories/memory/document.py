@@ -110,7 +110,12 @@ class MemoryDocumentRepository(
                 },
             )
 
-        self.save_entity(document, "document_id")
+        # Create a copy without content_string (content saved
+        # in separate content-addressable storage)
+        document_for_storage = document.model_copy(
+            update={"content_string": None}
+        )
+        self.save_entity(document_for_storage, "document_id")
 
     async def generate_id(self) -> str:
         """Generate a unique document identifier.
