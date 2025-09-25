@@ -42,6 +42,9 @@ class TemporalKnowledgeService(ConfigurableKnowledgeService):
     before performing operations that require it.
     """
 
+    # TODO(temporal): Once everything is landed and passing, update this
+    # to use dependency injection here, so the __init__ should be passed
+    # a `DocumentRepository`, rather than one being setup here.
     def __init__(self) -> None:
         super().__init__()
         self.logger = logging.getLogger(__name__)
