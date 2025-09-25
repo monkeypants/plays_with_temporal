@@ -506,50 +506,6 @@ class TestMinioDocumentRepositoryContentString:
     # Note: Empty content test removed because domain model requires
     # size_bytes > 0
 
-    async def test_save_document_with_both_content_and_content_string(
-        self,
-        repository: MinioDocumentRepository,
-        sample_content: ContentStream,
-    ) -> None:
-        """Test that both content and content_string raises error."""
-        content_string = '{"type": "string"}'
-
-        document = Document(
-            document_id="test-doc-both",
-            original_filename="both.json",
-            content_type="application/json",
-            size_bytes=100,
-            content_multihash="test_hash",
-            status=DocumentStatus.CAPTURED,
-            content=sample_content,
-            content_string=content_string,
-        )
-
-        with pytest.raises(
-            ValueError, match="has both content and content_string"
-        ):
-            await repository.save(document)
-
-    async def test_save_document_without_content_or_content_string(
-        self, repository: MinioDocumentRepository
-    ) -> None:
-        """Test that saving without content or content_string raises error."""
-        document = Document(
-            document_id="test-doc-no-content",
-            original_filename="empty.json",
-            content_type="application/json",
-            size_bytes=100,
-            content_multihash="test_hash",
-            status=DocumentStatus.CAPTURED,
-            content=None,
-            content_string=None,
-        )
-
-        with pytest.raises(
-            ValueError, match="has no content or content_string"
-        ):
-            await repository.save(document)
-
     async def test_save_excludes_content_string_from_metadata(
         self,
         repository: MinioDocumentRepository,

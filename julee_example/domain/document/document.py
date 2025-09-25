@@ -127,3 +127,24 @@ class Document(BaseModel):
         if not v or not v.strip():
             raise ValueError("Content multihash cannot be empty")
         return v.strip()
+
+    @field_validator("content_string")
+    @classmethod
+    def validate_content_exclusivity(
+        cls, v: Optional[str], info: Any
+    ) -> Optional[str]:
+        """Ensure document has either content or content_string, not both."""
+        has_content = info.data.get("content") is not None
+        has_content_string = v is not None
+
+        if has_content and has_content_string:
+            raise ValueError(
+                "Document cannot have both content and content_string. "
+                "Provide only one."
+            )
+        elif not has_content and not has_content_string:
+            raise ValueError(
+                "Document must have either content or content_string. "
+                "Provide one."
+            )
+        return v

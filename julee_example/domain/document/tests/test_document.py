@@ -201,3 +201,76 @@ class TestDocumentSerialization:
         assert json_data["size_bytes"] == doc.size_bytes
         assert json_data["content_multihash"] == doc.content_multihash
         assert json_data["status"] == doc.status.value
+
+
+class TestDocumentContentValidation:
+    """Test Document content and content_string validation rules."""
+
+    def test_document_with_both_content_and_content_string_fails(
+        self,
+    ) -> None:
+        """Test that both content and content_string raises error."""
+        content_stream = ContentStreamFactory.build()
+        content_string = '{"type": "string"}'
+
+        with pytest.raises(
+            ValueError, match="cannot have both content and content_string"
+        ):
+            Document(
+                document_id="test-doc-both",
+                original_filename="both.json",
+                content_type="application/json",
+                size_bytes=100,
+                content_multihash="test_hash",
+                content=content_stream,
+                content_string=content_string,
+            )
+
+    def test_document_without_content_or_content_string_fails(self) -> None:
+        """Test that no content or content_string raises error."""
+        with pytest.raises(
+            ValueError, match="must have either content or content_string"
+        ):
+            Document(
+                document_id="test-doc-no-content",
+                original_filename="empty.json",
+                content_type="application/json",
+                size_bytes=100,
+                content_multihash="test_hash",
+                content=None,
+                content_string=None,
+            )
+
+    def test_document_with_content_only_succeeds(self) -> None:
+        """Test that document with only content field succeeds."""
+        content_stream = ContentStreamFactory.build()
+
+        doc = Document(
+            document_id="test-doc-content",
+            original_filename="content.json",
+            content_type="application/json",
+            size_bytes=100,
+            content_multihash="test_hash",
+            content=content_stream,
+            content_string=None,
+        )
+
+        assert doc.content is not None
+        assert doc.content_string is None
+
+    def test_document_with_content_string_only_succeeds(self) -> None:
+        """Test that document with only content_string field succeeds."""
+        content_string = '{"type": "string"}'
+
+        doc = Document(
+            document_id="test-doc-string",
+            original_filename="string.json",
+            content_type="application/json",
+            size_bytes=100,
+            content_multihash="test_hash",
+            content=None,
+            content_string=content_string,
+        )
+
+        assert doc.content is None
+        assert doc.content_string == content_string

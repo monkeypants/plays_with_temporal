@@ -67,23 +67,8 @@ class MemoryDocumentRepository(
         Raises:
             ValueError: If document has no content or content_string
         """
-        # Fail fast if both are provided or neither are provided
-        has_content = document.content is not None
-        has_content_string = document.content_string is not None
-
-        if has_content and has_content_string:
-            raise ValueError(
-                f"Document {document.document_id} has both content and "
-                "content_string. Provide only one."
-            )
-        elif not has_content and not has_content_string:
-            raise ValueError(
-                f"Document {document.document_id} has no content or "
-                "content_string. Provide one."
-            )
-
         # Handle content_string conversion (only if no content provided)
-        if has_content_string:
+        if document.content_string is not None:
             # Convert content_string to ContentStream
             assert document.content_string is not None  # For MyPy
             content_bytes = document.content_string.encode("utf-8")
