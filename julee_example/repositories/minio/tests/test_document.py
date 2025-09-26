@@ -318,7 +318,7 @@ class TestMinioDocumentRepositoryGet:
     async def test_get_document_with_missing_content(
         self, repository: MinioDocumentRepository
     ) -> None:
-        """Test handling document with metadata but missing content."""
+        """Test that missing content returns None."""
         # Store metadata but not content
         metadata_json = (
             '{"document_id": "test-123", "content_multihash": "missing_hash",'
@@ -338,13 +338,8 @@ class TestMinioDocumentRepositoryGet:
         # Act
         result = await repository.get("test-123")
 
-        # Assert - should return document with empty content stream
-        assert result is not None
-        assert result.document_id == "test-123"
-        # Content stream should be empty but present
-        assert result.content is not None
-        content_data = result.content.read()
-        assert content_data == b""
+        # Assert - should return None when content is missing
+        assert result is None
 
     async def test_get_nonexistent_document(
         self, repository: MinioDocumentRepository

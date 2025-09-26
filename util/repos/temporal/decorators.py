@@ -439,7 +439,10 @@ def temporal_workflow_proxy(
                     result = raw_result
                     if needs_validation and raw_result is not None:
                         if hasattr(inner_type, "model_validate"):
-                            result = inner_type.model_validate(raw_result)
+                            result = inner_type.model_validate(
+                                raw_result,
+                                context={"temporal_validation": True},
+                            )
                         else:
                             # For other types, just return as-is
                             result = raw_result
@@ -448,7 +451,9 @@ def temporal_workflow_proxy(
                         and raw_result is not None
                         and hasattr(inner_type, "model_validate")
                     ):
-                        result = inner_type.model_validate(raw_result)
+                        result = inner_type.model_validate(
+                            raw_result, context={"temporal_validation": True}
+                        )
 
                     # Log completion
                     logger.debug(

@@ -274,3 +274,28 @@ class TestDocumentContentValidation:
 
         assert doc.content is None
         assert doc.content_string == content_string
+
+    def test_document_deserialization_with_empty_content_succeeds(
+        self,
+    ) -> None:
+        """Test Temporal deserialization allows empty content."""
+        # This simulates what happens when a Document comes back from Temporal
+        # activities - the ContentStream is excluded from serialization
+        document_data = {
+            "document_id": "test-temporal",
+            "original_filename": "temporal.json",
+            "content_type": "application/json",
+            "size_bytes": 100,
+            "content_multihash": "test_hash",
+            "content": None,
+            "content_string": None,
+        }
+
+        # Should succeed with temporal_validation context
+        doc = Document.model_validate(
+            document_data, context={"temporal_validation": True}
+        )
+
+        assert doc.document_id == "test-temporal"
+        assert doc.content is None
+        assert doc.content_string is None
