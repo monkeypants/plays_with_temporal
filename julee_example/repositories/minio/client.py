@@ -11,6 +11,7 @@ common patterns used across all Minio repository implementations to reduce
 code duplication and ensure consistent error handling and logging.
 """
 
+import io
 import json
 from datetime import datetime, timezone
 from typing import (
@@ -279,11 +280,12 @@ class MinioRepositoryMixin:
             # Serialize using Pydantic's JSON serialization
             json_data = model.model_dump_json()
 
+            json_bytes = json_data.encode("utf-8")
             self.client.put_object(
                 bucket_name=bucket_name,
                 object_name=object_name,
-                data=json_data.encode("utf-8"),
-                length=len(json_data.encode("utf-8")),
+                data=io.BytesIO(json_bytes),
+                length=len(json_bytes),
                 content_type="application/json",
             )
 
