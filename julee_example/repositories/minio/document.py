@@ -101,17 +101,18 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
 
             except S3Error as content_error:
                 if getattr(content_error, "code", None) == "NoSuchKey":
-                    self.logger.warning(
-                        "Document metadata found but content missing",
+                    self.logger.error(
+                        "Data integrity error: Document metadata exists but "
+                        "content missing",
                         extra={
                             "document_id": document_id,
                             "content_multihash": content_multihash,
                         },
                     )
-                    # Return document without content stream for metadata-only
-                    # operations
-                    document_dict["content"] = ContentStream(io.BytesIO(b""))
-                    return Document(**document_dict)
+                    raise ValueError(
+                        f"Document {document_id} metadata exists but content "
+                        f"is missing. Content multihash: {content_multihash}"
+                    )
                 else:
                     raise content_error
 

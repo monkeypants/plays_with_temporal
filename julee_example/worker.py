@@ -11,7 +11,7 @@ import os
 from temporalio.client import Client
 from temporalio.service import RPCError
 from temporalio.worker import Worker
-from temporalio.contrib.pydantic import pydantic_data_converter
+from util.repos.temporal.data_converter import temporal_data_converter
 
 from julee_example.workflows import (
     ExtractAssembleWorkflow,
@@ -76,7 +76,7 @@ async def get_temporal_client_with_retries(
             # 'default' namespace
             client = await Client.connect(
                 endpoint,
-                data_converter=pydantic_data_converter,
+                data_converter=temporal_data_converter,
                 namespace="default",
             )
             logger.info(
