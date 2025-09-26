@@ -11,10 +11,12 @@ ideal for testing scenarios where external dependencies should be avoided.
 All operations are still async to maintain interface compatibility.
 """
 
+import hashlib
+import io
 import logging
 from typing import Optional, Dict, Any
 
-from julee_example.domain import Document
+from julee_example.domain import Document, ContentStream
 from julee_example.repositories.document import DocumentRepository
 from .base import MemoryRepositoryMixin
 
@@ -56,10 +58,49 @@ class MemoryDocumentRepository(
     async def save(self, document: Document) -> None:
         """Save a document with its content and metadata.
 
+        If the document has content_string, it will be converted to a
+        ContentStream and the content hash will be calculated automatically.
+
         Args:
             document: Document object to save
+
+        Raises:
+            ValueError: If document has no content or content_string
         """
-        self.save_entity(document, "document_id")
+        # Handle content_string conversion (only if no content provided)
+        if document.content_string is not None:
+            # Convert content_string to ContentStream
+            assert document.content_string is not None  # For MyPy
+            content_bytes = document.content_string.encode("utf-8")
+            content_stream = ContentStream(io.BytesIO(content_bytes))
+
+            # Calculate content hash
+            content_hash = hashlib.sha256(content_bytes).hexdigest()
+
+            # Create new document with ContentStream and calculated hash
+            document = document.model_copy(
+                update={
+                    "content": content_stream,
+                    "content_multihash": content_hash,
+                    "size_bytes": len(content_bytes),
+                }
+            )
+
+            self.logger.debug(
+                "Converted content_string to ContentStream for document save",
+                extra={
+                    "document_id": document.document_id,
+                    "content_hash": content_hash,
+                    "content_length": len(content_bytes),
+                },
+            )
+
+        # Create a copy without content_string (content saved
+        # in separate content-addressable storage)
+        document_for_storage = document.model_copy(
+            update={"content_string": None}
+        )
+        self.save_entity(document_for_storage, "document_id")
 
     async def generate_id(self) -> str:
         """Generate a unique document identifier.

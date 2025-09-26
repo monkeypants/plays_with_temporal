@@ -140,7 +140,13 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
             return None
 
     async def save(self, document: Document) -> None:
-        """Save a document with its content and metadata."""
+        """Save a document with its content and metadata.
+
+        If the document has content_string, it will be converted to a
+        ContentStream and stored. The content_string field should only be
+        used for small content (few KB) when saving from workflows/use-cases.
+        Call-sites in activities should always use the content stream.
+        """
         self.logger.info(
             "Saving document",
             extra={
@@ -156,6 +162,29 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         self.update_timestamps(document)
 
         try:
+            # Handle content_string conversion (only if no content provided)
+            if document.content_string is not None:
+                # Convert content_string to ContentStream
+                assert document.content_string is not None  # For MyPy
+                content_bytes = document.content_string.encode("utf-8")
+                content_stream = ContentStream(io.BytesIO(content_bytes))
+
+                # Create new document with ContentStream
+                document = document.model_copy(
+                    update={
+                        "content": content_stream,
+                        "size_bytes": len(content_bytes),
+                    }
+                )
+
+                self.logger.debug(
+                    "Converted content_string to ContentStream",
+                    extra={
+                        "document_id": document.document_id,
+                        "content_length": len(content_bytes),
+                    },
+                )
+
             # Store content first and get calculated multihash
             calculated_multihash = await self._store_content(document)
 
@@ -293,8 +322,10 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         """Store document metadata to Minio with idempotency check."""
         object_name = document.document_id
 
-        # Serialize metadata (content stream is excluded from serialization)
-        metadata_json = document.model_dump_json().encode("utf-8")
+        # Serialize metadata (content stream and content_string excluded)
+        metadata_json = document.model_dump_json(
+            exclude={"content", "content_string"}
+        ).encode("utf-8")
 
         try:
             # Check if metadata already exists and is identical (idempotency)

@@ -163,6 +163,7 @@ class TestMinioDocumentRepositoryStore:
         stored_multihash = sample_document.content_multihash
 
         # Create second document with identical content but different metadata
+        assert sample_document.content is not None
         sample_document.content.seek(0)  # Reset stream
         content_bytes = sample_document.content.read()
         sample_document.content.seek(0)  # Reset again
@@ -282,9 +283,11 @@ class TestMinioDocumentRepositoryGet:
         assert result.size_bytes == sample_document.size_bytes
 
         # Verify content can be read
+        assert result.content is not None
         retrieved_content = result.content.read()
 
         # Reset sample document content for comparison
+        assert sample_document.content is not None
         sample_document.content.seek(0)
         original_content = sample_document.content.read()
 
@@ -438,6 +441,110 @@ class TestMinioDocumentRepositoryMultihash:
         # Assert
         assert isinstance(multihash_result, str)
         assert len(multihash_result) > 0
+
+
+class TestMinioDocumentRepositoryContentString:
+    """Test content_string functionality."""
+
+    async def test_save_document_with_content_string(
+        self, repository: MinioDocumentRepository
+    ) -> None:
+        """Test saving document with content_string (small content)."""
+        content = '{"assembled": "document", "data": "test"}'
+
+        # Create document with content_string
+        document = Document(
+            document_id="test-doc-content-string",
+            original_filename="assembled.json",
+            content_type="application/json",
+            size_bytes=100,  # Will be updated automatically
+            content_multihash="placeholder",  # Will be updated automatically
+            status=DocumentStatus.CAPTURED,
+            content_string=content,
+        )
+
+        # Act - save should convert content_string to ContentStream
+        await repository.save(document)
+
+        # Assert document was saved successfully
+        retrieved = await repository.get(document.document_id)
+        assert retrieved is not None
+        assert (
+            retrieved.content_multihash != "placeholder"
+        )  # Hash was calculated
+        assert retrieved.size_bytes == len(content.encode("utf-8"))
+
+        # Verify content can be read
+        assert retrieved.content is not None
+        retrieved_content = retrieved.content.read().decode("utf-8")
+        assert retrieved_content == content
+
+    async def test_save_document_with_content_string_unicode(
+        self, repository: MinioDocumentRepository
+    ) -> None:
+        """Test saving document with unicode content_string."""
+        content = '{"title": "测试文档", "emoji": "🚀", "content": "éñ"}'
+
+        document = Document(
+            document_id="test-doc-unicode",
+            original_filename="unicode.json",
+            content_type="application/json",
+            size_bytes=100,
+            content_multihash="placeholder",
+            status=DocumentStatus.CAPTURED,
+            content_string=content,
+        )
+
+        await repository.save(document)
+        retrieved = await repository.get(document.document_id)
+
+        assert retrieved is not None
+        assert retrieved.content is not None
+        retrieved_content = retrieved.content.read().decode("utf-8")
+        assert retrieved_content == content
+
+    # Note: Empty content test removed because domain model requires
+    # size_bytes > 0
+
+    async def test_save_excludes_content_string_from_metadata(
+        self,
+        repository: MinioDocumentRepository,
+        fake_minio_client: FakeMinioClient,
+    ) -> None:
+        """Test that content_string is not stored in metadata."""
+        content = '{"test": "data that should not be in metadata"}'
+
+        document = Document(
+            document_id="test-metadata-exclusion",
+            original_filename="test.json",
+            content_type="application/json",
+            size_bytes=100,
+            content_multihash="placeholder",
+            status=DocumentStatus.CAPTURED,
+            content_string=content,
+        )
+
+        await repository.save(document)
+
+        # Check raw metadata stored in MinIO
+        metadata_response = fake_minio_client.get_object(
+            bucket_name="documents", object_name="test-metadata-exclusion"
+        )
+        metadata_data = metadata_response.read()
+        metadata_json = metadata_data.decode("utf-8")
+
+        import json
+
+        metadata_dict = json.loads(metadata_json)
+
+        # Verify content_string is not in stored metadata
+        assert "content_string" not in metadata_dict
+        assert "content" not in metadata_dict
+
+        # Verify essential fields are still present
+        assert metadata_dict["document_id"] == "test-metadata-exclusion"
+        assert "content_multihash" in metadata_dict
+        assert "status" in metadata_dict
 
 
 class TestMinioDocumentRepositoryErrorHandling:

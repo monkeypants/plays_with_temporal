@@ -660,6 +660,7 @@ class ValidateDocumentUseCase:
 
         # Apply transformations sequentially
         current_content = document.content
+        assert current_content is not None
         current_content.seek(0)
         transformed_content = current_content.read().decode("utf-8")
         current_content.seek(0)
