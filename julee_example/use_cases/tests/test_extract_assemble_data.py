@@ -39,7 +39,6 @@ from julee_example.services.knowledge_service.memory import (
     MemoryKnowledgeService,
 )
 from julee_example.services.knowledge_service import QueryResult
-import julee_example.use_cases.extract_assemble_data
 
 
 class TestExtractAssembleDataUseCase:
@@ -77,6 +76,57 @@ class TestExtractAssembleDataUseCase:
         return MemoryKnowledgeServiceConfigRepository()
 
     @pytest.fixture
+    def knowledge_service(self) -> MemoryKnowledgeService:
+        """Create a memory KnowledgeService for testing."""
+        ks_config = KnowledgeServiceConfig(
+            knowledge_service_id="ks-test",
+            name="Test Knowledge Service",
+            description="Test service",
+            service_api=ServiceApi.ANTHROPIC,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        return MemoryKnowledgeService(ks_config)
+
+    @pytest.fixture
+    def configured_knowledge_service(self) -> MemoryKnowledgeService:
+        """Create a configured memory KnowledgeService for full workflow
+        tests."""
+        ks_config = KnowledgeServiceConfig(
+            knowledge_service_id="ks-123",
+            name="Test Knowledge Service",
+            description="Test service",
+            service_api=ServiceApi.ANTHROPIC,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        memory_service = MemoryKnowledgeService(ks_config)
+        memory_service.add_canned_query_results(
+            [
+                QueryResult(
+                    query_id="result-1",
+                    query_text="Extract the title from this document",
+                    result_data={"response": '"Test Meeting"'},
+                    execution_time_ms=100,
+                    created_at=datetime.now(timezone.utc),
+                ),
+                QueryResult(
+                    query_id="result-2",
+                    query_text="Extract a summary from this document",
+                    result_data={
+                        "response": (
+                            '"This was a test meeting about important topics"'
+                        )
+                    },
+                    execution_time_ms=150,
+                    created_at=datetime.now(timezone.utc),
+                ),
+            ]
+        )
+        return memory_service
+
+    @pytest.fixture
     def use_case(
         self,
         document_repo: MemoryDocumentRepository,
@@ -84,6 +134,7 @@ class TestExtractAssembleDataUseCase:
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
         knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+        knowledge_service: MemoryKnowledgeService,
     ) -> ExtractAssembleDataUseCase:
         """Create ExtractAssembleDataUseCase with memory repository
         dependencies."""
@@ -93,6 +144,28 @@ class TestExtractAssembleDataUseCase:
             assembly_specification_repo=assembly_specification_repo,
             knowledge_service_query_repo=knowledge_service_query_repo,
             knowledge_service_config_repo=knowledge_service_config_repo,
+            knowledge_service=knowledge_service,
+        )
+
+    @pytest.fixture
+    def configured_use_case(
+        self,
+        document_repo: MemoryDocumentRepository,
+        assembly_repo: MemoryAssemblyRepository,
+        assembly_specification_repo: MemoryAssemblySpecificationRepository,
+        knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
+        knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+        configured_knowledge_service: MemoryKnowledgeService,
+    ) -> ExtractAssembleDataUseCase:
+        """Create ExtractAssembleDataUseCase with configured knowledge service
+        for full workflow tests."""
+        return ExtractAssembleDataUseCase(
+            document_repo=document_repo,
+            assembly_repo=assembly_repo,
+            assembly_specification_repo=assembly_specification_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            knowledge_service=configured_knowledge_service,
         )
 
     @pytest.mark.asyncio
@@ -170,7 +243,7 @@ class TestExtractAssembleDataUseCase:
     @pytest.mark.asyncio
     async def test_full_assembly_workflow_success(
         self,
-        use_case: ExtractAssembleDataUseCase,
+        configured_use_case: ExtractAssembleDataUseCase,
         document_repo: MemoryDocumentRepository,
         assembly_repo: MemoryAssemblyRepository,
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
@@ -252,47 +325,12 @@ class TestExtractAssembleDataUseCase:
         await knowledge_service_query_repo.save(query1)
         await knowledge_service_query_repo.save(query2)
 
-        # Create memory service with canned responses
-        memory_service = MemoryKnowledgeService(ks_config)
-        memory_service.add_canned_query_results(
-            [
-                QueryResult(
-                    query_id="result-1",
-                    query_text="Extract the title from this document",
-                    result_data={"response": '"Test Meeting"'},
-                    execution_time_ms=100,
-                    created_at=datetime.now(timezone.utc),
-                ),
-                QueryResult(
-                    query_id="result-2",
-                    query_text="Extract a summary from this document",
-                    result_data={
-                        "response": (
-                            '"This was a test meeting about important topics"'
-                        )
-                    },
-                    execution_time_ms=150,
-                    created_at=datetime.now(timezone.utc),
-                ),
-            ]
+        # Act - use configured_use_case which already has the configured
+        # memory service
+        result = await configured_use_case.assemble_data(
+            document_id="doc-123",
+            assembly_specification_id="spec-123",
         )
-
-        # Patch the factory to return our configured memory service
-        module = julee_example.use_cases.extract_assemble_data
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
-        )
-
-        try:
-            # Act
-            result = await use_case.assemble_data(
-                document_id="doc-123",
-                assembly_specification_id="spec-123",
-            )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
 
         # Assert
         assert isinstance(result, Assembly)
@@ -305,7 +343,8 @@ class TestExtractAssembleDataUseCase:
         assert assembled_doc.status == DocumentStatus.ASSEMBLED
 
         # Check assembled content
-        assert assembled_doc.content is not None
+        if assembled_doc.content is None:
+            raise ValueError("Assembled document content is required")
         assembled_doc.content.seek(0)
         content = assembled_doc.content.read().decode("utf-8")
         assembled_data = json.loads(content)
@@ -412,8 +451,8 @@ class TestExtractAssembleDataUseCase:
     @pytest.mark.asyncio
     async def test_assembly_fails_with_invalid_json_schema(
         self,
-        use_case: ExtractAssembleDataUseCase,
         document_repo: MemoryDocumentRepository,
+        assembly_repo: MemoryAssemblyRepository,
         assembly_specification_repo: MemoryAssemblySpecificationRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
         knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
@@ -492,23 +531,22 @@ class TestExtractAssembleDataUseCase:
             )
         )
 
-        # Patch the factory to return our configured memory service
-        module = julee_example.use_cases.extract_assemble_data
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        test_use_case = ExtractAssembleDataUseCase(
+            document_repo=document_repo,
+            assembly_repo=assembly_repo,
+            assembly_specification_repo=assembly_specification_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            knowledge_service=memory_service,
         )
 
-        try:
-            # Act & Assert
-            with pytest.raises(
-                ValueError,
-                match="Assembled data does not conform to JSON schema",
-            ):
-                await use_case.assemble_data(
-                    document_id="doc-123",
-                    assembly_specification_id="spec-123",
-                )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act & Assert
+        with pytest.raises(
+            ValueError,
+            match="Assembled data does not conform to JSON schema",
+        ):
+            await test_use_case.assemble_data(
+                document_id="doc-123",
+                assembly_specification_id="spec-123",
+            )

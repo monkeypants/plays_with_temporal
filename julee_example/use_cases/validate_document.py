@@ -33,7 +33,7 @@ from julee_example.repositories import (
     KnowledgeServiceQueryRepository,
     PolicyRepository,
 )
-from julee_example.services import knowledge_service_factory, KnowledgeService
+from julee_example.services import KnowledgeService
 from sample.validation import ensure_repository_protocol
 from .decorators import try_use_case_step
 
@@ -72,6 +72,7 @@ class ValidateDocumentUseCase:
         knowledge_service_config_repo: KnowledgeServiceConfigRepository,
         policy_repo: PolicyRepository,
         document_policy_validation_repo: DocumentPolicyValidationRepository,
+        knowledge_service: KnowledgeService,
     ) -> None:
         """Initialize validate document use case.
 
@@ -84,6 +85,8 @@ class ValidateDocumentUseCase:
             policy_repo: Repository for policy operations
             document_policy_validation_repo: Repository for document policy
                 validation operations
+            knowledge_service: Knowledge service instance for external
+                operations
 
         Note:
             The repositories passed here may be concrete implementations
@@ -98,6 +101,7 @@ class ValidateDocumentUseCase:
         self.document_repo = ensure_repository_protocol(
             document_repo, DocumentRepository  # type: ignore[type-abstract]
         )
+        self.knowledge_service = knowledge_service
         self.knowledge_service_query_repo = ensure_repository_protocol(
             knowledge_service_query_repo, KnowledgeServiceQueryRepository  # type: ignore[type-abstract]
         )
@@ -186,25 +190,19 @@ class ValidateDocumentUseCase:
             # Step 5: Retrieve all queries needed for this policy
             all_queries = await self._retrieve_all_queries(policy)
 
-            # Step 6: Retrieve all knowledge services needed for validation
-            knowledge_services = await self._retrieve_all_knowledge_services(
-                all_queries
-            )
-
-            # Step 7: Register the document with knowledge services
+            # Step 6: Register the document with knowledge services
             document_registrations = (
                 await self._register_document_with_services(
-                    document, all_queries, knowledge_services
+                    document, all_queries
                 )
             )
 
-            # Step 8: Execute validation queries and calculate scores
+            # Step 7: Execute validation queries and calculate scores
             validation_scores = await self._execute_validation_queries(
                 document,
                 policy,
                 document_registrations,
                 all_queries,
-                knowledge_services,
             )
 
             # Step 9: Update validation with scores
@@ -285,7 +283,6 @@ class ValidateDocumentUseCase:
                 policy,
                 all_queries,
                 document_registrations,
-                knowledge_services,
             )
 
             validation.transformed_document_id = (
@@ -299,7 +296,7 @@ class ValidateDocumentUseCase:
             # Step 13: Register transformed document with knowledge services
             transformed_document_registrations = (
                 await self._register_document_with_services(
-                    transformed_document, all_queries, knowledge_services
+                    transformed_document, all_queries
                 )
             )
 
@@ -313,7 +310,6 @@ class ValidateDocumentUseCase:
                     policy,
                     transformed_document_registrations,
                     all_queries,
-                    knowledge_services,
                 )
             )
 
@@ -425,29 +421,11 @@ class ValidateDocumentUseCase:
 
         return all_queries
 
-    @try_use_case_step("knowledge_services_retrieval")
-    async def _retrieve_all_knowledge_services(
-        self, all_queries: Dict[str, KnowledgeServiceQuery]
-    ) -> Dict[str, KnowledgeService]:
-        """Retrieve all unique knowledge services needed for validation and
-        transformation."""
-        knowledge_services = {}
-        unique_service_ids = {
-            query.knowledge_service_id for query in all_queries.values()
-        }
-
-        for service_id in unique_service_ids:
-            knowledge_service = await self._get_knowledge_service(service_id)
-            knowledge_services[service_id] = knowledge_service
-
-        return knowledge_services
-
     @try_use_case_step("document_registration")
     async def _register_document_with_services(
         self,
         document: Document,
         queries: Dict[str, KnowledgeServiceQuery],
-        knowledge_services: Dict[str, KnowledgeService],
     ) -> Dict[str, str]:
         """
         Register the document with all knowledge services needed for
@@ -456,8 +434,6 @@ class ValidateDocumentUseCase:
         Args:
             document: The document to register
             queries: Dict of query_id to KnowledgeServiceQuery objects
-            knowledge_services: Dict of service_id to KnowledgeService
-                instances
 
         Returns:
             Dict mapping knowledge_service_id to service_file_id
@@ -468,9 +444,18 @@ class ValidateDocumentUseCase:
         }
 
         for knowledge_service_id in required_service_ids:
-            knowledge_service = knowledge_services[knowledge_service_id]
-            registration_result = await knowledge_service.register_file(
-                document
+            # Get the config for this service
+            config = await self.knowledge_service_config_repo.get(
+                knowledge_service_id
+            )
+            if not config:
+                raise ValueError(
+                    f"Knowledge service config not found: "
+                    f"{knowledge_service_id}"
+                )
+
+            registration_result = await self.knowledge_service.register_file(
+                config, document
             )
             registrations[knowledge_service_id] = (
                 registration_result.knowledge_service_file_id
@@ -485,7 +470,6 @@ class ValidateDocumentUseCase:
         policy: Policy,
         document_registrations: Dict[str, str],
         queries: Dict[str, KnowledgeServiceQuery],
-        knowledge_services: Dict[str, KnowledgeService],
     ) -> List[Tuple[str, int]]:
         """
         Execute all validation queries and return the actual scores achieved.
@@ -495,8 +479,6 @@ class ValidateDocumentUseCase:
             policy: The policy being applied
             document_registrations: Mapping of service_id to service_file_id
             queries: Dict of query_id to KnowledgeServiceQuery objects
-            knowledge_services: Dict of service_id to KnowledgeService
-                instances
 
         Returns:
             List of (query_id, actual_score) tuples
@@ -508,8 +490,15 @@ class ValidateDocumentUseCase:
             # Get the query configuration
             query = queries[query_id]
 
-            # Get the knowledge service
-            knowledge_service = knowledge_services[query.knowledge_service_id]
+            # Get the config for this service
+            config = await self.knowledge_service_config_repo.get(
+                query.knowledge_service_id
+            )
+            if not config:
+                raise ValueError(
+                    f"Knowledge service config not found: "
+                    f"{query.knowledge_service_id}"
+                )
 
             # Get the service file ID from our registrations
             service_file_id = document_registrations.get(
@@ -522,7 +511,8 @@ class ValidateDocumentUseCase:
                 )
 
             # Execute the validation query
-            query_result = await knowledge_service.execute_query(
+            query_result = await self.knowledge_service.execute_query(
+                config=config,
                 query_text=query.prompt,
                 service_file_ids=[service_file_id],
                 query_metadata=query.query_metadata,
@@ -546,20 +536,6 @@ class ValidateDocumentUseCase:
             )
 
         return validation_scores
-
-    @try_use_case_step("knowledge_service_creation")
-    async def _get_knowledge_service(
-        self, knowledge_service_id: str
-    ) -> KnowledgeService:
-        """Get knowledge service instance with error handling."""
-        config = await self.knowledge_service_config_repo.get(
-            knowledge_service_id
-        )
-        if not config:
-            raise ValueError(
-                f"Knowledge service config not found: {knowledge_service_id}"
-            )
-        return knowledge_service_factory(config)
 
     def _extract_score_from_result(self, result_data: Dict) -> int:
         """
@@ -626,7 +602,6 @@ class ValidateDocumentUseCase:
         policy: Policy,
         all_queries: Dict[str, KnowledgeServiceQuery],
         document_registrations: Dict[str, str],
-        knowledge_services: Dict[str, KnowledgeService],
     ) -> Document:
         """
         Apply transformation queries to a document and return the
@@ -637,8 +612,6 @@ class ValidateDocumentUseCase:
             policy: The policy containing transformation query IDs
             all_queries: Dict of all queries (validation and transformation)
             document_registrations: Mapping of service_id to service_file_id
-            knowledge_services: Dict of service_id to KnowledgeService
-                instances
 
         Returns:
             New Document object with transformed content
@@ -660,7 +633,10 @@ class ValidateDocumentUseCase:
 
         # Apply transformations sequentially
         current_content = document.content
-        assert current_content is not None
+        if current_content is None:
+            raise ValueError(
+                "Document content stream is required for transformation"
+            )
         current_content.seek(0)
         transformed_content = current_content.read().decode("utf-8")
         current_content.seek(0)
@@ -668,8 +644,15 @@ class ValidateDocumentUseCase:
         for query_id in policy.transformation_queries:
             query = all_queries[query_id]
 
-            # Get the knowledge service for this query
-            knowledge_service = knowledge_services[query.knowledge_service_id]
+            # Get the config for this service
+            config = await self.knowledge_service_config_repo.get(
+                query.knowledge_service_id
+            )
+            if not config:
+                raise ValueError(
+                    f"Knowledge service config not found: "
+                    f"{query.knowledge_service_id}"
+                )
 
             # Get the service file ID from our registrations
             service_file_id = document_registrations.get(
@@ -682,11 +665,14 @@ class ValidateDocumentUseCase:
                 )
 
             # Execute the transformation query
-            transformation_result = await knowledge_service.execute_query(
-                query_text=query.prompt,
-                service_file_ids=[service_file_id],
-                query_metadata=query.query_metadata,
-                assistant_prompt=query.assistant_prompt,
+            transformation_result = (
+                await self.knowledge_service.execute_query(
+                    config=config,
+                    query_text=query.prompt,
+                    service_file_ids=[service_file_id],
+                    query_metadata=query.query_metadata,
+                    assistant_prompt=query.assistant_prompt,
+                )
             )
 
             # Extract transformed content from result
