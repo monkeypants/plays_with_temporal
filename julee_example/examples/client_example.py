@@ -11,7 +11,7 @@ import logging
 import os
 from typing import Optional
 from temporalio.client import Client
-from temporalio.contrib.pydantic import pydantic_data_converter
+from util.repos.temporal.data_converter import temporal_data_converter
 from minio import Minio
 
 from julee_example.workflows import (
@@ -49,7 +49,7 @@ async def start_extract_assemble_workflow(
     # Connect to Temporal
     client = await Client.connect(
         temporal_endpoint,
-        data_converter=pydantic_data_converter,
+        data_converter=temporal_data_converter,
         namespace="default",
     )
 
@@ -107,7 +107,7 @@ async def wait_for_workflow_result(
     # Connect to Temporal
     client = await Client.connect(
         temporal_endpoint,
-        data_converter=pydantic_data_converter,
+        data_converter=temporal_data_converter,
         namespace="default",
     )
 
@@ -185,7 +185,7 @@ async def query_workflow_status(
     # Connect to Temporal
     client = await Client.connect(
         temporal_endpoint,
-        data_converter=pydantic_data_converter,
+        data_converter=temporal_data_converter,
         namespace="default",
     )
 
@@ -238,7 +238,7 @@ async def cancel_workflow(
     # Connect to Temporal
     client = await Client.connect(
         temporal_endpoint,
-        data_converter=pydantic_data_converter,
+        data_converter=temporal_data_converter,
         namespace="default",
     )
 
