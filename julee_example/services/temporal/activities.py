@@ -11,16 +11,15 @@ The class follows the naming pattern documented in systemPatterns.org:
 - The knowledge service gets its own activity prefix
 """
 
-import os
 import io
 import logging
-from minio import Minio
+from typing_extensions import override
 
 from util.repos.temporal.decorators import temporal_activity_registration
 from julee_example.services.knowledge_service.factory import (
     ConfigurableKnowledgeService,
 )
-from julee_example.repositories.minio.document import MinioDocumentRepository
+from julee_example.repositories.document import DocumentRepository
 from julee_example.domain import (
     KnowledgeServiceConfig,
     Document,
@@ -38,26 +37,16 @@ class TemporalKnowledgeService(ConfigurableKnowledgeService):
     """Temporal activity wrapper for KnowledgeService operations.
 
     This class handles the issue where ContentStream objects don't survive
-    Temporal's serialization by re-fetching document content from MinIO
-    before performing operations that require it.
+    Temporal's serialization by re-fetching document content from the
+    injected DocumentRepository before performing operations that require it.
     """
 
-    # TODO(temporal): Once everything is landed and passing, update this
-    # to use dependency injection here, so the __init__ should be passed
-    # a `DocumentRepository`, rather than one being setup here.
-    def __init__(self) -> None:
+    def __init__(self, document_repo: DocumentRepository) -> None:
         super().__init__()
-        self.logger = logging.getLogger(__name__)
-        # Initialize MinIO client for document retrieval
-        minio_endpoint = os.environ.get("MINIO_ENDPOINT", "localhost:9000")
-        minio_client = Minio(
-            endpoint=minio_endpoint,
-            access_key="minioadmin",
-            secret_key="minioadmin",
-            secure=False,
-        )
-        self.document_repo = MinioDocumentRepository(minio_client)
+        self.logger: logging.Logger = logging.getLogger(__name__)
+        self.document_repo: DocumentRepository = document_repo
 
+    @override
     async def register_file(
         self, config: KnowledgeServiceConfig, document: Document
     ) -> FileRegistrationResult:
@@ -68,8 +57,8 @@ class TemporalKnowledgeService(ConfigurableKnowledgeService):
         """
         if document.content is None:
             self.logger.info(
-                f"Document {document.document_id} has no content stream, "
-                f"re-fetching from MinIO"
+                "Document %s has no content stream, re-fetching from repo",
+                document.document_id,
             )
             # Re-fetch the document with proper content
             fresh_document = await self.document_repo.get(
@@ -84,7 +73,8 @@ class TemporalKnowledgeService(ConfigurableKnowledgeService):
                 document = fresh_document
             else:
                 raise ValueError(
-                    f"Could not re-fetch document {document.document_id}"
+                    f"Could not re-fetch document {document.document_id} "
+                    f"from repository"
                 )
 
         # Now call the parent method with the document that has proper content
