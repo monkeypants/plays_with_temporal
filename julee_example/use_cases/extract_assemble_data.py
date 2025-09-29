@@ -57,6 +57,7 @@ class ExtractAssembleDataUseCase:
     methods and expects them to work correctly.
 
     Architectural Notes:
+
     - This class contains pure business logic with no framework dependencies
     - Repository dependencies are injected via constructor
       (dependency inversion)
@@ -122,6 +123,7 @@ class ExtractAssembleDataUseCase:
         assembly.
 
         This method orchestrates the core assembly workflow:
+
         1. Generates a unique assembly ID
         2. Retrieves the assembly specification
         3. Stores the initial assembly in the repository

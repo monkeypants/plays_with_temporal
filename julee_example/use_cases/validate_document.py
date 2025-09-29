@@ -56,6 +56,7 @@ class ValidateDocumentUseCase:
     methods and expects them to work correctly.
 
     Architectural Notes:
+
     - This class contains pure business logic with no framework dependencies
     - Repository dependencies are injected via constructor
       (dependency inversion)
@@ -119,6 +120,7 @@ class ValidateDocumentUseCase:
         Validate a document against a policy and return the validation result.
 
         This method orchestrates the core validation workflow:
+
         1. Generates a unique validation ID
         2. Retrieves the document and policy
         3. Creates and stores the initial validation record
