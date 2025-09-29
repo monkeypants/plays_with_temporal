@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 from typing import Optional
@@ -25,18 +26,26 @@ class MinioFileStorageRepository(FileStorageRepository):
         secure: bool = False,
         bucket_name: Optional[str] = None,
     ):
-        self._endpoint = endpoint or os.environ.get(
-            "MINIO_ENDPOINT", "localhost:9000"
+        self._endpoint = (
+            endpoint
+            if endpoint is not None
+            else os.environ.get("MINIO_ENDPOINT", "localhost:9000")
         )
-        self._access_key = access_key or os.environ.get(
-            "MINIO_ROOT_USER", "minioadmin"
+        self._access_key = (
+            access_key
+            if access_key is not None
+            else os.environ.get("MINIO_ROOT_USER", "minioadmin")
         )
-        self._secret_key = secret_key or os.environ.get(
-            "MINIO_ROOT_PASSWORD", "minioadmin"
+        self._secret_key = (
+            secret_key
+            if secret_key is not None
+            else os.environ.get("MINIO_ROOT_PASSWORD", "minioadmin")
         )
         self._secure = secure
-        self._bucket_name = bucket_name or os.environ.get(
-            "MINIO_BUCKET_NAME", "file-storage"
+        self._bucket_name = (
+            bucket_name
+            if bucket_name is not None
+            else os.environ.get("MINIO_BUCKET_NAME", "file-storage")
         )
 
         self._client: Optional[Minio] = None
@@ -102,7 +111,7 @@ class MinioFileStorageRepository(FileStorageRepository):
             client.put_object(
                 self._bucket_name,
                 args.file_id,
-                args.data,
+                io.BytesIO(args.data),
                 len(args.data),
                 content_type=args.content_type,
                 metadata=args.metadata,
@@ -174,23 +183,29 @@ class MinioFileStorageRepository(FileStorageRepository):
             uploaded_at_str: Optional[str] = (
                 stat.last_modified.isoformat() if stat.last_modified else None
             )
+            # Extract filename and metadata more explicitly
+            filename = (
+                stat.metadata.get("X-Amz-Meta-Filename")
+                if stat.metadata
+                else None
+            )
+            metadata = (
+                {
+                    k.replace("X-Amz-Meta-", ""): v
+                    for k, v in stat.metadata.items()
+                }
+                if stat.metadata
+                else {}
+            )
+
             return FileMetadata(
                 file_id=file_id,
-                filename=stat.user_metadata.get(
-                    "X-Amz-Meta-Filename"
-                ),  # Minio prepends X-Amz-Meta-
+                filename=filename,  # Minio prepends X-Amz-Meta-
                 content_type=stat.content_type,
                 size_bytes=stat.size,
                 uploaded_at=uploaded_at_str
                 or "",  # Provide empty string if None
-                metadata=(
-                    {
-                        k.replace("X-Amz-Meta-", ""): v
-                        for k, v in stat.user_metadata.items()
-                    }
-                    if stat.user_metadata
-                    else {}
-                ),
+                metadata=metadata,
             )
         except S3Error as e:
             if e.code == "NoSuchKey":
