@@ -287,14 +287,18 @@ class ExtractAssembleDataUseCase:
         self, assembly_specification: AssemblySpecification
     ) -> Dict[str, KnowledgeServiceQuery]:
         """Retrieve all knowledge service queries needed for this assembly."""
-        # TODO: we should update the interface to take multiple ids (for all
-        # repositories), since most backends will support fetching multiple.
+        query_ids = list(
+            assembly_specification.knowledge_service_queries.values()
+        )
+
+        # Use batch retrieval for efficiency
+        query_results = await self.knowledge_service_query_repo.get_many(
+            query_ids
+        )
 
         queries = {}
-        for (
-            query_id
-        ) in assembly_specification.knowledge_service_queries.values():
-            query = await self.knowledge_service_query_repo.get(query_id)
+        for query_id in query_ids:
+            query = query_results.get(query_id)
             if not query:
                 raise ValueError(
                     f"Knowledge service query not found: {query_id}"

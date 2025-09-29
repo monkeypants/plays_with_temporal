@@ -13,7 +13,7 @@ and transformation queries.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, List, Dict
 
 from julee_example.domain import Policy
 from julee_example.repositories.policy import PolicyRepository
@@ -71,6 +71,37 @@ class MinioPolicyRepository(PolicyRepository, MinioRepositoryMixin):
                 "version": policy.version,
             },
         )
+
+    async def get_many(
+        self, policy_ids: List[str]
+    ) -> Dict[str, Optional[Policy]]:
+        """Retrieve multiple policies by ID.
+
+        Args:
+            policy_ids: List of unique policy identifiers
+
+        Returns:
+            Dict mapping policy_id to Policy (or None if not found)
+        """
+        # Convert policy IDs to object names (direct mapping in this case)
+        object_names = policy_ids
+
+        # Get objects from Minio using batch method
+        object_results = self.get_many_json_objects(
+            bucket_name=self.policies_bucket,
+            object_names=object_names,
+            model_class=Policy,
+            not_found_log_message="Policy not found",
+            error_log_message="Error retrieving policy",
+            extra_log_data={"policy_ids": policy_ids},
+        )
+
+        # Convert object names back to policy IDs for the result
+        result: Dict[str, Optional[Policy]] = {}
+        for policy_id in policy_ids:
+            result[policy_id] = object_results[policy_id]
+
+        return result
 
     async def generate_id(self) -> str:
         """Generate a unique policy identifier."""

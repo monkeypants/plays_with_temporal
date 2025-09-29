@@ -13,7 +13,7 @@ should be avoided.
 """
 
 import logging
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 
 from julee_example.domain.assembly_specification import KnowledgeServiceQuery
 from julee_example.repositories.knowledge_service_query import (
@@ -66,6 +66,20 @@ class MemoryKnowledgeServiceQueryRepository(
             query: KnowledgeServiceQuery object to store
         """
         self.save_entity(query, "query_id")
+
+    async def get_many(
+        self, query_ids: List[str]
+    ) -> Dict[str, Optional[KnowledgeServiceQuery]]:
+        """Retrieve multiple knowledge service queries by ID.
+
+        Args:
+            query_ids: List of unique query identifiers
+
+        Returns:
+            Dict mapping query_id to KnowledgeServiceQuery (or None if not
+            found)
+        """
+        return self.get_many_entities(query_ids)
 
     async def generate_id(self) -> str:
         """Generate a unique query identifier.

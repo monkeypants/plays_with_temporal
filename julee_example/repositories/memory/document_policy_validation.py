@@ -13,7 +13,7 @@ All operations are still async to maintain interface compatibility.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from julee_example.domain.policy import DocumentPolicyValidation
 from julee_example.repositories.document_policy_validation import (
@@ -73,6 +73,20 @@ class MemoryDocumentPolicyValidationRepository(
             Unique validation ID string
         """
         return self.generate_entity_id("validation")
+
+    async def get_many(
+        self, validation_ids: List[str]
+    ) -> Dict[str, Optional[DocumentPolicyValidation]]:
+        """Retrieve multiple document policy validations by ID.
+
+        Args:
+            validation_ids: List of unique validation identifiers
+
+        Returns:
+            Dict mapping validation_id to DocumentPolicyValidation (or None if
+            not found)
+        """
+        return self.get_many_entities(validation_ids)
 
     def _add_entity_specific_log_data(
         self, entity: DocumentPolicyValidation, log_data: Dict[str, Any]

@@ -12,7 +12,7 @@ All operations are still async to maintain interface compatibility.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from julee_example.domain import Policy
 from julee_example.repositories.policy import PolicyRepository
@@ -64,6 +64,19 @@ class MemoryPolicyRepository(PolicyRepository, MemoryRepositoryMixin[Policy]):
             Unique policy ID string
         """
         return self.generate_entity_id("policy")
+
+    async def get_many(
+        self, policy_ids: List[str]
+    ) -> Dict[str, Optional[Policy]]:
+        """Retrieve multiple policies by ID.
+
+        Args:
+            policy_ids: List of unique policy identifiers
+
+        Returns:
+            Dict mapping policy_id to Policy (or None if not found)
+        """
+        return self.get_many_entities(policy_ids)
 
     def _add_entity_specific_log_data(
         self, entity: Policy, log_data: Dict[str, Any]

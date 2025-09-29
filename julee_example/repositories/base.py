@@ -23,7 +23,7 @@ In Temporal workflow contexts, these protocols are implemented by workflow
 stubs that delegate to activities for durability and proper error handling.
 """
 
-from typing import Protocol, Optional, runtime_checkable, TypeVar
+from typing import Protocol, Optional, runtime_checkable, TypeVar, List, Dict
 from pydantic import BaseModel
 
 # Type variable bound to Pydantic BaseModel for domain entities
@@ -55,6 +55,30 @@ class BaseRepository(Protocol[T]):
         - Must be idempotent: multiple calls return same result
         - Should handle missing entities gracefully (return None)
         - Loads complete entity with all relationships
+        """
+        ...
+
+    async def get_many(self, entity_ids: List[str]) -> Dict[str, Optional[T]]:
+        """Retrieve multiple entities by ID.
+
+        Args:
+            entity_ids: List of unique entity identifiers
+
+        Returns:
+            Dict mapping entity_id to entity (or None if not found)
+
+        Implementation Notes:
+        - Must be idempotent: multiple calls return same result
+        - Should handle missing entities gracefully (return None for missing)
+        - Implementations may optimize with batch operations or fall back
+          to individual get() calls
+        - Keys in returned dict correspond exactly to input entity_ids
+        - Missing entities have None values in the returned dict
+
+        Workflow Context:
+        In Temporal workflows, this method is implemented as an activity
+        to ensure batch operations are durably stored and consistent
+        across workflow replays.
         """
         ...
 
