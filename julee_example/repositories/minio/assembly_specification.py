@@ -14,7 +14,7 @@ schema and query mappings.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, List, Dict
 
 from julee_example.domain import AssemblySpecification
 from julee_example.repositories.assembly_specification import (
@@ -85,6 +85,41 @@ class MinioAssemblySpecificationRepository(
                 "version": assembly_specification.version,
             },
         )
+
+    async def get_many(
+        self, assembly_specification_ids: List[str]
+    ) -> Dict[str, Optional[AssemblySpecification]]:
+        """Retrieve multiple assembly specifications by ID.
+
+        Args:
+            assembly_specification_ids: List of unique specification
+            identifiers
+
+        Returns:
+            Dict mapping specification_id to AssemblySpecification (or None if
+            not found)
+        """
+        # Convert specification IDs to object names (direct mapping)
+        object_names = assembly_specification_ids
+
+        # Get objects from Minio using batch method
+        object_results = self.get_many_json_objects(
+            bucket_name=self.specifications_bucket,
+            object_names=object_names,
+            model_class=AssemblySpecification,
+            not_found_log_message="Specification not found",
+            error_log_message="Error retrieving specification",
+            extra_log_data={
+                "assembly_specification_ids": assembly_specification_ids
+            },
+        )
+
+        # Convert object names back to specification IDs for the result
+        result: Dict[str, Optional[AssemblySpecification]] = {}
+        for spec_id in assembly_specification_ids:
+            result[spec_id] = object_results[spec_id]
+
+        return result
 
     async def generate_id(self) -> str:
         """Generate a unique assembly specification identifier."""

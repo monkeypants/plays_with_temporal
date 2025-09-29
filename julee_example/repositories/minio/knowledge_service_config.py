@@ -14,7 +14,7 @@ key.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, List, Dict
 
 from julee_example.domain import KnowledgeServiceConfig
 from julee_example.repositories.knowledge_service_config import (
@@ -96,6 +96,39 @@ class MinioKnowledgeServiceConfigRepository(
                 "service_api": knowledge_service.service_api.value,
             },
         )
+
+    async def get_many(
+        self, knowledge_service_ids: List[str]
+    ) -> Dict[str, Optional[KnowledgeServiceConfig]]:
+        """Retrieve multiple knowledge service configs by ID.
+
+        Args:
+            knowledge_service_ids: List of unique knowledge service
+            identifiers
+
+        Returns:
+            Dict mapping knowledge_service_id to KnowledgeServiceConfig (or
+            None if not found)
+        """
+        # Convert knowledge service IDs to object names (direct mapping)
+        object_names = knowledge_service_ids
+
+        # Get objects from Minio using batch method
+        object_results = self.get_many_json_objects(
+            bucket_name=self.bucket_name,
+            object_names=object_names,
+            model_class=KnowledgeServiceConfig,
+            not_found_log_message="Knowledge service config not found",
+            error_log_message="Error retrieving knowledge service config",
+            extra_log_data={"knowledge_service_ids": knowledge_service_ids},
+        )
+
+        # Convert object names back to knowledge service IDs for the result
+        result: Dict[str, Optional[KnowledgeServiceConfig]] = {}
+        for service_id in knowledge_service_ids:
+            result[service_id] = object_results[service_id]
+
+        return result
 
     async def generate_id(self) -> str:
         """Generate a unique knowledge service identifier.

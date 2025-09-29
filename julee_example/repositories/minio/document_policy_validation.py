@@ -14,7 +14,7 @@ status, scores, transformation results, and metadata.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, List, Dict
 
 from julee_example.domain.policy import DocumentPolicyValidation
 from julee_example.repositories.document_policy_validation import (
@@ -91,3 +91,35 @@ class MinioDocumentPolicyValidationRepository(
     async def generate_id(self) -> str:
         """Generate a unique validation identifier."""
         return self.generate_id_with_prefix("validation")
+
+    async def get_many(
+        self, validation_ids: List[str]
+    ) -> Dict[str, Optional[DocumentPolicyValidation]]:
+        """Retrieve multiple document policy validations by ID.
+
+        Args:
+            validation_ids: List of unique validation identifiers
+
+        Returns:
+            Dict mapping validation_id to DocumentPolicyValidation (or None if
+            not found)
+        """
+        # Convert validation IDs to object names (direct mapping)
+        object_names = validation_ids
+
+        # Get objects from Minio using batch method
+        object_results = self.get_many_json_objects(
+            bucket_name=self.validations_bucket,
+            object_names=object_names,
+            model_class=DocumentPolicyValidation,
+            not_found_log_message="Document policy validation not found",
+            error_log_message="Error retrieving document policy validation",
+            extra_log_data={"validation_ids": validation_ids},
+        )
+
+        # Convert object names back to validation IDs for the result
+        result: Dict[str, Optional[DocumentPolicyValidation]] = {}
+        for validation_id in validation_ids:
+            result[validation_id] = object_results[validation_id]
+
+        return result

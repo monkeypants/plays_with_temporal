@@ -14,7 +14,7 @@ interface compatibility.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from julee_example.domain import KnowledgeServiceConfig
 from julee_example.repositories.knowledge_service_config import (
@@ -77,6 +77,21 @@ class MemoryKnowledgeServiceConfigRepository(
             Unique knowledge service ID string
         """
         return self.generate_entity_id("ks")
+
+    async def get_many(
+        self, knowledge_service_ids: List[str]
+    ) -> Dict[str, Optional[KnowledgeServiceConfig]]:
+        """Retrieve multiple knowledge service configs by ID.
+
+        Args:
+            knowledge_service_ids: List of unique knowledge service
+            identifiers
+
+        Returns:
+            Dict mapping knowledge_service_id to KnowledgeServiceConfig (or
+            None if not found)
+        """
+        return self.get_many_entities(knowledge_service_ids)
 
     def _add_entity_specific_log_data(
         self, entity: KnowledgeServiceConfig, log_data: Dict[str, Any]

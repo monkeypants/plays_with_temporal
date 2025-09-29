@@ -14,7 +14,7 @@ All operations are still async to maintain interface compatibility.
 import hashlib
 import io
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from julee_example.domain import Document, ContentStream
 from julee_example.repositories.document import DocumentRepository
@@ -109,6 +109,19 @@ class MemoryDocumentRepository(
             Unique document ID string
         """
         return self.generate_entity_id("doc")
+
+    async def get_many(
+        self, document_ids: List[str]
+    ) -> Dict[str, Optional[Document]]:
+        """Retrieve multiple documents by ID.
+
+        Args:
+            document_ids: List of unique document identifiers
+
+        Returns:
+            Dict mapping document_id to Document (or None if not found)
+        """
+        return self.get_many_entities(document_ids)
 
     def _add_entity_specific_log_data(
         self, entity: Document, log_data: Dict[str, Any]
