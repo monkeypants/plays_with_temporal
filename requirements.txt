@@ -36,3 +36,4 @@ types-jsonschema>=4.0.0
 # Documentation
 sphinx>=7.0.0
 sphinxcontrib-plantuml>=0.25
+sphinx-autobuild>=2021.3.14

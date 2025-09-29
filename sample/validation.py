@@ -3,8 +3,8 @@ Runtime validation utilities for ensuring architectural contracts and data
 integrity.
 
 This module provides functions to validate:
-- Repository implementations against their defined Protocols using
-  @runtime_checkable.
+
+- Repository implementations against their defined Protocols using @runtime_checkable.
 - Dictionary data against Pydantic domain models.
 - Pydantic model instances to ensure their internal state is valid.
 

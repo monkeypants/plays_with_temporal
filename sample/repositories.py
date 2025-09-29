@@ -22,9 +22,9 @@ In Temporal workflow contexts, these protocols are implemented by workflow
 stubs that delegate to activities for durability and proper error handling.
 
 Architectural Notes:
+
 - These are pure interfaces with no implementation details
-- They define contracts that both concrete implementations and workflow
-  stubs must satisfy
+- They define contracts that both concrete implementations and workflow stubs must satisfy
 - The protocols ensure type safety and enable dependency inversion
 - Repository implementations are free to be non-deterministic (generate
   IDs, make network calls)
@@ -68,8 +68,8 @@ class PaymentRepository(Protocol):
             or failure ('failed') with a reason.
 
         Implementation Notes:
-        - Must be idempotent: calling multiple times with same order returns
-          same result
+
+        - Must be idempotent: calling multiple times with same order returns same result
         - May perform non-deterministic operations (network calls, ID
           generation)
         - Should handle partial failures gracefully
@@ -108,8 +108,8 @@ class PaymentRepository(Protocol):
             ('failed').
 
         Implementation Notes:
-        - Must be idempotent: calling multiple times with same args returns
-          same result.
+
+        - Must be idempotent: calling multiple times with same args returns same result.
         - Should handle cases where payment is not found or already refunded
           gracefully.
         - May interact with external payment gateways.
@@ -142,10 +142,9 @@ class InventoryRepository(Protocol):
             or failure ('failed') with a reason.
 
         Saga Pattern Notes:
-        - This is a forward action that can be compensated using
-          release_items()
-        - Must be idempotent: reserving same order multiple times has same
-          effect
+
+        - This is a forward action that can be compensated using release_items()
+        - Must be idempotent: reserving same order multiple times has same effect
         - Should atomically reserve all items or fail completely
         - Implementations may use pessimistic locking or optimistic
           concurrency control
@@ -165,12 +164,12 @@ class InventoryRepository(Protocol):
             List of InventoryItem objects representing released items
 
         Compensation Pattern Notes:
+
         - This is a compensation action for reserve_items()
         - Must be idempotent: multiple calls have same effect
         - Must be safe to call without prior reserve (graceful handling)
         - Should not raise exceptions for missing reservations
-        - Critical for saga pattern - failure here requires manual
-          intervention
+        - Critical for saga pattern - failure here requires manual intervention
         """
         ...
 
@@ -224,9 +223,9 @@ class OrderRepository(Protocol):
             order: The Order domain object to save.
 
         Implementation Notes:
+
         - Must be idempotent: saving the same order multiple times is safe.
-        - Should persist the full state of the Order object, including its
-          status.
+        - Should persist the full state of the Order object, including its status.
         """
         ...
 
@@ -251,8 +250,8 @@ class OrderRepository(Protocol):
             reason: Optional reason for cancellation.
 
         Implementation Notes:
-        - Must be idempotent: calling multiple times with same order_id is
-          safe.
+
+        - Must be idempotent: calling multiple times with same order_id is safe.
         - Should update the order's status to 'CANCELLED'.
         - Should handle cases where the order is not found gracefully.
         """
@@ -294,9 +293,9 @@ class OrderRequestRepository(Protocol):
             order_id: Unique order identifier
 
         Implementation Notes:
+
         - Must be idempotent: storing same mapping multiple times is safe
-        - Should handle partial failures gracefully (e.g., one index
-          succeeds, other fails)
+        - Should handle partial failures gracefully (e.g., one index succeeds, other fails)
         - May use eventual consistency - temporary inconsistency is
           acceptable
         - Critical for API user experience - failures here affect request

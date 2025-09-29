@@ -1,6 +1,27 @@
 """
-Domain models defined as Pydantic models.
-These are pure data structures with validation.
+These concepts relate to part of an e-Commerce enterprise.
+
+An **Order** is a collection of **OrderItems**.
+The process of creating orders involves coresponding
+**CreateOrderRequest** and **OrderItemRequests**.
+
+Orders require **Payment**, which may or may not work
+(they have a **PaymentOutcome**).
+For various reasons, payments might need to be refunded,
+which requires **RefundPaymentOutcome**.
+In refund situations,
+we need to keep track of **RefundPaymentArgs**.
+
+We also need to reserve and manage Inventory,
+which requires **InventoryItem** and
+**InventoryReservationOutcome**.
+It turns out that we also need **RequestOrderMapping**
+to so that we can keep track of the relationships
+between orders and requests.
+
+Theoretically, it might seem that the e-Commerse enterprise
+may need other concepts to operate,
+however these ones have proven sufficient so far.
 """
 
 from pydantic import (

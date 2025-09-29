@@ -47,9 +47,9 @@ class OrderFulfillmentUseCase:
     methods and expects them to work correctly.
 
     Architectural Notes:
+
     - This class contains pure business logic with no framework dependencies
-    - Repository dependencies are injected via constructor
-      (dependency inversion)
+    - Repository dependencies are injected via constructor (dependency inversion)
     - All error handling and compensation logic is contained here
     - The use case converts between API models and domain models
     - Deterministic execution is guaranteed by avoiding
@@ -102,9 +102,9 @@ class OrderFulfillmentUseCase:
         Execute the full order fulfillment saga with compensation.
 
         This method:
+
         1. Generates a unique order ID.
-        2. Stores a bidirectional mapping between the request ID and the new
-           order ID.
+        2. Stores a bidirectional mapping between the request ID and the new order ID.
         3. Converts the Pydantic API request to a domain Order.
         4. Processes the order using domain logic and repositories.
         5. Returns a Pydantic API response.
@@ -737,10 +737,10 @@ class GetOrderUseCase:
         Get the status of an order by querying repositories.
 
         This method:
+
         1. Attempts to get the Order object from the order repository.
         2. If found, returns its status.
-        3. If not found, falls back to checking payment information (for
-           backward compatibility or specific cases).
+        3. If not found, falls back to checking payment information (for backward compatibility or specific cases).
         """
         logger.debug("Getting order status", extra={"order_id": order_id})
 
