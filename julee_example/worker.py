@@ -160,7 +160,10 @@ async def run_worker() -> None:
     )
 
     # Create temporal knowledge service for activity registration
-    temporal_knowledge_service = TemporalKnowledgeService()
+    # Pass the document repository for dependency injection
+    temporal_knowledge_service = TemporalKnowledgeService(
+        document_repo=temporal_document_repo
+    )
 
     # Collect all activities from repository instances
     # The @temporal_activity_registration decorator automatically wraps
