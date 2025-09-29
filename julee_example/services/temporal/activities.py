@@ -57,8 +57,8 @@ class TemporalKnowledgeService(ConfigurableKnowledgeService):
         """
         if document.content is None:
             self.logger.info(
-                "Document %s has no content stream, re-fetching from repo",
-                document.document_id,
+                f"Document {document.document_id} has no content stream, "
+                f"re-fetching from repo"
             )
             # Re-fetch the document with proper content
             fresh_document = await self.document_repo.get(
