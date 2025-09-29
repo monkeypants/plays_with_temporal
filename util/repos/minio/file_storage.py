@@ -183,25 +183,29 @@ class MinioFileStorageRepository(FileStorageRepository):
             uploaded_at_str: Optional[str] = (
                 stat.last_modified.isoformat() if stat.last_modified else None
             )
+            # Extract filename and metadata more explicitly
+            filename = (
+                stat.metadata.get("X-Amz-Meta-Filename")
+                if stat.metadata
+                else None
+            )
+            metadata = (
+                {
+                    k.replace("X-Amz-Meta-", ""): v
+                    for k, v in stat.metadata.items()
+                }
+                if stat.metadata
+                else {}
+            )
+
             return FileMetadata(
                 file_id=file_id,
-                filename=(
-                    stat.metadata.get("X-Amz-Meta-Filename")
-                    if stat.metadata
-                    else None
-                ),  # Minio prepends X-Amz-Meta-
+                filename=filename,  # Minio prepends X-Amz-Meta-
                 content_type=stat.content_type,
                 size_bytes=stat.size,
                 uploaded_at=uploaded_at_str
                 or "",  # Provide empty string if None
-                metadata=(
-                    {
-                        k.replace("X-Amz-Meta-", ""): v
-                        for k, v in stat.metadata.items()
-                    }
-                    if stat.metadata
-                    else {}
-                ),
+                metadata=metadata,
             )
         except S3Error as e:
             if e.code == "NoSuchKey":
