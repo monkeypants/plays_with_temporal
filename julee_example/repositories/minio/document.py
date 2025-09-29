@@ -32,6 +32,9 @@ class RawMetadata(BaseModel):
 
     model_config = ConfigDict(extra="allow")  # Allow arbitrary fields
 
+    # Only include fields we actually use for type safety
+    content_multihash: Optional[str] = None
+
 
 class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
     """
@@ -269,19 +272,16 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
             extra_log_data={"document_ids": document_ids},
         )
 
-        # Convert to dict format
-        metadata_results: Dict[str, Optional[dict]] = {}
-        for document_id, raw_metadata in raw_metadata_results.items():
-            if raw_metadata:
-                metadata_results[document_id] = raw_metadata.model_dump()
-            else:
-                metadata_results[document_id] = None
+        # Use RawMetadata objects directly
+        metadata_results: Dict[str, Optional[RawMetadata]] = (
+            raw_metadata_results
+        )
 
         # Step 2: Extract unique content multihashes from found metadata
         content_hashes = set()
-        for metadata_dict in metadata_results.values():
-            if metadata_dict and metadata_dict.get("content_multihash"):
-                content_hashes.add(metadata_dict["content_multihash"])
+        for metadata in metadata_results.values():
+            if metadata and metadata.content_multihash:
+                content_hashes.add(metadata.content_multihash)
 
         # Step 3: Batch retrieve content streams for unique hashes
         content_results = {}
@@ -300,20 +300,21 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         # Step 4: Splice metadata and content together into Documents
         result: Dict[str, Optional[Document]] = {}
         for document_id in document_ids:
-            metadata_dict = metadata_results.get(document_id)
-            if not metadata_dict:
+            metadata = metadata_results.get(document_id)
+            if not metadata:
                 result[document_id] = None
                 continue
 
             # Get content stream using multihash
-            content_multihash = metadata_dict.get("content_multihash")
+            content_multihash = metadata.content_multihash
+            content_stream = None
             if content_multihash and content_multihash in content_results:
                 content_stream = content_results[content_multihash]
-                metadata_dict["content"] = content_stream
-            else:
-                metadata_dict["content"] = None
 
             try:
+                # Convert RawMetadata to dict and add content
+                metadata_dict = metadata.model_dump()
+                metadata_dict["content"] = content_stream
                 result[document_id] = Document(**metadata_dict)
             except Exception as e:
                 self.logger.error(
