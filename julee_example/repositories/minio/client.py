@@ -23,9 +23,11 @@ from typing import (
     List,
     Union,
     TypeVar,
+    BinaryIO,
 )
-from urllib3.response import HTTPResponse
+from urllib3.response import BaseHTTPResponse
 from minio.datatypes import Object
+from minio.api import ObjectWriteResult
 from minio.error import S3Error  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
@@ -68,11 +70,13 @@ class MinioClient(Protocol):
         self,
         bucket_name: str,
         object_name: str,
-        data: Any,
+        data: BinaryIO,
         length: int,
         content_type: str = "application/octet-stream",
-        metadata: Optional[Dict[str, str]] = None,
-    ) -> Any:
+        metadata: Optional[
+            Dict[str, Union[str, List[str], tuple[str]]]
+        ] = None,
+    ) -> ObjectWriteResult:
         """Store an object in the bucket.
 
         Args:
@@ -91,7 +95,9 @@ class MinioClient(Protocol):
         """
         ...
 
-    def get_object(self, bucket_name: str, object_name: str) -> HTTPResponse:
+    def get_object(
+        self, bucket_name: str, object_name: str
+    ) -> BaseHTTPResponse:
         """Retrieve an object from the bucket.
 
         Args:

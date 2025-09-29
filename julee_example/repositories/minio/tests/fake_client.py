@@ -7,14 +7,15 @@ state-based testing where you can verify actual storage state rather than
 just mocking method calls.
 """
 
-import io
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, BinaryIO, Union, List
 from functools import wraps
 from unittest.mock import Mock
 from datetime import datetime, timezone
 from minio.error import S3Error
 from minio.datatypes import Object
-from urllib3.response import HTTPResponse
+from minio.api import ObjectWriteResult
+from urllib3.response import BaseHTTPResponse
+from urllib3 import HTTPHeaderDict
 
 from ..client import MinioClient
 
@@ -28,12 +29,12 @@ def requires_bucket(func: Callable) -> Callable:
     ) -> Any:
         if bucket_name not in self._buckets:
             raise S3Error(
-                "NoSuchBucket",
-                "Bucket does not exist",
-                bucket_name,
-                "req123",
-                "host123",
-                Mock(),
+                code="NoSuchBucket",
+                message="Bucket does not exist",
+                resource=bucket_name,
+                request_id="req123",
+                host_id="host123",
+                response=Mock(),
             )
         return func(self, bucket_name, *args, **kwargs)
 
@@ -49,25 +50,25 @@ def requires_object(func: Callable) -> Callable:
         bucket_name: str,
         object_name: str,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Any:
         if bucket_name not in self._objects:
             raise S3Error(
-                "NoSuchBucket",
-                "Bucket does not exist",
-                bucket_name,
-                "req123",
-                "host123",
-                Mock(),
+                code="NoSuchBucket",
+                message="Bucket does not exist",
+                resource=bucket_name,
+                request_id="req123",
+                host_id="host123",
+                response=Mock(),
             )
         if object_name not in self._objects[bucket_name]:
             raise S3Error(
-                "NoSuchKey",
-                "Object not found",
-                object_name,
-                "req123",
-                "host123",
-                Mock(),
+                code="NoSuchKey",
+                message="Object not found",
+                resource=object_name,
+                request_id="req123",
+                host_id="host123",
+                response=Mock(),
             )
         return func(self, bucket_name, object_name, *args, **kwargs)
 
@@ -95,12 +96,12 @@ class FakeMinioClient(MinioClient):
         """Create a bucket."""
         if bucket_name in self._buckets:
             raise S3Error(
-                "BucketAlreadyExists",
-                "Bucket already exists",
-                bucket_name,
-                "req123",
-                "host123",
-                Mock(),
+                code="BucketAlreadyExists",
+                message="Bucket already exists",
+                resource=bucket_name,
+                request_id="req123",
+                host_id="host123",
+                response=Mock(),
             )
         self._buckets[bucket_name] = {}
         self._objects[bucket_name] = {}
@@ -110,11 +111,13 @@ class FakeMinioClient(MinioClient):
         self,
         bucket_name: str,
         object_name: str,
-        data: Any,
+        data: BinaryIO,
         length: int,
         content_type: str = "application/octet-stream",
-        metadata: Optional[Dict[str, str]] = None,
-    ) -> None:
+        metadata: Optional[
+            Dict[str, Union[str, List[str], tuple[str]]]
+        ] = None,
+    ) -> ObjectWriteResult:
         """Store an object in the bucket."""
 
         # Read the data from stream
@@ -136,17 +139,30 @@ class FakeMinioClient(MinioClient):
             "size": len(content),
         }
 
+        # Return a proper ObjectWriteResult
+        return ObjectWriteResult(
+            bucket_name=bucket_name,
+            object_name=object_name,
+            version_id=None,
+            etag="fake-etag",
+            http_headers=HTTPHeaderDict(),
+            last_modified=datetime.now(timezone.utc),
+            location=f"/{bucket_name}/{object_name}",
+        )
+
     @requires_object
-    def get_object(self, bucket_name: str, object_name: str) -> HTTPResponse:
+    def get_object(
+        self, bucket_name: str, object_name: str
+    ) -> BaseHTTPResponse:
         """Retrieve an object from the bucket."""
 
         obj_info = self._objects[bucket_name][object_name]
-        # Create a real HTTPResponse with the data
-        return HTTPResponse(
-            body=io.BytesIO(obj_info["data"]),
-            preload_content=False,
-            decode_content=False,
-        )
+        # Create a mock BaseHTTPResponse with the data
+        mock_response = Mock(spec=BaseHTTPResponse)
+        mock_response.read = Mock(return_value=obj_info["data"])
+        mock_response.close = Mock()
+        mock_response.release_conn = Mock()
+        return mock_response
 
     @requires_object
     def stat_object(self, bucket_name: str, object_name: str) -> Object:

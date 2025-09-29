@@ -11,6 +11,7 @@ import pytest
 import hashlib
 import multihash
 from typing import Any
+from unittest.mock import Mock
 from minio.error import S3Error
 
 
@@ -104,12 +105,12 @@ class TestMinioDocumentRepositoryInitialization:
         def failing_make_bucket(bucket_name: str) -> None:
             if bucket_name == "documents-content":
                 raise S3Error(
-                    "AccessDenied",
-                    "Access denied",
-                    "AccessDenied",
-                    "req123",
-                    "host123",
-                    None,
+                    code="AccessDenied",
+                    message="Access denied",
+                    resource="AccessDenied",
+                    request_id="req123",
+                    host_id="host123",
+                    response=Mock(),
                 )
             return original_make_bucket(bucket_name)
 
@@ -240,12 +241,12 @@ class TestMinioDocumentRepositoryStore:
         ) -> Any:
             if bucket_name == "documents-content":
                 raise S3Error(
-                    "AccessDenied",
-                    "Access denied",
-                    "AccessDenied",
-                    "req123",
-                    "host123",
-                    None,
+                    code="AccessDenied",
+                    message="Access denied",
+                    resource="AccessDenied",
+                    request_id="req123",
+                    host_id="host123",
+                    response=Mock(),
                 )
             return original_put_object(
                 bucket_name, object_name, data, length, **kwargs
@@ -563,12 +564,12 @@ class TestMinioDocumentRepositoryErrorHandling:
         ) -> Any:
             if bucket_name == "documents":
                 raise S3Error(
-                    "AccessDenied",
-                    "Access denied",
-                    "AccessDenied",
-                    "req123",
-                    "host123",
-                    None,
+                    code="AccessDenied",
+                    message="Access denied",
+                    resource="AccessDenied",
+                    request_id="req123",
+                    host_id="host123",
+                    response=Mock(),
                 )
             return original_put_object(
                 bucket_name, object_name, data, length, **kwargs
