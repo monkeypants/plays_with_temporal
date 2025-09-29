@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Interface Adapter Layer Dependencies
+
+
+' Interface Adapter Layer - Center that depends on use cases and entities
+Container_Boundary(adapter_layer, "Interface Adapter Layer") {
+  Component(controllers, "Controllers", "FastAPI", "Handle HTTP requests/responses")
+  Component(repo_implementations, "Repository Implementations", "MinIO, Temporal", "MinIO storage, Temporal activities")
+  Component(service_adapters, "Service Adapters", "Anthropic", "AI service integrations")
+}
+
+' Use Case layer components that adapters depend on
+Component(usecases, "Use Cases", "Application logic", "Business workflows and orchestration")
+
+' Entity layer components that adapters depend on
+Component(entities, "Domain Models", "Pydantic", "Core business entities and rules")
+Component(repo_protocols, "Repository Protocols", "Python Protocol", "Interface contracts for data access")
+Component(request_response, "Request/Response Objects", "Pydantic", "API boundary contracts")
+Component(validation, "Domain Validation", "Runtime validation", "Security and contract enforcement")
+
+' Frameworks and Drivers that depend on interface adapters
+Component(workers, "Workers", "Temporal workers", "Background task processors")
+Component(workflows, "Workflows", "Temporal workflows", "Long-running orchestration")
+Component(fastapi_app, "FastAPI Application", "Web framework", "HTTP server and routing")
+
+' Interface Adapters depend on Use Cases and Entities
+Rel_D(controllers, usecases, "calls")
+Rel_D(repo_implementations, repo_protocols, "implements")
+Rel_D(controllers, request_response, "converts")
+Rel_D(repo_implementations, entities, "persists/retrieves")
+Rel_D(service_adapters, entities, "transforms")
+Rel_D(controllers, validation, "validates with")
+
+' Frameworks and Drivers depend on Interface Adapters
+Rel_D(fastapi_app, controllers, "uses")
+Rel_D(workers, repo_implementations, "configures")
+Rel_D(workflows, repo_implementations, "calls")
+
+@enduml

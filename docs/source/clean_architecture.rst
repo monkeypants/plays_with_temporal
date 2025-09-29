@@ -88,6 +88,10 @@ Use cases contain the workflows and coordination logic that make your applicatio
 * :doc:`julee_example/use_cases/extract_assemble_data` - **Document assembly workflows**: ExtractAssembleDataUseCase (document extraction and assembly according to specifications)
 * :doc:`julee_example/use_cases/validate_document` - **Document validation workflows**: ValidateDocumentUseCase (document validation against organizational policies using AI services)
 
+.. uml:: ../img/usecase-dependencies.puml
+   :align: center
+   :alt: Use Case Layer Dependencies
+
 
 .. _clean_architecture:interface_adapters:
 
@@ -126,6 +130,10 @@ Interface adapters serve as translation boundaries that allow use cases to remai
 * :doc:`cal/workflows` - Calendar workflow definitions
 
 Future interface adapters might include PostgreSQL database implementations, Redis caching layers, message queue handlers, external payment gateway adapters, notification service integrations, and event streaming connectors. The clean architecture makes adding these adapters straightforward without affecting existing business logic.
+
+.. uml:: ../img/interface-adapter-dependencies.puml
+   :align: center
+   :alt: Interface Adapter Layer Dependencies
 
 
 .. _clean_architecture:frameworks_and_drivers:

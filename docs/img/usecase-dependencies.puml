@@ -1,0 +1,35 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Use Case Layer Dependencies
+
+
+' Use Case Layer - Center with dependencies only on entity layer
+Container_Boundary(usecase_layer, "Use Case Layer") {
+  Component(usecases, "Use Cases", "Application logic", "Business workflows and orchestration")
+}
+
+' Entity layer components that use cases depend on
+Component(entities, "Domain Models", "Pydantic", "Core business entities and rules")
+Component(repo_protocols, "Repository Protocols", "Python Protocol", "Interface contracts for data access")
+Component(request_response, "Request/Response Objects", "Pydantic", "API boundary contracts")
+Component(validation, "Domain Validation", "Runtime validation", "Security and contract enforcement")
+
+' External components that depend on use cases
+Component(controllers, "Controllers", "FastAPI", "Handle HTTP requests/responses")
+Component(workflows, "Workflows", "Temporal", "Long-running orchestration")
+Component(repo_impl, "Repository Implementations", "Concrete classes", "Database, file storage, etc.")
+
+' Use Cases depend on Entity Layer components
+Rel_D(usecases, entities, "uses")
+Rel_D(usecases, repo_protocols, "depends on")
+Rel_D(usecases, request_response, "accepts/returns")
+Rel_D(usecases, validation, "validates with")
+
+' External dependencies on Use Case Layer
+Rel_D(controllers, usecases, "calls")
+Rel_D(workflows, usecases, "orchestrates")
+
+Rel_U(repo_impl, repo_protocols, "implements")
+
+@enduml
