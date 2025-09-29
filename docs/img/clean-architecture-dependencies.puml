@@ -1,0 +1,21 @@
+@startuml clean-architecture-dependencies
+!define INNERMOST #E8F5E8
+!define INNER #F0F8FF
+!define OUTER #FFF8DC
+!define OUTERMOST #FFE4E1
+
+' Concentric ellipses showing layered architecture
+rectangle "Frameworks & Drivers\n(external interfaces, implementation details\nnetwork and disk access)" as frameworks OUTERMOST {
+  rectangle "Interface Adapters\n(controllers, gateways, presenters\nmicroservices, deployable components)" as adapters OUTER {
+    rectangle "Use Cases\n(logical features, workflows and business rules)" as usecases INNER {
+      rectangle "Entities\n(domain models, logical data-types\ninternal protocols and interfaces)" as entities INNERMOST
+    }
+  }
+}
+
+' Show dependency direction with a single clean arrow
+frameworks -down-> adapters : depends on
+adapters -down-> usecases : depends on
+usecases -down-> entities : depends on
+
+@enduml
