@@ -6,6 +6,6 @@ including the temporal_activity_registration decorator for automatically
 wrapping repository methods as Temporal activities.
 """
 
-from .decorators import temporal_activity_registration
+from util.temporal.decorators import temporal_activity_registration
 
 __all__ = ["temporal_activity_registration"]

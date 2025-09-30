@@ -11,7 +11,7 @@ workflow.execute_activity() with the appropriate activity names, timeouts,
 and retry policies.
 """
 
-from util.repos.temporal.decorators import temporal_workflow_proxy
+from util.temporal.decorators import temporal_workflow_proxy
 from julee_example.services.knowledge_service import KnowledgeService
 
 # Import activity name bases from shared module

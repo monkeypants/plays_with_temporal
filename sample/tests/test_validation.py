@@ -19,7 +19,7 @@ from sample.validation import (
 from sample.repositories import PaymentRepository, InventoryRepository
 from sample.repos.minio.inventory import MinioInventoryRepository
 from sample.repos.minio.payment import MinioPaymentRepository
-from util.repos.temporal.decorators import temporal_activity_registration
+from util.temporal.decorators import temporal_activity_registration
 from sample.domain import Order, Payment, OrderItem
 
 
@@ -189,7 +189,8 @@ def test_factory_function_metadata() -> None:
         pass
 
     factory = create_validated_repository_factory(
-        PaymentRepository, TestTemporalMinioPaymentRepository  # type: ignore[type-abstract]
+        PaymentRepository,  # type: ignore[type-abstract]
+        TestTemporalMinioPaymentRepository,
     )
 
     assert (

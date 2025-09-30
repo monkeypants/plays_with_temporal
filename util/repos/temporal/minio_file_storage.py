@@ -1,4 +1,4 @@
-from util.repos.temporal.decorators import temporal_activity_registration
+from util.temporal.decorators import temporal_activity_registration
 from util.repos.minio.file_storage import MinioFileStorageRepository
 
 

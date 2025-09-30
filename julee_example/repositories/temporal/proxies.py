@@ -11,7 +11,7 @@ workflow.execute_activity() with the appropriate activity names, timeouts,
 and retry policies.
 """
 
-from util.repos.temporal.decorators import temporal_workflow_proxy
+from util.temporal.decorators import temporal_workflow_proxy
 from julee_example.repositories.assembly import AssemblyRepository
 from julee_example.repositories.assembly_specification import (
     AssemblySpecificationRepository,
