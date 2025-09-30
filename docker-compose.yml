@@ -1,5 +1,6 @@
 services:
   postgres:
+    profiles: ["julee", "calendar", "sample"]
     image: postgres:14-alpine
     environment:
       POSTGRES_USER: temporal
@@ -16,6 +17,7 @@ services:
       retries: 5
 
   calendar-postgres:
+    profiles: ["calendar"]
     image: postgres:14-alpine
     environment:
       POSTGRES_USER: calendar
@@ -33,6 +35,7 @@ services:
       retries: 5
 
   temporal:
+    profiles: ["julee", "calendar", "sample"]
     image: temporalio/auto-setup:1.27.2
     depends_on:
       postgres:
@@ -48,6 +51,7 @@ services:
       - "8233:8233"
 
   temporal-ui:
+    profiles: ["julee", "calendar", "sample"]
     image: temporalio/ui:2.10.3
     depends_on:
       - temporal
@@ -58,6 +62,7 @@ services:
       - "8001:8080"
 
   minio:
+    profiles: ["julee", "calendar", "sample"]
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
@@ -75,6 +80,7 @@ services:
       retries: 3
 
   sample-worker:
+    profiles: ["sample"]
     build:
       context: .
       dockerfile: sample/Dockerfile.worker
@@ -90,6 +96,7 @@ services:
     restart: on-failure
 
   sample-api:
+    profiles: ["sample"]
     build:
       context: .
       dockerfile: sample/Dockerfile.api
@@ -106,6 +113,7 @@ services:
       - "8002:8000"
 
   calendar-worker:
+    profiles: ["calendar"]
     build:
       context: .
       dockerfile: cal/Dockerfile.worker
@@ -128,6 +136,28 @@ services:
       - ./config:/app/config:ro
       - ./credentials.json:/app/credentials.json:ro
       - ./token.json:/app/token.json:rw
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import temporalio; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  julee-worker:
+    profiles: ["julee"]
+    build:
+      context: .
+      dockerfile: julee_example/Dockerfile.worker
+    depends_on:
+      temporal:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ENDPOINT=temporal:7233
+      - MINIO_ENDPOINT=minio:9000
+      - LOG_LEVEL=INFO
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     restart: on-failure
     healthcheck:
       test: ["CMD", "python", "-c", "import temporalio; print('OK')"]
