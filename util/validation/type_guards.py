@@ -30,8 +30,6 @@ logger = logging.getLogger(__name__)
 class TypeValidationError(TypeError):
     """Raised when type validation fails with detailed diagnostics."""
 
-    pass
-
 
 def validate_type(
     value: Any,
@@ -124,7 +122,7 @@ def _validate_generic_type(
         _validate_list_contents(value, type_args, context_name)
     elif origin_type is dict:
         _validate_dict_contents(value, type_args, context_name)
-    elif origin_type == Union:
+    elif origin_type is Union:
         _validate_union_type(value, type_args, context_name)
 
 
@@ -181,7 +179,10 @@ def _validate_union_type(
     # Try each type in the union
     for union_type in type_args:
         try:
-            validate_type(value, union_type, context_name, allow_none=True)
+            allow_none = union_type is type(None)
+            validate_type(
+                value, union_type, context_name, allow_none=allow_none
+            )
             return  # If any type matches, we're good
         except TypeValidationError:
             continue  # Try the next type
