@@ -26,6 +26,7 @@ from temporalio.common import RetryPolicy
 from pydantic import BaseModel
 
 from julee_example.repositories.base import BaseRepository
+from .activities import discover_protocol_methods
 
 logger = logging.getLogger(__name__)
 
@@ -112,66 +113,6 @@ def _substitute_typevar_with_concrete(
     return annotation
 
 
-def _discover_protocol_methods(
-    cls_hierarchy: tuple[type, ...],
-) -> dict[str, Any]:
-    """
-    Common function to discover protocol methods that should be wrapped.
-
-    This function is used by both temporal_activity_registration and
-    temporal_workflow_proxy to ensure they operate on the exact same
-    set of methods by finding async methods defined in protocol interfaces.
-
-    Args:
-        cls_hierarchy: The class MRO (method resolution order)
-
-    Returns:
-        Dict mapping method names to method objects from the concrete class
-    """
-    methods_to_wrap = {}
-    concrete_class = cls_hierarchy[0]  # The actual class being decorated
-
-    # Look for protocol interfaces (classes with runtime_checkable/Protocol)
-    for base_class in cls_hierarchy:
-        # Skip object base class
-        if base_class is object:
-            continue
-
-        # Check if this is a protocol class
-        has_protocol_attr = hasattr(base_class, "__protocol__")
-        has_is_protocol = getattr(base_class, "_is_protocol", False)
-        has_protocol_in_str = "Protocol" in str(base_class)
-
-        is_protocol = (
-            has_protocol_attr or has_is_protocol or has_protocol_in_str
-        )
-
-        # Only process protocol classes for architectural compliance
-        if is_protocol:
-            # Get method names defined in this class, but get the actual
-            # implementation from the concrete class
-            for name in base_class.__dict__:
-                if name in methods_to_wrap:
-                    continue  # Already found this method
-
-                base_method = getattr(base_class, name)
-                # Only wrap async methods that don't start with underscore
-                if inspect.iscoroutinefunction(
-                    base_method
-                ) and not name.startswith("_"):
-                    # Get the concrete implementation from the actual class
-                    if hasattr(concrete_class, name):
-                        concrete_method = getattr(concrete_class, name)
-                        methods_to_wrap[name] = concrete_method
-
-    # Log final results
-    final_method_names = list(methods_to_wrap.keys())
-    logger.info(
-        f"Method discovery found {len(methods_to_wrap)}: {final_method_names}"
-    )
-    return methods_to_wrap
-
-
 def temporal_activity_registration(
     activity_prefix: str,
 ) -> Callable[[Type[T]], Type[T]]:
@@ -216,7 +157,7 @@ def temporal_activity_registration(
         wrapped_methods = []
 
         # Use common method discovery - for activities, wrap protocol methods
-        async_methods_to_wrap = _discover_protocol_methods(cls.__mro__)
+        async_methods_to_wrap = discover_protocol_methods(cls.__mro__)
 
         # Now wrap all the async methods we found
         for name, method in async_methods_to_wrap.items():
@@ -326,7 +267,7 @@ def temporal_workflow_proxy(
         )
 
         # Use method discovery - for workflow proxies, wrap protocol methods
-        methods_to_implement = _discover_protocol_methods(cls.__mro__)
+        methods_to_implement = discover_protocol_methods(cls.__mro__)
 
         # Generate workflow proxy methods
         wrapped_methods = []
@@ -379,7 +320,6 @@ def temporal_workflow_proxy(
                 inner_type: Any,
                 original_method: Any,
             ) -> Callable[..., Any]:
-
                 @functools.wraps(original_method)
                 async def workflow_method(
                     self: Any, *args: Any, **kwargs: Any

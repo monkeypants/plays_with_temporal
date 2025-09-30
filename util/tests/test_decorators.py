@@ -26,9 +26,9 @@ from pydantic import BaseModel
 from temporalio import activity
 
 # Project imports
-import util.repos.temporal.decorators as decorators_module
+import util.temporal.decorators as decorators_module
 
-from util.repos.temporal.decorators import (
+from util.temporal.decorators import (
     temporal_activity_registration,
     temporal_workflow_proxy,
     _extract_concrete_type_from_base,
@@ -633,12 +633,14 @@ class TestTypeSubstitution:
                 return (T,)
             return get_args(annotation)
 
-        with patch.object(
-            decorators_module, "get_origin", side_effect=mock_get_origin
-        ), patch.object(
-            decorators_module, "get_args", side_effect=mock_get_args
+        with (
+            patch.object(
+                decorators_module, "get_origin", side_effect=mock_get_origin
+            ),
+            patch.object(
+                decorators_module, "get_args", side_effect=mock_get_args
+            ),
         ):
-
             with pytest.raises(TypeError) as exc_info:
                 _substitute_typevar_with_concrete(
                     "FAILING_TYPE", MockAssemblySpecification

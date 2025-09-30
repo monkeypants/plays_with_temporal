@@ -28,6 +28,7 @@ from julee_example.services.temporal.activities import (
 )
 from minio import Minio
 from julee_example.repositories.minio.client import MinioClient
+from util.temporal.activities import collect_activities_from_instances
 
 logger = logging.getLogger(__name__)
 
@@ -165,34 +166,17 @@ async def run_worker() -> None:
         document_repo=temporal_document_repo
     )
 
-    # Collect all activities from repository instances
-    # The @temporal_activity_registration decorator automatically wraps
-    # all async methods as Temporal activities
-    activities = [
-        # Assembly repository activities
-        temporal_assembly_repo.generate_id,
-        temporal_assembly_repo.save,
-        temporal_assembly_repo.get,
-        # Assembly specification repository activities
-        temporal_assembly_spec_repo.generate_id,
-        temporal_assembly_spec_repo.save,
-        temporal_assembly_spec_repo.get,
-        # Document repository activities
-        temporal_document_repo.generate_id,
-        temporal_document_repo.save,
-        temporal_document_repo.get,
-        # Knowledge service config repository activities
-        temporal_knowledge_config_repo.generate_id,
-        temporal_knowledge_config_repo.save,
-        temporal_knowledge_config_repo.get,
-        # Knowledge service query repository activities
-        temporal_knowledge_query_repo.generate_id,
-        temporal_knowledge_query_repo.save,
-        temporal_knowledge_query_repo.get,
-        # Knowledge service activities
-        temporal_knowledge_service.register_file,
-        temporal_knowledge_service.execute_query,
-    ]
+    # Automatically collect all activities from decorated instances
+    # This uses the same _discover_protocol_methods that the decorator uses,
+    # ensuring we never miss activities and eliminating boilerplate
+    activities = collect_activities_from_instances(
+        temporal_assembly_repo,
+        temporal_assembly_spec_repo,
+        temporal_document_repo,
+        temporal_knowledge_config_repo,
+        temporal_knowledge_query_repo,
+        temporal_knowledge_service,
+    )
 
     logger.info(
         "Creating Temporal worker for julee_example domain",
