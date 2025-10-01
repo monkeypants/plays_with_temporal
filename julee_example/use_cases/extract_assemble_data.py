@@ -33,6 +33,7 @@ from julee_example.repositories import (
 )
 from julee_example.services import KnowledgeService
 from sample.validation import ensure_repository_protocol
+from util.validation import validate_parameter_types
 from .decorators import try_use_case_step
 
 logger = logging.getLogger(__name__)
@@ -100,21 +101,26 @@ class ExtractAssembleDataUseCase:
         """
         # Validate at construction time for early error detection
         self.document_repo = ensure_repository_protocol(
-            document_repo, DocumentRepository  # type: ignore[type-abstract]
+            document_repo,
+            DocumentRepository,  # type: ignore[type-abstract]
         )
         self.knowledge_service = knowledge_service
         self.now_fn = now_fn
         self.assembly_repo = ensure_repository_protocol(
-            assembly_repo, AssemblyRepository  # type: ignore[type-abstract]
+            assembly_repo,
+            AssemblyRepository,  # type: ignore[type-abstract]
         )
         self.assembly_specification_repo = ensure_repository_protocol(
-            assembly_specification_repo, AssemblySpecificationRepository  # type: ignore[type-abstract]
+            assembly_specification_repo,
+            AssemblySpecificationRepository,  # type: ignore[type-abstract]
         )
         self.knowledge_service_query_repo = ensure_repository_protocol(
-            knowledge_service_query_repo, KnowledgeServiceQueryRepository  # type: ignore[type-abstract]
+            knowledge_service_query_repo,
+            KnowledgeServiceQueryRepository,  # type: ignore[type-abstract]
         )
         self.knowledge_service_config_repo = ensure_repository_protocol(
-            knowledge_service_config_repo, KnowledgeServiceConfigRepository  # type: ignore[type-abstract]
+            knowledge_service_config_repo,
+            KnowledgeServiceConfigRepository,  # type: ignore[type-abstract]
         )
 
     async def assemble_data(
@@ -235,6 +241,7 @@ class ExtractAssembleDataUseCase:
             raise
 
     @try_use_case_step("document_registration")
+    @validate_parameter_types()
     async def _register_document_with_services(
         self,
         document: Document,
@@ -291,14 +298,42 @@ class ExtractAssembleDataUseCase:
             assembly_specification.knowledge_service_queries.values()
         )
 
-        # Use batch retrieval for efficiency
-        query_results = await self.knowledge_service_query_repo.get_many(
-            query_ids
-        )
-
+        # TODO: TEMPORAL SERIALIZATION ISSUE - Replace with get_many when
+        # fixed
+        #
+        # Issue: Complex return type
+        # Dict[str, Optional[KnowledgeServiceQuery]] from get_many causes
+        # Temporal's type system to fall back to typing.Any, resulting in
+        # Pydantic models being deserialized as plain dictionaries instead of
+        # model instances.
+        #
+        # Error: "SERIALIZATION ISSUE DETECTED: parameter
+        # 'queries'['query-id'] is dict instead of KnowledgeServiceQuery!"
+        #
+        # Root Cause: Temporal's type resolution cannot handle the complex
+        # nested generic type Dict[str, Optional[T]] and passes typing.Any to
+        # the data converter, which then deserializes to plain dicts.
+        #
+        # Investigation: Full analysis showed:
+        # - Data converter debug output confirming typing.Any fallback
+        # - Repository type resolution working correctly
+        # - Guard check system detecting the exact issue
+        # - Evidence that simpler types (Optional[T]) work fine
+        #
+        # Temporary Fix: Use individual get() calls which return Optional[T]
+        # that Temporal handles correctly.
+        #
+        # Future Solutions:
+        # 1. Fix Temporal's type resolution for complex nested generics
+        # 2. Create custom data converter for this specific type pattern
+        # 3. Simplify repository interface to avoid Optional in batch
+        #    operations
+        #
+        # Currently using individual get calls to avoid complex type
+        # serialization issue
         queries = {}
         for query_id in query_ids:
-            query = query_results.get(query_id)
+            query = await self.knowledge_service_query_repo.get(query_id)
             if not query:
                 raise ValueError(
                     f"Knowledge service query not found: {query_id}"
@@ -346,7 +381,6 @@ class ExtractAssembleDataUseCase:
             schema_pointer,
             query_id,
         ) in assembly_specification.knowledge_service_queries.items():
-
             # Get the relevant schema section
             schema_section = self._extract_schema_section(
                 assembly_specification.jsonschema, schema_pointer
