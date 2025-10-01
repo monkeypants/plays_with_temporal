@@ -104,8 +104,7 @@ def parse_arguments() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description=(
-            "Test ValidateDocumentUseCase with Anthropic knowledge "
-            "services"
+            "Test ValidateDocumentUseCase with Anthropic knowledge services"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -442,8 +441,7 @@ async def test_validate_document_use_case(
         return
 
     print(
-        "🚀 Testing ValidateDocumentUseCase with Anthropic knowledge "
-        "services"
+        "🚀 Testing ValidateDocumentUseCase with Anthropic knowledge services"
     )
     if input_file_path:
         print(f"📁 Using input file: {input_file_path}")
@@ -488,6 +486,7 @@ async def test_validate_document_use_case(
             policy_repo=policy_repo,
             document_policy_validation_repo=document_policy_validation_repo,
             knowledge_service=knowledge_service,
+            now_fn=lambda: datetime.now(timezone.utc),
         )
 
         print("\n✅ Created ValidateDocumentUseCase with all repositories")

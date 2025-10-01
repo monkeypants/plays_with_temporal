@@ -110,11 +110,17 @@ class AnthropicKnowledgeService(KnowledgeService):
                     "Document content stream is required for upload"
                 )
 
+            # Anthropic only supports PDF and plaintext files
+            # Convert JSON content type to text/plain for compatibility
+            content_type = document.content_type
+            if content_type == "application/json":
+                content_type = "text/plain"
+
             file_response = await client.beta.files.upload(
                 file=(
                     document.original_filename,
                     document.content.stream,  # type: ignore[arg-type]
-                    document.content_type,
+                    content_type,
                 )
             )
 

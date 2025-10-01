@@ -24,6 +24,8 @@ from julee_example.domain import (
     AssemblySpecification,
     KnowledgeServiceQuery,
     KnowledgeServiceConfig,
+    Policy,
+    PolicyStatus,
 )
 from julee_example.domain.knowledge_service_config import ServiceApi
 from julee_example.repositories.minio.assembly_specification import (
@@ -35,6 +37,9 @@ from julee_example.repositories.minio.knowledge_service_query import (
 )
 from julee_example.repositories.minio.knowledge_service_config import (
     MinioKnowledgeServiceConfigRepository,
+)
+from julee_example.repositories.minio.policy import (
+    MinioPolicyRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -265,6 +270,125 @@ async def create_anthropic_knowledge_service_config(
     return config_id
 
 
+async def load_validation_checks(
+    query_repo: MinioKnowledgeServiceQueryRepository,
+    data_dir: Path,
+    knowledge_service_config_id: str,
+) -> Dict[str, str]:
+    """
+    Load validation check queries (offensive language and professionalism).
+
+    Args:
+        query_repo: Repository for knowledge service queries
+        data_dir: Directory containing the query files
+        knowledge_service_config_id: Actual generated knowledge service
+            config ID
+
+    Returns:
+        Dict mapping check names to query IDs
+    """
+    check_files = [
+        "offensive_language_check.json",
+        "professionalism_check.json",
+    ]
+
+    check_ids = {}
+
+    for check_file in check_files:
+        check_path = data_dir / check_file
+
+        logger.info(f"Loading validation check from {check_path}")
+
+        # Read and parse the check file
+        with open(check_path, "r", encoding="utf-8") as f:
+            check_data = json.load(f)
+
+        # Generate query ID
+        check_id = await query_repo.generate_id()
+
+        # Create the knowledge service query with actual config ID
+        query = KnowledgeServiceQuery(
+            query_id=check_id,
+            name=check_data["name"],
+            knowledge_service_id=knowledge_service_config_id,  # Use actual ID
+            prompt=check_data["prompt"],
+            query_metadata=check_data["query_metadata"],
+            assistant_prompt=check_data.get("assistant_prompt"),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        # Save the query
+        await query_repo.save(query)
+
+        # Store the mapping using the filename (without extension) as key
+        check_name = check_file.replace("_check.json", "_check")
+        check_ids[check_name] = check_id
+
+        logger.info(
+            f"Validation check '{check_data['name']}' saved with ID: "
+            f"{check_id}"
+        )
+
+    return check_ids
+
+
+async def load_policy(
+    policy_repo: MinioPolicyRepository,
+    data_dir: Path,
+    validation_check_ids: Dict[str, str],
+) -> str:
+    """
+    Load the offensive language policy.
+
+    Args:
+        policy_repo: Repository for policies
+        data_dir: Directory containing the policy file
+        validation_check_ids: Mapping of validation check names to query IDs
+
+    Returns:
+        The policy_id of the loaded policy
+    """
+    policy_path = data_dir / "offensive_language_policy.json"
+
+    logger.info(f"Loading policy from {policy_path}")
+
+    # Read and parse the policy file
+    with open(policy_path, "r", encoding="utf-8") as f:
+        policy_data = json.load(f)
+
+    # Generate policy ID - use a fixed ID that matches the client example
+    policy_id = "policy-demo-001"
+
+    # Map validation scores to use actual query IDs
+    validation_scores = []
+    for check_name, required_score in policy_data["validation_scores"]:
+        if check_name in validation_check_ids:
+            validation_scores.append(
+                (validation_check_ids[check_name], required_score)
+            )
+        else:
+            logger.warning(f"Unknown validation check: {check_name}")
+
+    # Create the policy
+    policy = Policy(
+        policy_id=policy_id,
+        title=policy_data["title"],
+        description=policy_data["description"],
+        status=PolicyStatus.ACTIVE,
+        validation_scores=validation_scores,
+        transformation_queries=policy_data.get("transformation_queries"),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+
+    # Save the policy
+    await policy_repo.save(policy)
+
+    logger.info(f"Policy saved with ID: {policy_id}")
+    return policy_id
+
+
 async def populate_example_data() -> Dict[str, str]:
     """
     Populate all example data and return the IDs for use in workflows.
@@ -275,9 +399,12 @@ async def populate_example_data() -> Dict[str, str]:
             "document_id": "...",
             "assembly_specification_id": "...",
             "knowledge_service_config_id": "...",
+            "policy_id": "...",
             "extract_meeting_info_query_id": "...",
             "extract_agenda_items_query_id": "...",
             "extract_action_items_query_id": "...",
+            "offensive_language_check_id": "...",
+            "professionalism_check_id": "...",
         }
     """
     logger.info("Starting example data population")
@@ -299,6 +426,7 @@ async def populate_example_data() -> Dict[str, str]:
     )
     query_repo = MinioKnowledgeServiceQueryRepository(client=minio_client)
     config_repo = MinioKnowledgeServiceConfigRepository(client=minio_client)
+    policy_repo = MinioPolicyRepository(client=minio_client)
 
     # Load all the data (create config first so queries can reference it)
     document_id = await load_example_document(document_repo, data_dir)
@@ -306,6 +434,10 @@ async def populate_example_data() -> Dict[str, str]:
     query_ids = await load_knowledge_service_queries(
         query_repo, data_dir, config_id
     )
+    validation_check_ids = await load_validation_checks(
+        query_repo, data_dir, config_id
+    )
+    policy_id = await load_policy(policy_repo, data_dir, validation_check_ids)
     assembly_spec_id = await load_assembly_specification(
         assembly_spec_repo, data_dir, query_ids
     )
@@ -315,9 +447,14 @@ async def populate_example_data() -> Dict[str, str]:
         "document_id": document_id,
         "assembly_specification_id": assembly_spec_id,
         "knowledge_service_config_id": config_id,
+        "policy_id": policy_id,
         **{
             f"{name}_query_id": query_id
             for name, query_id in query_ids.items()
+        },
+        **{
+            f"{name}_id": check_id
+            for name, check_id in validation_check_ids.items()
         },
     }
 
