@@ -611,19 +611,23 @@ async def main() -> None:
                         print(f"     • {query_name}: {score}/100")
 
                 print(
-                    "\n✨ Demo completed! The AI successfully extracted structured"
+                    "\n✨ Demo completed! The AI successfully extracted "
+                    "structured"
                 )
                 print(
-                    "   data from the meeting transcript and validated it against"
+                    "   data from the meeting transcript and validated it "
+                    "against"
                 )
                 print("   policies to ensure compliance and quality.")
 
             except Exception as validation_error:
                 print(
-                    f"⚠️  Validation workflow failed: {type(validation_error).__name__}: {validation_error}"
+                    f"⚠️  Validation workflow failed: "
+                    f"{type(validation_error).__name__}: {validation_error}"
                 )
                 print(
-                    "   This is expected if policy data hasn't been set up yet."
+                    "   This is expected if policy data hasn't been set up "
+                    "yet."
                 )
                 print("\n✨ Assembly phase completed successfully!")
                 print(

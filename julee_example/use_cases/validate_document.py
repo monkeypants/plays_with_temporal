@@ -12,7 +12,7 @@ import io
 import json
 import logging
 import multihash
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Callable, Dict, List, Tuple
 
 from julee_example.domain import (
