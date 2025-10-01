@@ -12,8 +12,8 @@ import io
 import json
 import logging
 import multihash
-from datetime import datetime, timezone
-from typing import Dict, List, Tuple
+from datetime import datetime
+from typing import Callable, Dict, List, Tuple
 
 from julee_example.domain import (
     Document,
@@ -73,6 +73,7 @@ class ValidateDocumentUseCase:
         policy_repo: PolicyRepository,
         document_policy_validation_repo: DocumentPolicyValidationRepository,
         knowledge_service: KnowledgeService,
+        now_fn: Callable[[], datetime],
     ) -> None:
         """Initialize validate document use case.
 
@@ -87,6 +88,8 @@ class ValidateDocumentUseCase:
                 validation operations
             knowledge_service: Knowledge service instance for external
                 operations
+            now_fn: Function to get current time (e.g., workflow.now for
+                Temporal workflows)
 
         Note:
             The repositories passed here may be concrete implementations
@@ -99,22 +102,27 @@ class ValidateDocumentUseCase:
         """
         # Validate at construction time for early error detection
         self.document_repo = ensure_repository_protocol(
-            document_repo, DocumentRepository  # type: ignore[type-abstract]
+            document_repo,
+            DocumentRepository,  # type: ignore[type-abstract]
         )
         self.knowledge_service = knowledge_service
         self.knowledge_service_query_repo = ensure_repository_protocol(
-            knowledge_service_query_repo, KnowledgeServiceQueryRepository  # type: ignore[type-abstract]
+            knowledge_service_query_repo,
+            KnowledgeServiceQueryRepository,  # type: ignore[type-abstract]
         )
         self.knowledge_service_config_repo = ensure_repository_protocol(
-            knowledge_service_config_repo, KnowledgeServiceConfigRepository  # type: ignore[type-abstract]
+            knowledge_service_config_repo,
+            KnowledgeServiceConfigRepository,  # type: ignore[type-abstract]
         )
         self.policy_repo = ensure_repository_protocol(
-            policy_repo, PolicyRepository  # type: ignore[type-abstract]
+            policy_repo,
+            PolicyRepository,  # type: ignore[type-abstract]
         )
         self.document_policy_validation_repo = ensure_repository_protocol(
             document_policy_validation_repo,
             DocumentPolicyValidationRepository,  # type: ignore[type-abstract]
         )
+        self.now_fn = now_fn
 
     async def validate_document(
         self, document_id: str, policy_id: str
@@ -167,7 +175,7 @@ class ValidateDocumentUseCase:
             policy_id=policy_id,
             status=DocumentPolicyValidationStatus.PENDING,
             validation_scores=[],
-            started_at=datetime.now(timezone.utc),
+            started_at=self.now_fn(),
         )
 
         await self.document_policy_validation_repo.save(validation)
@@ -234,7 +242,7 @@ class ValidateDocumentUseCase:
                     transformed_document_id=validation.transformed_document_id,
                     post_transform_validation_scores=validation.post_transform_validation_scores,
                     started_at=validation.started_at,
-                    completed_at=datetime.now(timezone.utc),
+                    completed_at=self.now_fn(),
                     error_message=validation.error_message,
                     status=final_status,
                     passed=initial_passed,
@@ -333,7 +341,7 @@ class ValidateDocumentUseCase:
                 transformed_document_id=transformed_document.document_id,
                 post_transform_validation_scores=post_transform_validation_scores,
                 started_at=validation.started_at,
-                completed_at=datetime.now(timezone.utc),
+                completed_at=self.now_fn(),
                 error_message=validation.error_message,
                 status=final_status,
                 passed=final_passed,
@@ -363,7 +371,7 @@ class ValidateDocumentUseCase:
             validation.status = DocumentPolicyValidationStatus.ERROR
             validation.error_message = str(e)
             validation.passed = False
-            validation.completed_at = datetime.now(timezone.utc)
+            validation.completed_at = self.now_fn()
             await self.document_policy_validation_repo.save(validation)
 
             logger.error(
@@ -512,11 +520,11 @@ class ValidateDocumentUseCase:
 
             # Execute the validation query
             query_result = await self.knowledge_service.execute_query(
-                config=config,
-                query_text=query.prompt,
-                service_file_ids=[service_file_id],
-                query_metadata=query.query_metadata,
-                assistant_prompt=query.assistant_prompt,
+                config,
+                query.prompt,
+                [service_file_id],
+                query.query_metadata,
+                query.assistant_prompt,
             )
 
             # Extract the score from the query result
@@ -667,11 +675,11 @@ class ValidateDocumentUseCase:
             # Execute the transformation query
             transformation_result = (
                 await self.knowledge_service.execute_query(
-                    config=config,
-                    query_text=query.prompt,
-                    service_file_ids=[service_file_id],
-                    query_metadata=query.query_metadata,
-                    assistant_prompt=query.assistant_prompt,
+                    config,
+                    query.prompt,
+                    [service_file_id],
+                    query.query_metadata,
+                    query.assistant_prompt,
                 )
             )
 
@@ -711,8 +719,8 @@ class ValidateDocumentUseCase:
             content_multihash=proper_multihash,
             status=DocumentStatus.CAPTURED,
             content=ContentStream(transformed_stream),
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=self.now_fn(),
+            updated_at=self.now_fn(),
         )
 
         # Save the transformed document

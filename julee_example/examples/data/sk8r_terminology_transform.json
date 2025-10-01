@@ -1,9 +1,0 @@
-{
-  "name": "Sk8r Terminology Transform",
-  "prompt": "Transform the following meeting minutes document to use skateboarding terminology and culture language throughout, while preserving the exact JSON structure and all data fields. Replace business terminology with skateboarding equivalents.\nMaintain all JSON field names, structure, dates, and factual information exactly as provided. Only transform the text content within the values to use skateboarding terminology. The output must be valid JSON with the same schema.\n\nYou MUST respond with ONLY valid JSON. Do not include any explanation, markdown formatting, or additional text. Just the transformed JSON.",
-  "query_metadata": {
-    "max_tokens": 2000,
-    "temperature": 0.1
-  },
-  "assistant_prompt": "Here is the meeting minutes transformed with skateboarding terminology while preserving the JSON structure:"
-}

@@ -15,6 +15,7 @@ from util.repos.temporal.data_converter import temporal_data_converter
 
 from julee_example.workflows import (
     ExtractAssembleWorkflow,
+    ValidateDocumentWorkflow,
 )
 from julee_example.repositories.temporal.activities import (
     TemporalMinioAssemblyRepository,
@@ -22,6 +23,8 @@ from julee_example.repositories.temporal.activities import (
     TemporalMinioDocumentRepository,
     TemporalMinioKnowledgeServiceConfigRepository,
     TemporalMinioKnowledgeServiceQueryRepository,
+    TemporalMinioPolicyRepository,
+    TemporalMinioDocumentPolicyValidationRepository,
 )
 from julee_example.services.temporal.activities import (
     TemporalKnowledgeService,
@@ -160,6 +163,12 @@ async def run_worker() -> None:
         TemporalMinioKnowledgeServiceQueryRepository(client=minio_client)
     )
 
+    # Create policy repositories for validation workflow
+    temporal_policy_repo = TemporalMinioPolicyRepository(client=minio_client)
+    temporal_document_policy_validation_repo = (
+        TemporalMinioDocumentPolicyValidationRepository(client=minio_client)
+    )
+
     # Create temporal knowledge service for activity registration
     # Pass the document repository for dependency injection
     temporal_knowledge_service = TemporalKnowledgeService(
@@ -175,6 +184,8 @@ async def run_worker() -> None:
         temporal_document_repo,
         temporal_knowledge_config_repo,
         temporal_knowledge_query_repo,
+        temporal_policy_repo,
+        temporal_document_policy_validation_repo,
         temporal_knowledge_service,
     )
 
@@ -182,7 +193,7 @@ async def run_worker() -> None:
         "Creating Temporal worker for julee_example domain",
         extra={
             "task_queue": "julee-extract-assemble-queue",
-            "workflow_count": 1,
+            "workflow_count": 2,
             "activity_count": len(activities),
             "data_converter_type": type(client.data_converter).__name__,
         },
@@ -192,7 +203,7 @@ async def run_worker() -> None:
     worker = Worker(
         client,
         task_queue="julee-extract-assemble-queue",
-        workflows=[ExtractAssembleWorkflow],
+        workflows=[ExtractAssembleWorkflow, ValidateDocumentWorkflow],
         activities=activities,  # type: ignore[arg-type]
     )
 

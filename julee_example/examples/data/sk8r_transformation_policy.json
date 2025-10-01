@@ -1,6 +1,0 @@
-{
-  "title": "Sk8r Transformation Policy",
-  "description": "Policy that validates documents for skateboarding terminology and transforms standard business language to sk8r style if needed",
-  "validation_scores": [["sk8r_terminology_check", 70]],
-  "transformation_queries": ["sk8r_terminology_transform"]
-}

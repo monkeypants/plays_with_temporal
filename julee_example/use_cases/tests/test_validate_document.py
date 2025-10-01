@@ -109,6 +109,7 @@ class TestValidateDocumentUseCase:
             policy_repo=policy_repo,
             document_policy_validation_repo=document_policy_validation_repo,
             knowledge_service=knowledge_service,
+            now_fn=lambda: datetime.now(timezone.utc),
         )
 
     def _create_configured_use_case(
@@ -131,6 +132,7 @@ class TestValidateDocumentUseCase:
             policy_repo=policy_repo,
             document_policy_validation_repo=document_policy_validation_repo,
             knowledge_service=memory_service,
+            now_fn=lambda: datetime.now(timezone.utc),
         )
 
     @pytest.mark.asyncio
