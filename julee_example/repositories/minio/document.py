@@ -16,7 +16,7 @@ import json
 import hashlib
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, Dict
 
 from minio.error import S3Error  # type: ignore[import-untyped]
 import multihash  # type: ignore[import-untyped]
@@ -24,6 +24,16 @@ import multihash  # type: ignore[import-untyped]
 from julee_example.domain import Document, ContentStream
 from julee_example.repositories.document import DocumentRepository
 from .client import MinioClient, MinioRepositoryMixin
+from pydantic import BaseModel, ConfigDict
+
+
+class RawMetadata(BaseModel):
+    """Simple wrapper for raw document metadata JSON."""
+
+    model_config = ConfigDict(extra="allow")  # Allow arbitrary fields
+
+    # Only include fields we actually use for type safety
+    content_multihash: Optional[str] = None
 
 
 class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
@@ -101,17 +111,18 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
 
             except S3Error as content_error:
                 if getattr(content_error, "code", None) == "NoSuchKey":
-                    self.logger.warning(
-                        "Document metadata found but content missing",
+                    self.logger.error(
+                        "Data integrity error: Document metadata exists but "
+                        "content missing",
                         extra={
                             "document_id": document_id,
                             "content_multihash": content_multihash,
                         },
                     )
-                    # Return document without content stream for metadata-only
-                    # operations
-                    document_dict["content"] = ContentStream(io.BytesIO(b""))
-                    return Document(**document_dict)
+                    raise ValueError(
+                        f"Document {document_id} metadata exists but content "
+                        f"is missing. Content multihash: {content_multihash}"
+                    )
                 else:
                     raise content_error
 
@@ -140,7 +151,13 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
             return None
 
     async def save(self, document: Document) -> None:
-        """Save a document with its content and metadata."""
+        """Save a document with its content and metadata.
+
+        If the document has content_string, it will be converted to a
+        ContentStream and stored. The content_string field should only be
+        used for small content (few KB) when saving from workflows/use-cases.
+        Call-sites in activities should always use the content stream.
+        """
         self.logger.info(
             "Saving document",
             extra={
@@ -156,6 +173,29 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         self.update_timestamps(document)
 
         try:
+            # Handle content_string conversion (only if no content provided)
+            if document.content_string is not None:
+                # Convert content_string to ContentStream
+                assert document.content_string is not None  # For MyPy
+                content_bytes = document.content_string.encode("utf-8")
+                content_stream = ContentStream(io.BytesIO(content_bytes))
+
+                # Create new document with ContentStream
+                document = document.model_copy(
+                    update={
+                        "content": content_stream,
+                        "size_bytes": len(content_bytes),
+                    }
+                )
+
+                self.logger.debug(
+                    "Converted content_string to ContentStream",
+                    extra={
+                        "document_id": document.document_id,
+                        "content_length": len(content_bytes),
+                    },
+                )
+
             # Store content first and get calculated multihash
             calculated_multihash = await self._store_content(document)
 
@@ -193,6 +233,111 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
                 exc_info=True,
             )
             raise
+
+    async def get_many(
+        self, document_ids: List[str]
+    ) -> Dict[str, Optional[Document]]:
+        """Retrieve multiple documents by ID using batch operations.
+
+        Args:
+            document_ids: List of unique document identifiers
+
+        Returns:
+            Dict mapping document_id to Document (or None if not found)
+
+        Note:
+            This implementation optimizes by batch-fetching metadata first,
+            then batch-fetching unique content streams, then splicing them
+            together.
+        """
+        if not document_ids:
+            return {}
+
+        self.logger.debug(
+            "MinioDocumentRepository: Attempting to retrieve multiple docs",
+            extra={
+                "document_ids": document_ids,
+                "count": len(document_ids),
+                "metadata_bucket": self.metadata_bucket,
+            },
+        )
+
+        # Step 1: Batch retrieve metadata for all documents
+        raw_metadata_results = self.get_many_json_objects(
+            bucket_name=self.metadata_bucket,
+            object_names=document_ids,  # Direct mapping for metadata
+            model_class=RawMetadata,
+            not_found_log_message="Document metadata not found",
+            error_log_message="Error retrieving document metadata",
+            extra_log_data={"document_ids": document_ids},
+        )
+
+        # Use RawMetadata objects directly
+        metadata_results: Dict[str, Optional[RawMetadata]] = (
+            raw_metadata_results
+        )
+
+        # Step 2: Extract unique content multihashes from found metadata
+        content_hashes = set()
+        for metadata in metadata_results.values():
+            if metadata and metadata.content_multihash:
+                content_hashes.add(metadata.content_multihash)
+
+        # Step 3: Batch retrieve content streams for unique hashes
+        content_results = {}
+        if content_hashes:
+            content_results = self.get_many_binary_objects(
+                bucket_name=self.content_bucket,
+                object_names=list(content_hashes),
+                not_found_log_message="Content not found",
+                error_log_message="Error retrieving content",
+                extra_log_data={
+                    "document_ids": document_ids,
+                    "unique_content_hashes": len(content_hashes),
+                },
+            )
+
+        # Step 4: Splice metadata and content together into Documents
+        result: Dict[str, Optional[Document]] = {}
+        for document_id in document_ids:
+            metadata = metadata_results.get(document_id)
+            if not metadata:
+                result[document_id] = None
+                continue
+
+            # Get content stream using multihash
+            content_multihash = metadata.content_multihash
+            content_stream = None
+            if content_multihash and content_multihash in content_results:
+                content_stream = content_results[content_multihash]
+
+            try:
+                # Convert RawMetadata to dict and add content
+                metadata_dict = metadata.model_dump()
+                metadata_dict["content"] = content_stream
+                result[document_id] = Document(**metadata_dict)
+            except Exception as e:
+                self.logger.error(
+                    "Failed to create Document from metadata",
+                    extra={
+                        "document_id": document_id,
+                        "error": str(e),
+                    },
+                )
+                result[document_id] = None
+
+        found_count = sum(1 for doc in result.values() if doc is not None)
+        self.logger.info(
+            f"Retrieved {found_count}/{len(document_ids)} documents",
+            extra={
+                "requested_count": len(document_ids),
+                "found_count": found_count,
+                "missing_count": len(document_ids) - found_count,
+                "unique_content_fetched": len(content_hashes),
+            },
+        )
+
+        return result
 
     async def generate_id(self) -> str:
         """Generate a unique document identifier."""
@@ -293,8 +438,10 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
         """Store document metadata to Minio with idempotency check."""
         object_name = document.document_id
 
-        # Serialize metadata (content stream is excluded from serialization)
-        metadata_json = document.model_dump_json().encode("utf-8")
+        # Serialize metadata (content stream and content_string excluded)
+        metadata_json = document.model_dump_json(
+            exclude={"content", "content_string"}
+        ).encode("utf-8")
 
         try:
             # Check if metadata already exists and is identical (idempotency)

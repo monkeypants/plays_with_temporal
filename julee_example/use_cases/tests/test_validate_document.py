@@ -10,6 +10,7 @@ import io
 import pytest
 from unittest.mock import AsyncMock
 from datetime import datetime, timezone
+from pydantic import ValidationError
 
 from julee_example.use_cases.validate_document import ValidateDocumentUseCase
 
@@ -29,8 +30,8 @@ from julee_example.domain.policy import (
 from julee_example.domain.knowledge_service_config import ServiceApi
 from julee_example.repositories.memory import (
     MemoryDocumentRepository,
-    MemoryKnowledgeServiceConfigRepository,
     MemoryKnowledgeServiceQueryRepository,
+    MemoryKnowledgeServiceConfigRepository,
     MemoryPolicyRepository,
     MemoryDocumentPolicyValidationRepository,
 )
@@ -38,7 +39,6 @@ from julee_example.services.knowledge_service.memory import (
     MemoryKnowledgeService,
 )
 from julee_example.services.knowledge_service import QueryResult
-import julee_example.use_cases.validate_document
 
 
 class TestValidateDocumentUseCase:
@@ -76,6 +76,19 @@ class TestValidateDocumentUseCase:
         return MemoryDocumentPolicyValidationRepository()
 
     @pytest.fixture
+    def knowledge_service(self) -> MemoryKnowledgeService:
+        """Create a memory KnowledgeService for testing."""
+        ks_config = KnowledgeServiceConfig(
+            knowledge_service_id="ks-test",
+            name="Test Knowledge Service",
+            description="Test service",
+            service_api=ServiceApi.ANTHROPIC,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        return MemoryKnowledgeService(ks_config)
+
+    @pytest.fixture
     def use_case(
         self,
         document_repo: MemoryDocumentRepository,
@@ -85,6 +98,7 @@ class TestValidateDocumentUseCase:
         document_policy_validation_repo: (
             MemoryDocumentPolicyValidationRepository
         ),
+        knowledge_service: MemoryKnowledgeService,
     ) -> ValidateDocumentUseCase:
         """Create ValidateDocumentUseCase with memory repository
         dependencies."""
@@ -94,6 +108,31 @@ class TestValidateDocumentUseCase:
             knowledge_service_config_repo=knowledge_service_config_repo,
             policy_repo=policy_repo,
             document_policy_validation_repo=document_policy_validation_repo,
+            knowledge_service=knowledge_service,
+            now_fn=lambda: datetime.now(timezone.utc),
+        )
+
+    def _create_configured_use_case(
+        self,
+        document_repo: MemoryDocumentRepository,
+        knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
+        knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+        policy_repo: MemoryPolicyRepository,
+        document_policy_validation_repo: (
+            MemoryDocumentPolicyValidationRepository
+        ),
+        memory_service: MemoryKnowledgeService,
+    ) -> ValidateDocumentUseCase:
+        """Helper to create ValidateDocumentUseCase with configured memory
+        service."""
+        return ValidateDocumentUseCase(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            knowledge_service=memory_service,
+            now_fn=lambda: datetime.now(timezone.utc),
         )
 
     @pytest.mark.asyncio
@@ -217,6 +256,9 @@ class TestValidateDocumentUseCase:
         policy_repo: MemoryPolicyRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
         knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+        document_policy_validation_repo: (
+            MemoryDocumentPolicyValidationRepository
+        ),
     ) -> None:
         """Test that validation fails when score cannot be parsed."""
         # Arrange - Create test document
@@ -282,25 +324,24 @@ class TestValidateDocumentUseCase:
             )
         )
 
-        # Patch the factory to return our configured memory service
-        module = julee_example.use_cases.validate_document
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        configured_use_case = self._create_configured_use_case(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            memory_service=memory_service,
         )
 
-        try:
-            # Act & Assert
-            with pytest.raises(
-                ValueError,
-                match="Failed to parse numeric score from response",
-            ):
-                await use_case.validate_document(
-                    document_id="doc-123", policy_id="policy-123"
-                )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act & Assert
+        with pytest.raises(
+            ValueError,
+            match="Failed to parse numeric score from response",
+        ):
+            await configured_use_case.validate_document(
+                document_id="doc-123", policy_id="policy-123"
+            )
 
     @pytest.mark.asyncio
     async def test_full_validation_workflow_success_pass(
@@ -406,21 +447,20 @@ class TestValidateDocumentUseCase:
             ]
         )
 
-        # Patch the factory to return our configured memory service
-        module = julee_example.use_cases.validate_document
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        configured_use_case = self._create_configured_use_case(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            memory_service=memory_service,
         )
 
-        try:
-            # Act
-            result = await use_case.validate_document(
-                document_id="doc-123", policy_id="policy-123"
-            )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act
+        result = await configured_use_case.validate_document(
+            document_id="doc-123", policy_id="policy-123"
+        )
 
         # Assert
         assert isinstance(result, DocumentPolicyValidation)
@@ -518,21 +558,20 @@ class TestValidateDocumentUseCase:
             )
         )
 
-        # Patch the factory to return our configured memory service
-        module = julee_example.use_cases.validate_document
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        configured_use_case = self._create_configured_use_case(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            memory_service=memory_service,
         )
 
-        try:
-            # Act
-            await use_case.validate_document(
-                document_id="doc-456", policy_id="policy-456"
-            )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act
+        await configured_use_case.validate_document(
+            document_id="doc-456", policy_id="policy-456"
+        )
 
     @pytest.mark.asyncio
     async def test_validation_with_transformation_success(
@@ -649,21 +688,20 @@ class TestValidateDocumentUseCase:
             )
         )
 
-        # Patch the factory to return our configured memory service
-        module = julee_example.use_cases.validate_document
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        configured_use_case = self._create_configured_use_case(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            memory_service=memory_service,
         )
 
-        try:
-            # Act
-            result = await use_case.validate_document(
-                document_id="doc-transform-1", policy_id="policy-transform-1"
-            )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act
+        result = await configured_use_case.validate_document(
+            document_id="doc-transform-1", policy_id="policy-transform-1"
+        )
 
         # Assert
         assert isinstance(result, DocumentPolicyValidation)
@@ -706,6 +744,9 @@ class TestValidateDocumentUseCase:
         policy_repo: MemoryPolicyRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
         knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+        document_policy_validation_repo: (
+            MemoryDocumentPolicyValidationRepository
+        ),
     ) -> None:
         """Test validation with transformation that still fails after
         transformation."""
@@ -815,21 +856,20 @@ class TestValidateDocumentUseCase:
             )
         )
 
-        # Patch the factory
-        module = julee_example.use_cases.validate_document
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        configured_use_case = self._create_configured_use_case(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            memory_service=memory_service,
         )
 
-        try:
-            # Act
-            result = await use_case.validate_document(
-                document_id="doc-transform-2", policy_id="policy-transform-2"
-            )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act
+        result = await configured_use_case.validate_document(
+            document_id="doc-transform-2", policy_id="policy-transform-2"
+        )
 
         # Assert
         assert isinstance(result, DocumentPolicyValidation)
@@ -852,6 +892,9 @@ class TestValidateDocumentUseCase:
         policy_repo: MemoryPolicyRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
         knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+        document_policy_validation_repo: (
+            MemoryDocumentPolicyValidationRepository
+        ),
     ) -> None:
         """Test that transformation is skipped when initial validation
         passes."""
@@ -931,22 +974,20 @@ class TestValidateDocumentUseCase:
             )
         )
 
-        # Patch the factory
-        module = julee_example.use_cases.validate_document
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        configured_use_case = self._create_configured_use_case(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            memory_service=memory_service,
         )
 
-        try:
-            # Act
-            result = await use_case.validate_document(
-                document_id="doc-no-transform",
-                policy_id="policy-no-transform",
-            )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act
+        result = await configured_use_case.validate_document(
+            document_id="doc-no-transform", policy_id="policy-no-transform"
+        )
 
         # Assert
         assert isinstance(result, DocumentPolicyValidation)
@@ -967,6 +1008,9 @@ class TestValidateDocumentUseCase:
         policy_repo: MemoryPolicyRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
         knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+        document_policy_validation_repo: (
+            MemoryDocumentPolicyValidationRepository
+        ),
     ) -> None:
         """Test that transformation fails when result is not valid JSON."""
         # Arrange - Create test document
@@ -1058,25 +1102,25 @@ class TestValidateDocumentUseCase:
             )
         )
 
-        # Patch the factory
-        module = julee_example.use_cases.validate_document
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        configured_use_case = self._create_configured_use_case(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            memory_service=memory_service,
         )
 
-        try:
-            # Act & Assert
-            with pytest.raises(
-                ValueError, match="Transformation result must be valid JSON"
-            ):
-                await use_case.validate_document(
-                    document_id="doc-invalid-json",
-                    policy_id="policy-invalid-json",
-                )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act & Assert
+        with pytest.raises(
+            ValueError,
+            match="Transformation result must be valid JSON",
+        ):
+            await configured_use_case.validate_document(
+                document_id="doc-invalid-json",
+                policy_id="policy-invalid-json",
+            )
 
     @pytest.mark.asyncio
     async def test_transformation_query_not_found(
@@ -1158,6 +1202,9 @@ class TestValidateDocumentUseCase:
         policy_repo: MemoryPolicyRepository,
         knowledge_service_query_repo: MemoryKnowledgeServiceQueryRepository,
         knowledge_service_config_repo: MemoryKnowledgeServiceConfigRepository,
+        document_policy_validation_repo: (
+            MemoryDocumentPolicyValidationRepository
+        ),
     ) -> None:
         """Test that validation fails when domain model rejects out-of-range
         scores."""
@@ -1222,22 +1269,21 @@ class TestValidateDocumentUseCase:
             )
         )
 
-        # Patch the factory to return our configured memory service
-        module = julee_example.use_cases.validate_document
-        original_factory = module.knowledge_service_factory
-        module.knowledge_service_factory = (
-            lambda config: memory_service  # type: ignore[assignment]
+        # Create use case with configured memory service
+        configured_use_case = self._create_configured_use_case(
+            document_repo=document_repo,
+            knowledge_service_query_repo=knowledge_service_query_repo,
+            knowledge_service_config_repo=knowledge_service_config_repo,
+            policy_repo=policy_repo,
+            document_policy_validation_repo=document_policy_validation_repo,
+            memory_service=memory_service,
         )
 
-        try:
-            # Act & Assert - Domain model should reject out-of-range score
-            with pytest.raises(
-                ValueError,
-                match="must be between 0 and 100",
-            ):
-                await use_case.validate_document(
-                    document_id="doc-789", policy_id="policy-789"
-                )
-        finally:
-            # Restore original factory
-            module.knowledge_service_factory = original_factory
+        # Act & Assert
+        with pytest.raises(
+            ValidationError,
+            match="must be between 0 and 100",
+        ):
+            await configured_use_case.validate_document(
+                document_id="doc-789", policy_id="policy-789"
+            )

@@ -12,7 +12,7 @@ All operations are still async to maintain interface compatibility.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from julee_example.domain import Assembly
 from julee_example.repositories.assembly import AssemblyRepository
@@ -66,6 +66,19 @@ class MemoryAssemblyRepository(
             Unique assembly ID string
         """
         return self.generate_entity_id("assembly")
+
+    async def get_many(
+        self, assembly_ids: List[str]
+    ) -> Dict[str, Optional[Assembly]]:
+        """Retrieve multiple assemblies by ID.
+
+        Args:
+            assembly_ids: List of unique assembly identifiers
+
+        Returns:
+            Dict mapping assembly_id to Assembly (or None if not found)
+        """
+        return self.get_many_entities(assembly_ids)
 
     def _add_entity_specific_log_data(
         self, entity: Assembly, log_data: Dict[str, Any]

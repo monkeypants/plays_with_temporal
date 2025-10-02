@@ -16,7 +16,7 @@ Each query is stored as a separate object with the query ID as the key.
 import logging
 import uuid
 
-from typing import Optional
+from typing import Optional, List, Dict
 
 
 from julee_example.domain.assembly_specification import KnowledgeServiceQuery
@@ -122,3 +122,46 @@ class MinioKnowledgeServiceQueryRepository(
         )
 
         return query_id
+
+    async def get_many(
+        self, query_ids: List[str]
+    ) -> Dict[str, Optional[KnowledgeServiceQuery]]:
+        """Retrieve multiple knowledge service queries by ID.
+
+        Args:
+            query_ids: List of unique query identifiers
+
+        Returns:
+            Dict mapping query_id to KnowledgeServiceQuery (or None if not
+            found)
+        """
+        logger.debug(
+            "MinioKnowledgeServiceQueryRepository: Attempting to retrieve "
+            "multiple queries",
+            extra={
+                "query_ids": query_ids,
+                "count": len(query_ids),
+                "bucket": self.bucket_name,
+            },
+        )
+
+        # Convert query IDs to object names
+        object_names = [f"query/{query_id}.json" for query_id in query_ids]
+
+        # Get objects from Minio using batch method
+        object_results = self.get_many_json_objects(
+            bucket_name=self.bucket_name,
+            object_names=object_names,
+            model_class=KnowledgeServiceQuery,
+            not_found_log_message="Knowledge service query not found",
+            error_log_message="Error retrieving knowledge service query",
+            extra_log_data={"query_ids": query_ids},
+        )
+
+        # Convert object names back to query IDs for the result
+        result: Dict[str, Optional[KnowledgeServiceQuery]] = {}
+        for i, query_id in enumerate(query_ids):
+            object_name = object_names[i]
+            result[query_id] = object_results[object_name]
+
+        return result

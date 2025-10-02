@@ -10,7 +10,7 @@ The classes follow the naming pattern documented in systemPatterns.org:
 - Each repository type gets its own activity prefix
 """
 
-from util.repos.temporal.decorators import temporal_activity_registration
+from util.temporal.decorators import temporal_activity_registration
 from julee_example.repositories.minio.assembly import MinioAssemblyRepository
 from julee_example.repositories.minio.assembly_specification import (
     MinioAssemblySpecificationRepository,
@@ -22,6 +22,12 @@ from julee_example.repositories.minio.knowledge_service_config import (
 from julee_example.repositories.minio.knowledge_service_query import (
     MinioKnowledgeServiceQueryRepository,
 )
+from julee_example.repositories.minio.policy import (
+    MinioPolicyRepository,
+)
+from julee_example.repositories.minio.document_policy_validation import (
+    MinioDocumentPolicyValidationRepository,
+)
 
 # Import activity name bases from shared module
 from julee_example.repositories.temporal.activity_names import (
@@ -30,6 +36,8 @@ from julee_example.repositories.temporal.activity_names import (
     DOCUMENT_ACTIVITY_BASE,
     KNOWLEDGE_SERVICE_CONFIG_ACTIVITY_BASE,
     KNOWLEDGE_SERVICE_QUERY_ACTIVITY_BASE,
+    POLICY_ACTIVITY_BASE,
+    DOCUMENT_POLICY_VALIDATION_ACTIVITY_BASE,
 )
 
 
@@ -70,6 +78,22 @@ class TemporalMinioKnowledgeServiceQueryRepository(
     MinioKnowledgeServiceQueryRepository
 ):
     """Temporal activity wrapper for MinioKnowledgeServiceQueryRepository."""
+
+    pass
+
+
+@temporal_activity_registration(POLICY_ACTIVITY_BASE)
+class TemporalMinioPolicyRepository(MinioPolicyRepository):
+    """Temporal activity wrapper for MinioPolicyRepository."""
+
+    pass
+
+
+@temporal_activity_registration(DOCUMENT_POLICY_VALIDATION_ACTIVITY_BASE)
+class TemporalMinioDocumentPolicyValidationRepository(
+    MinioDocumentPolicyValidationRepository
+):
+    """Temporal activity wrapper for DocumentPolicyValidationRepository."""
 
     pass
 

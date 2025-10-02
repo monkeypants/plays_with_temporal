@@ -11,6 +11,7 @@ common patterns used across all Minio repository implementations to reduce
 code duplication and ensure consistent error handling and logging.
 """
 
+import io
 import json
 from datetime import datetime, timezone
 from typing import (
@@ -22,11 +23,16 @@ from typing import (
     List,
     Union,
     TypeVar,
+    BinaryIO,
 )
-from urllib3.response import HTTPResponse
+from urllib3.response import BaseHTTPResponse
 from minio.datatypes import Object
+from minio.api import ObjectWriteResult
 from minio.error import S3Error  # type: ignore[import-untyped]
 from pydantic import BaseModel
+
+# Import ContentStream here to avoid circular imports
+from julee_example.domain import ContentStream
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -67,11 +73,13 @@ class MinioClient(Protocol):
         self,
         bucket_name: str,
         object_name: str,
-        data: Any,
+        data: BinaryIO,
         length: int,
         content_type: str = "application/octet-stream",
-        metadata: Optional[Dict[str, str]] = None,
-    ) -> Any:
+        metadata: Optional[
+            Dict[str, Union[str, List[str], tuple[str]]]
+        ] = None,
+    ) -> ObjectWriteResult:
         """Store an object in the bucket.
 
         Args:
@@ -90,7 +98,9 @@ class MinioClient(Protocol):
         """
         ...
 
-    def get_object(self, bucket_name: str, object_name: str) -> HTTPResponse:
+    def get_object(
+        self, bucket_name: str, object_name: str
+    ) -> BaseHTTPResponse:
         """Retrieve an object from the bucket.
 
         Args:
@@ -193,6 +203,183 @@ class MinioRepositoryMixin:
                 )
                 raise
 
+    def get_many_json_objects(
+        self,
+        bucket_name: str,
+        object_names: List[str],
+        model_class: type[T],
+        not_found_log_message: str,
+        error_log_message: str,
+        extra_log_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Optional[T]]:
+        """Get multiple JSON objects from Minio and deserialize them.
+
+        Note: S3/MinIO does not have native batch retrieval operations.
+        This method makes individual GetObject calls for each object but
+        provides consolidated error handling, logging, and connection reuse.
+        The real benefit comes with other backends (PostgreSQL, Redis, etc.)
+        that support true batch operations.
+
+        Args:
+            bucket_name: Name of the bucket
+            object_names: List of object names to retrieve
+            model_class: Pydantic model class to deserialize to
+            not_found_log_message: Message to log when objects are not found
+            error_log_message: Message to log on other errors
+            extra_log_data: Additional data to include in log entries
+
+        Returns:
+            Dict mapping object_name to deserialized model (or None if not
+            found)
+
+        Raises:
+            S3Error: For non-NoSuchKey errors
+        """
+        extra_log_data = extra_log_data or {}
+        result: Dict[str, Optional[T]] = {}
+        found_count = 0
+
+        self.logger.debug(
+            "Attempting to retrieve multiple objects",
+            extra={
+                **extra_log_data,
+                "object_count": len(object_names),
+                "bucket_name": bucket_name,
+            },
+        )
+
+        for object_name in object_names:
+            try:
+                response = self.client.get_object(
+                    bucket_name=bucket_name, object_name=object_name
+                )
+
+                # Read and clean up response
+                data = response.read()
+                response.close()
+                response.release_conn()
+
+                # Deserialize JSON to Pydantic model
+                json_str = data.decode("utf-8")
+                json_dict = json.loads(json_str)
+
+                entity = model_class(**json_dict)
+                result[object_name] = entity
+                found_count += 1
+
+            except S3Error as e:
+                if getattr(e, "code", None) == "NoSuchKey":
+                    self.logger.debug(
+                        not_found_log_message,
+                        extra={**extra_log_data, "object_name": object_name},
+                    )
+                    result[object_name] = None
+                else:
+                    self.logger.error(
+                        error_log_message,
+                        extra={
+                            **extra_log_data,
+                            "object_name": object_name,
+                            "error": str(e),
+                        },
+                    )
+                    raise
+
+        self.logger.info(
+            f"Retrieved {found_count}/{len(object_names)} objects",
+            extra={
+                **extra_log_data,
+                "requested_count": len(object_names),
+                "found_count": found_count,
+                "missing_count": len(object_names) - found_count,
+                "bucket_name": bucket_name,
+            },
+        )
+
+        return result
+
+    def get_many_binary_objects(
+        self,
+        bucket_name: str,
+        object_names: List[str],
+        not_found_log_message: str,
+        error_log_message: str,
+        extra_log_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Optional[ContentStream]]:
+        """Get multiple binary objects from Minio as ContentStreams.
+
+        Note: S3/MinIO does not have native batch retrieval operations.
+        This method makes individual GetObject calls for each object but
+        provides consolidated error handling, logging, and connection reuse.
+
+        Args:
+            bucket_name: Name of the bucket
+            object_names: List of object names to retrieve
+            not_found_log_message: Message to log when objects are not found
+            error_log_message: Message to log on other errors
+            extra_log_data: Additional data to include in log entries
+
+        Returns:
+            Dict mapping object_name to ContentStream (or None if not found)
+
+        Raises:
+            S3Error: For non-NoSuchKey errors
+        """
+        extra_log_data = extra_log_data or {}
+        result: Dict[str, Optional[ContentStream]] = {}
+        found_count = 0
+
+        self.logger.debug(
+            "Attempting to retrieve multiple binary objects",
+            extra={
+                **extra_log_data,
+                "object_count": len(object_names),
+                "bucket_name": bucket_name,
+            },
+        )
+
+        for object_name in object_names:
+            try:
+                response = self.client.get_object(
+                    bucket_name=bucket_name, object_name=object_name
+                )
+
+                # Create ContentStream directly from the response
+                content_stream = ContentStream(response)
+                result[object_name] = content_stream
+                found_count += 1
+
+            except S3Error as e:
+                if getattr(e, "code", None) == "NoSuchKey":
+                    self.logger.debug(
+                        not_found_log_message,
+                        extra={**extra_log_data, "object_name": object_name},
+                    )
+                    result[object_name] = None
+                else:
+                    self.logger.error(
+                        error_log_message,
+                        extra={
+                            **extra_log_data,
+                            "object_name": object_name,
+                            "error": str(e),
+                        },
+                    )
+                    raise
+
+        self.logger.info(
+            f"Retrieved {found_count}/{len(object_names)} binary objects",
+            extra={
+                **extra_log_data,
+                "requested_count": len(object_names),
+                "found_count": found_count,
+                "missing_count": len(object_names) - found_count,
+                "bucket_name": bucket_name,
+            },
+        )
+
+        return result
+
     def get_json_object(
         self,
         bucket_name: str,
@@ -279,11 +466,12 @@ class MinioRepositoryMixin:
             # Serialize using Pydantic's JSON serialization
             json_data = model.model_dump_json()
 
+            json_bytes = json_data.encode("utf-8")
             self.client.put_object(
                 bucket_name=bucket_name,
                 object_name=object_name,
-                data=json_data.encode("utf-8"),
-                length=len(json_data.encode("utf-8")),
+                data=io.BytesIO(json_bytes),
+                length=len(json_bytes),
                 content_type="application/json",
             )
 

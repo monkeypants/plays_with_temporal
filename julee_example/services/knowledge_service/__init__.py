@@ -13,7 +13,7 @@ from .knowledge_service import (
     QueryResult,
     FileRegistrationResult,
 )
-from .factory import knowledge_service_factory
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,6 @@ def ensure_knowledge_service(service: object) -> KnowledgeService:
 
 __all__ = [
     "KnowledgeService",
-    "knowledge_service_factory",
     "ensure_knowledge_service",
     "QueryResult",
     "FileRegistrationResult",

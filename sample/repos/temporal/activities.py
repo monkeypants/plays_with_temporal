@@ -10,7 +10,7 @@ The classes follow the naming pattern documented in systemPatterns.org:
 - Each repository type gets its own activity prefix
 """
 
-from util.repos.temporal.decorators import temporal_activity_registration
+from util.temporal.decorators import temporal_activity_registration
 from sample.repos.minio.order import MinioOrderRepository
 from sample.repos.minio.payment import MinioPaymentRepository
 from sample.repos.minio.inventory import MinioInventoryRepository

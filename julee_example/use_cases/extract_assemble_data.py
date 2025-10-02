@@ -8,11 +8,10 @@ instances following the Clean Architecture principles.
 """
 
 import hashlib
-import io
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 import jsonpointer  # type: ignore
 import multihash
 import jsonschema
@@ -22,7 +21,6 @@ from julee_example.domain import (
     AssemblyStatus,
     Document,
     DocumentStatus,
-    ContentStream,
     AssemblySpecification,
     KnowledgeServiceQuery,
 )
@@ -33,8 +31,9 @@ from julee_example.repositories import (
     KnowledgeServiceQueryRepository,
     KnowledgeServiceConfigRepository,
 )
-from julee_example.services import knowledge_service_factory, KnowledgeService
+from julee_example.services import KnowledgeService
 from sample.validation import ensure_repository_protocol
+from util.validation import validate_parameter_types
 from .decorators import try_use_case_step
 
 logger = logging.getLogger(__name__)
@@ -74,6 +73,8 @@ class ExtractAssembleDataUseCase:
         assembly_specification_repo: AssemblySpecificationRepository,
         knowledge_service_query_repo: KnowledgeServiceQueryRepository,
         knowledge_service_config_repo: KnowledgeServiceConfigRepository,
+        knowledge_service: KnowledgeService,
+        now_fn: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
         """Initialize extract and assemble data use case.
 
@@ -86,6 +87,9 @@ class ExtractAssembleDataUseCase:
                 query operations
             knowledge_service_config_repo: Repository for knowledge service
                 configuration operations
+            knowledge_service: Knowledge service instance for external
+                operations
+            now_fn: Function to get current time (for workflow compatibility)
 
         Note:
             The repositories passed here may be concrete implementations
@@ -98,19 +102,26 @@ class ExtractAssembleDataUseCase:
         """
         # Validate at construction time for early error detection
         self.document_repo = ensure_repository_protocol(
-            document_repo, DocumentRepository  # type: ignore[type-abstract]
+            document_repo,
+            DocumentRepository,  # type: ignore[type-abstract]
         )
+        self.knowledge_service = knowledge_service
+        self.now_fn = now_fn
         self.assembly_repo = ensure_repository_protocol(
-            assembly_repo, AssemblyRepository  # type: ignore[type-abstract]
+            assembly_repo,
+            AssemblyRepository,  # type: ignore[type-abstract]
         )
         self.assembly_specification_repo = ensure_repository_protocol(
-            assembly_specification_repo, AssemblySpecificationRepository  # type: ignore[type-abstract]
+            assembly_specification_repo,
+            AssemblySpecificationRepository,  # type: ignore[type-abstract]
         )
         self.knowledge_service_query_repo = ensure_repository_protocol(
-            knowledge_service_query_repo, KnowledgeServiceQueryRepository  # type: ignore[type-abstract]
+            knowledge_service_query_repo,
+            KnowledgeServiceQueryRepository,  # type: ignore[type-abstract]
         )
         self.knowledge_service_config_repo = ensure_repository_protocol(
-            knowledge_service_config_repo, KnowledgeServiceConfigRepository  # type: ignore[type-abstract]
+            knowledge_service_config_repo,
+            KnowledgeServiceConfigRepository,  # type: ignore[type-abstract]
         )
 
     async def assemble_data(
@@ -170,8 +181,8 @@ class ExtractAssembleDataUseCase:
             input_document_id=document_id,
             status=AssemblyStatus.IN_PROGRESS,
             assembled_document_id=None,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=self.now_fn(),
+            updated_at=self.now_fn(),
         )
         await self.assembly_repo.save(assembly)
 
@@ -186,15 +197,10 @@ class ExtractAssembleDataUseCase:
         # Step 4: Retrieve all knowledge service queries once
         queries = await self._retrieve_all_queries(assembly_specification)
 
-        # Step 5: Retrieve all knowledge services once
-        knowledge_services = await self._retrieve_all_knowledge_services(
-            queries
-        )
-
-        # Step 6: Register the document with knowledge services
+        # Step 5: Register the document with knowledge services
         document = await self._retrieve_document(document_id)
         document_registrations = await self._register_document_with_services(
-            document, queries, knowledge_services
+            document, queries
         )
 
         # Step 7: Perform the assembly iteration
@@ -204,7 +210,6 @@ class ExtractAssembleDataUseCase:
                 assembly_specification,
                 document_registrations,
                 queries,
-                knowledge_services,
             )
 
             # Step 8: Set the assembled document and return
@@ -238,11 +243,11 @@ class ExtractAssembleDataUseCase:
             raise
 
     @try_use_case_step("document_registration")
+    @validate_parameter_types()
     async def _register_document_with_services(
         self,
         document: Document,
         queries: Dict[str, KnowledgeServiceQuery],
-        knowledge_services: Dict[str, KnowledgeService],
     ) -> Dict[str, str]:
         """
         Register the document with all knowledge services needed for assembly.
@@ -253,8 +258,6 @@ class ExtractAssembleDataUseCase:
         Args:
             document: The document to register
             queries: Dict of query_id to KnowledgeServiceQuery objects
-            knowledge_services: Dict of service_id to KnowledgeService
-                instances
 
         Returns:
             Dict mapping knowledge_service_id to service_file_id
@@ -263,14 +266,24 @@ class ExtractAssembleDataUseCase:
             RuntimeError: If registration fails
         """
         registrations = {}
+
         required_service_ids = {
             query.knowledge_service_id for query in queries.values()
         }
 
         for knowledge_service_id in required_service_ids:
-            knowledge_service = knowledge_services[knowledge_service_id]
-            registration_result = await knowledge_service.register_file(
-                document
+            # Get the config for this service
+            config = await self.knowledge_service_config_repo.get(
+                knowledge_service_id
+            )
+            if not config:
+                raise ValueError(
+                    f"Knowledge service config not found: "
+                    f"{knowledge_service_id}"
+                )
+
+            registration_result = await self.knowledge_service.register_file(
+                config, document
             )
             registrations[knowledge_service_id] = (
                 registration_result.knowledge_service_file_id
@@ -283,12 +296,45 @@ class ExtractAssembleDataUseCase:
         self, assembly_specification: AssemblySpecification
     ) -> Dict[str, KnowledgeServiceQuery]:
         """Retrieve all knowledge service queries needed for this assembly."""
-        # TODO: we should update the interface to take multiple ids (for all
-        # repositories), since most backends will support fetching multiple.
+        query_ids = list(
+            assembly_specification.knowledge_service_queries.values()
+        )
+
+        # TODO: TEMPORAL SERIALIZATION ISSUE - Replace with get_many when
+        # fixed
+        #
+        # Issue: Complex return type
+        # Dict[str, Optional[KnowledgeServiceQuery]] from get_many causes
+        # Temporal's type system to fall back to typing.Any, resulting in
+        # Pydantic models being deserialized as plain dictionaries instead of
+        # model instances.
+        #
+        # Error: "SERIALIZATION ISSUE DETECTED: parameter
+        # 'queries'['query-id'] is dict instead of KnowledgeServiceQuery!"
+        #
+        # Root Cause: Temporal's type resolution cannot handle the complex
+        # nested generic type Dict[str, Optional[T]] and passes typing.Any to
+        # the data converter, which then deserializes to plain dicts.
+        #
+        # Investigation: Full analysis showed:
+        # - Data converter debug output confirming typing.Any fallback
+        # - Repository type resolution working correctly
+        # - Guard check system detecting the exact issue
+        # - Evidence that simpler types (Optional[T]) work fine
+        #
+        # Temporary Fix: Use individual get() calls which return Optional[T]
+        # that Temporal handles correctly.
+        #
+        # Future Solutions:
+        # 1. Fix Temporal's type resolution for complex nested generics
+        # 2. Create custom data converter for this specific type pattern
+        # 3. Simplify repository interface to avoid Optional in batch
+        #    operations
+        #
+        # Currently using individual get calls to avoid complex type
+        # serialization issue
         queries = {}
-        for (
-            query_id
-        ) in assembly_specification.knowledge_service_queries.values():
+        for query_id in query_ids:
             query = await self.knowledge_service_query_repo.get(query_id)
             if not query:
                 raise ValueError(
@@ -297,22 +343,6 @@ class ExtractAssembleDataUseCase:
             queries[query_id] = query
         return queries
 
-    @try_use_case_step("knowledge_services_retrieval")
-    async def _retrieve_all_knowledge_services(
-        self, queries: Dict[str, KnowledgeServiceQuery]
-    ) -> Dict[str, KnowledgeService]:
-        """Retrieve all unique knowledge services needed for this assembly."""
-        knowledge_services = {}
-        unique_service_ids = {
-            query.knowledge_service_id for query in queries.values()
-        }
-
-        for service_id in unique_service_ids:
-            knowledge_service = await self._get_knowledge_service(service_id)
-            knowledge_services[service_id] = knowledge_service
-
-        return knowledge_services
-
     @try_use_case_step("assembly_iteration")
     async def _assemble_iteration(
         self,
@@ -320,7 +350,6 @@ class ExtractAssembleDataUseCase:
         assembly_specification: AssemblySpecification,
         document_registrations: Dict[str, str],
         queries: Dict[str, KnowledgeServiceQuery],
-        knowledge_services: Dict[str, KnowledgeService],
     ) -> str:
         """
         Perform a single assembly iteration using knowledge services.
@@ -336,8 +365,6 @@ class ExtractAssembleDataUseCase:
             assembly_specification: The specification defining how to assemble
             document_registrations: Mapping of service_id to service_file_id
             queries: Dict of query_id to KnowledgeServiceQuery objects
-            knowledge_services: Dict of service_id to KnowledgeService
-                instances
 
         Returns:
             ID of the newly created assembled document
@@ -356,7 +383,6 @@ class ExtractAssembleDataUseCase:
             schema_pointer,
             query_id,
         ) in assembly_specification.knowledge_service_queries.items():
-
             # Get the relevant schema section
             schema_section = self._extract_schema_section(
                 assembly_specification.jsonschema, schema_pointer
@@ -365,8 +391,16 @@ class ExtractAssembleDataUseCase:
             # Get the query configuration
             query = queries[query_id]
 
-            # Get the knowledge service
-            knowledge_service = knowledge_services[query.knowledge_service_id]
+            # Get the config for this service
+            config = await self.knowledge_service_config_repo.get(
+                query.knowledge_service_id
+            )
+
+            if not config:
+                raise ValueError(
+                    f"Knowledge service config not found: "
+                    f"{query.knowledge_service_id}"
+                )
 
             # Get the service file ID from our registrations
             service_file_id = document_registrations.get(
@@ -383,11 +417,12 @@ class ExtractAssembleDataUseCase:
                 query.prompt, schema_section
             )
 
-            query_result = await knowledge_service.execute_query(
-                query_text=query_text,
-                service_file_ids=[service_file_id],
-                query_metadata=query.query_metadata,
-                assistant_prompt=query.assistant_prompt,
+            query_result = await self.knowledge_service.execute_query(
+                config,
+                query_text,
+                [service_file_id],
+                query.query_metadata,
+                query.assistant_prompt,
             )
 
             # Parse and store the result
@@ -436,20 +471,6 @@ class ExtractAssembleDataUseCase:
             raise ValueError(f"Document not found: {document_id}")
         return document
 
-    @try_use_case_step("knowledge_service_creation")
-    async def _get_knowledge_service(
-        self, knowledge_service_id: str
-    ) -> KnowledgeService:
-        """Get knowledge service instance with error handling."""
-        config = await self.knowledge_service_config_repo.get(
-            knowledge_service_id
-        )
-        if not config:
-            raise ValueError(
-                f"Knowledge service config not found: {knowledge_service_id}"
-            )
-        return knowledge_service_factory(config)
-
     def _extract_schema_section(
         self, jsonschema: Dict[str, Any], schema_pointer: str
     ) -> Any:
@@ -492,8 +513,9 @@ text or markdown formatting."""
             return parsed_result
         except json.JSONDecodeError as e:
             raise ValueError(
-                f"Knowledge service response must be valid JSON, got: "
-                f"{response_text[:100]}... Parse error: {e}"
+                f"Knowledge service response must be valid JSON. "
+                f"Complete response: {response_text} "
+                f"Parse error: {e}"
             )
 
     def _store_result_in_assembled_data(
@@ -571,9 +593,6 @@ text or markdown formatting."""
         assembled_content = json.dumps(assembled_data, indent=2)
         content_bytes = assembled_content.encode("utf-8")
 
-        # Create the assembled document with content stream at beginning
-        content_stream = ContentStream(io.BytesIO(content_bytes))
-
         assembled_document = Document(
             document_id=document_id,
             original_filename=(
@@ -586,9 +605,9 @@ text or markdown formatting."""
                 content_bytes
             ),
             status=DocumentStatus.ASSEMBLED,
-            content=content_stream,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            content_string=assembled_content,  # Use content_string for small
+            created_at=self.now_fn(),
+            updated_at=self.now_fn(),
         )
 
         # Save the document

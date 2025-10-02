@@ -85,7 +85,9 @@ class TestMemoryKnowledgeService:
         test_document: Document,
     ) -> None:
         """Test that register_file creates a new file registration."""
-        result = await memory_service.register_file(test_document)
+        result = await memory_service.register_file(
+            knowledge_service_config, test_document
+        )
 
         assert result.document_id == test_document.document_id
         assert result.knowledge_service_file_id.startswith(
@@ -101,12 +103,19 @@ class TestMemoryKnowledgeService:
         assert isinstance(result.created_at, datetime)
 
     async def test_register_file_idempotent(
-        self, memory_service: MemoryKnowledgeService, test_document: Document
+        self,
+        memory_service: MemoryKnowledgeService,
+        knowledge_service_config: KnowledgeServiceConfig,
+        test_document: Document,
     ) -> None:
         """Test that registering the same document returns same result."""
         # Register twice
-        result1 = await memory_service.register_file(test_document)
-        result2 = await memory_service.register_file(test_document)
+        result1 = await memory_service.register_file(
+            knowledge_service_config, test_document
+        )
+        result2 = await memory_service.register_file(
+            knowledge_service_config, test_document
+        )
 
         # Should get the exact same result
         assert result1 == result2
@@ -115,10 +124,15 @@ class TestMemoryKnowledgeService:
         )
 
     async def test_register_file_stores_in_memory(
-        self, memory_service: MemoryKnowledgeService, test_document: Document
+        self,
+        memory_service: MemoryKnowledgeService,
+        knowledge_service_config: KnowledgeServiceConfig,
+        test_document: Document,
     ) -> None:
         """Test that register_file stores the result in memory."""
-        result = await memory_service.register_file(test_document)
+        result = await memory_service.register_file(
+            knowledge_service_config, test_document
+        )
         file_id = result.knowledge_service_file_id
 
         # Should be able to retrieve the registration
@@ -140,7 +154,10 @@ class TestMemoryKnowledgeService:
         assert result == {}
 
     async def test_get_all_registered_files_after_registration(
-        self, memory_service: MemoryKnowledgeService, test_document: Document
+        self,
+        memory_service: MemoryKnowledgeService,
+        knowledge_service_config: KnowledgeServiceConfig,
+        test_document: Document,
     ) -> None:
         """Test get_all_registered_files after registering files."""
         # Create a second test document
@@ -160,8 +177,12 @@ class TestMemoryKnowledgeService:
             updated_at=datetime.now(timezone.utc),
         )
 
-        result1 = await memory_service.register_file(test_document)
-        result2 = await memory_service.register_file(doc2)
+        result1 = await memory_service.register_file(
+            knowledge_service_config, test_document
+        )
+        result2 = await memory_service.register_file(
+            knowledge_service_config, doc2
+        )
 
         all_files = memory_service.get_all_registered_files()
 
@@ -200,14 +221,18 @@ class TestMemoryKnowledgeService:
         assert len(memory_service._canned_query_results) == 0
 
     async def test_execute_query_no_canned_results_raises_error(
-        self, memory_service: MemoryKnowledgeService
+        self,
+        memory_service: MemoryKnowledgeService,
+        knowledge_service_config: KnowledgeServiceConfig,
     ) -> None:
         """Test that execute_query raises error when no canned results."""
         with pytest.raises(
             ValueError,
             match="No canned query results available",
         ):
-            await memory_service.execute_query("What is this?")
+            await memory_service.execute_query(
+                knowledge_service_config, "What is this?"
+            )
 
     async def test_execute_query_returns_canned_result(
         self,
@@ -221,7 +246,9 @@ class TestMemoryKnowledgeService:
 
         memory_service.add_canned_query_result(sample_query_result)
 
-        result = await memory_service.execute_query(query_text, document_ids)
+        result = await memory_service.execute_query(
+            knowledge_service_config, query_text, document_ids
+        )
 
         # Should return updated result with actual query parameters
         assert result.query_id == sample_query_result.query_id
@@ -262,12 +289,16 @@ class TestMemoryKnowledgeService:
         memory_service.add_canned_query_result(result2)
 
         # First execute_query should return first added result
-        first_returned = await memory_service.execute_query("test query 1")
+        first_returned = await memory_service.execute_query(
+            knowledge_service_config, "test query 1"
+        )
         assert first_returned.query_id == "query-1"
         assert first_returned.result_data["response"] == "First response"
 
         # Second execute_query should return second added result
-        second_returned = await memory_service.execute_query("test query 2")
+        second_returned = await memory_service.execute_query(
+            knowledge_service_config, "test query 2"
+        )
         assert second_returned.query_id == "query-2"
         assert second_returned.result_data["response"] == "Second response"
 
@@ -277,25 +308,31 @@ class TestMemoryKnowledgeService:
     async def test_execute_query_with_none_document_ids(
         self,
         memory_service: MemoryKnowledgeService,
+        knowledge_service_config: KnowledgeServiceConfig,
         sample_query_result: QueryResult,
     ) -> None:
         """Test execute_query with None document_ids parameter."""
         memory_service.add_canned_query_result(sample_query_result)
 
-        result = await memory_service.execute_query("test query", None)
+        result = await memory_service.execute_query(
+            knowledge_service_config, "test query", None
+        )
 
         assert result.result_data["queried_documents"] == []
 
     async def test_execute_query_updates_created_at(
         self,
         memory_service: MemoryKnowledgeService,
+        knowledge_service_config: KnowledgeServiceConfig,
         sample_query_result: QueryResult,
     ) -> None:
         """Test that execute_query updates created_at timestamp."""
         original_created_at = sample_query_result.created_at
         memory_service.add_canned_query_result(sample_query_result)
 
-        result = await memory_service.execute_query("test query")
+        result = await memory_service.execute_query(
+            knowledge_service_config, "test query"
+        )
 
         # created_at should be updated to current time
         assert result.created_at is not None

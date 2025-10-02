@@ -20,7 +20,7 @@ Classes using this mixin must provide:
 
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, TypeVar, Generic
+from typing import Optional, Dict, Any, TypeVar, Generic, List
 from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
@@ -84,6 +84,49 @@ class MemoryRepositoryMixin(Generic[T]):
         )
 
         return entity
+
+    def get_many_entities(
+        self, entity_ids: List[str]
+    ) -> Dict[str, Optional[T]]:
+        """Get multiple entities from memory storage with standardized
+        logging.
+
+        Args:
+            entity_ids: List of unique entity identifiers
+
+        Returns:
+            Dict mapping entity_id to entity (or None if not found)
+        """
+        self.logger.debug(
+            f"Memory{self.entity_name}Repository: Attempting to retrieve "
+            f"multiple {self.entity_name.lower()}s",
+            extra={
+                f"{self.entity_name.lower()}_ids": entity_ids,
+                "count": len(entity_ids),
+            },
+        )
+
+        result: Dict[str, Optional[T]] = {}
+        found_count = 0
+
+        for entity_id in entity_ids:
+            entity = self.storage_dict.get(entity_id)
+            result[entity_id] = entity
+            if entity is not None:
+                found_count += 1
+
+        self.logger.info(
+            f"Memory{self.entity_name}Repository: Retrieved "
+            f"{found_count}/{len(entity_ids)} {self.entity_name.lower()}s",
+            extra={
+                f"{self.entity_name.lower()}_ids": entity_ids,
+                "requested_count": len(entity_ids),
+                "found_count": found_count,
+                "missing_count": len(entity_ids) - found_count,
+            },
+        )
+
+        return result
 
     def save_entity(self, entity: T, entity_id_field: str) -> None:
         """Save an entity to memory storage with timestamp management.
