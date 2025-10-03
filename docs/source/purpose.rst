@@ -127,8 +127,8 @@ and remain loosely coupled from the activities
 
 The current implementation is an attempt to do a few useful things
 while producing a trust-graph that can be
-subject to algorithmic due dilligence.
-But the goal is to learn how to write code with these qualities more generaly.
+subject to algorithmic due diligence.
+But the goal is to learn how to write code with these qualities more generally.
 This is another benefit of clean architecture layering,
 we should be able to add new processes and domain models.
 Clean Architecture advocation often focusses on the ability to substitute
