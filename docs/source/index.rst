@@ -28,6 +28,7 @@ There is also:
    :maxdepth: 2
    :caption: Architecture:
 
+   purpose
    clean_architecture
    patterns
 
