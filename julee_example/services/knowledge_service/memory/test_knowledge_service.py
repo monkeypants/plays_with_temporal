@@ -13,8 +13,10 @@ from julee_example.domain import (
     Document,
     DocumentStatus,
 )
-from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.domain.custom_fields.content_stream import ContentStream
+from julee_example.domain.models.knowledge_service_config import ServiceApi
+from julee_example.domain.models.custom_fields.content_stream import (
+    ContentStream,
+)
 from ..knowledge_service import QueryResult
 from .knowledge_service import MemoryKnowledgeService
 import io

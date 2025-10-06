@@ -15,7 +15,7 @@ All operations are still async to maintain interface compatibility.
 import logging
 from typing import Optional, Dict, Any, List
 
-from julee_example.domain.policy import DocumentPolicyValidation
+from julee_example.domain.models.policy import DocumentPolicyValidation
 from julee_example.repositories.document_policy_validation import (
     DocumentPolicyValidationRepository,
 )

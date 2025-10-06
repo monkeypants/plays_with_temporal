@@ -21,7 +21,7 @@ from julee_example.domain import (
     ContentStream,
     KnowledgeServiceQuery,
 )
-from julee_example.domain.policy import (
+from julee_example.domain.models.policy import (
     DocumentPolicyValidation,
     DocumentPolicyValidationStatus,
     Policy,

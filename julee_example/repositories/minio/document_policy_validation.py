@@ -16,7 +16,7 @@ status, scores, transformation results, and metadata.
 import logging
 from typing import Optional, List, Dict
 
-from julee_example.domain.policy import DocumentPolicyValidation
+from julee_example.domain.models.policy import DocumentPolicyValidation
 from julee_example.repositories.document_policy_validation import (
     DocumentPolicyValidationRepository,
 )

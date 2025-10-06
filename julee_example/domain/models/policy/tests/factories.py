@@ -10,7 +10,7 @@ from factory.base import Factory
 from factory.faker import Faker
 from factory.declarations import LazyFunction
 
-from julee_example.domain.policy import (
+from julee_example.domain.models.policy import (
     DocumentPolicyValidation,
     DocumentPolicyValidationStatus,
 )

@@ -10,7 +10,7 @@ avoid external dependencies during testing.
 import pytest
 from datetime import datetime, timezone
 
-from julee_example.domain.policy import (
+from julee_example.domain.models.policy import (
     DocumentPolicyValidation,
     DocumentPolicyValidationStatus,
 )

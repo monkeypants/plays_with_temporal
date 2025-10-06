@@ -9,7 +9,7 @@ import pytest
 from datetime import datetime, timezone
 from pydantic import ValidationError
 
-from julee_example.domain.policy import (
+from julee_example.domain.models.policy import (
     Policy,
     PolicyStatus,
 )

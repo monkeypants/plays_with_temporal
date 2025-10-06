@@ -13,7 +13,9 @@ from pydantic import ValidationInfo
 from typing import Callable, Optional, List, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
-from ..custom_fields.content_stream import ContentStream
+from julee_example.domain.models.custom_fields.content_stream import (
+    ContentStream,
+)
 
 
 def delegate_to_content(*method_names: str) -> Callable[[type], type]:

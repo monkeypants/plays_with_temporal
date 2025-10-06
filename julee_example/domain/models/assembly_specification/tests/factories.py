@@ -11,7 +11,7 @@ from factory.base import Factory
 from factory.faker import Faker
 from factory.declarations import LazyAttribute, LazyFunction
 
-from julee_example.domain.assembly_specification import (
+from julee_example.domain.models.assembly_specification import (
     AssemblySpecification,
     AssemblySpecificationStatus,
     KnowledgeServiceQuery,

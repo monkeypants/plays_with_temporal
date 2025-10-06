@@ -20,7 +20,9 @@ Design decisions documented:
 
 import pytest
 
-from julee_example.domain.assembly_specification import KnowledgeServiceQuery
+from julee_example.domain.models.assembly_specification import (
+    KnowledgeServiceQuery,
+)
 from .factories import KnowledgeServiceQueryFactory
 
 

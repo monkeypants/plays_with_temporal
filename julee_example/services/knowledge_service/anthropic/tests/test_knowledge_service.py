@@ -16,8 +16,10 @@ from julee_example.domain import (
     Document,
     DocumentStatus,
 )
-from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.domain.custom_fields.content_stream import ContentStream
+from julee_example.domain.models.knowledge_service_config import ServiceApi
+from julee_example.domain.models.custom_fields.content_stream import (
+    ContentStream,
+)
 from julee_example.services.knowledge_service.anthropic import (
     knowledge_service as anthropic_ks,
 )

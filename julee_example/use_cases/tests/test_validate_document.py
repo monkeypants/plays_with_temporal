@@ -21,13 +21,13 @@ from julee_example.domain import (
     KnowledgeServiceConfig,
     KnowledgeServiceQuery,
 )
-from julee_example.domain.policy import (
+from julee_example.domain.models.policy import (
     Policy,
     PolicyStatus,
     DocumentPolicyValidation,
     DocumentPolicyValidationStatus,
 )
-from julee_example.domain.knowledge_service_config import ServiceApi
+from julee_example.domain.models.knowledge_service_config import ServiceApi
 from julee_example.repositories.memory import (
     MemoryDocumentRepository,
     MemoryKnowledgeServiceQueryRepository,

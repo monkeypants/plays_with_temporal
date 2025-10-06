@@ -12,8 +12,10 @@ from factory.base import Factory
 from factory.faker import Faker
 from factory.declarations import LazyAttribute, LazyFunction
 
-from julee_example.domain.document import Document, DocumentStatus
-from julee_example.domain.custom_fields.content_stream import ContentStream
+from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.domain.models.custom_fields.content_stream import (
+    ContentStream,
+)
 
 
 # Helper functions to generate content bytes consistently
