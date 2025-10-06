@@ -5,5 +5,5 @@
     "max_tokens": 5,
     "temperature": 0.0
   },
-  "assistant_prompt": "I will evaluate the professionalism and respond with only a single number from 0 to 100:"
+  "assistant_prompt": "I have evaluated the professionalism and my single number rating for professionalism in the range of 0 to 100 is:"
 }
