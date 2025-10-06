@@ -19,7 +19,7 @@ from util.temporal.decorators import temporal_activity_registration
 from julee_example.services.knowledge_service.factory import (
     ConfigurableKnowledgeService,
 )
-from julee_example.repositories.document import DocumentRepository
+from julee_example.domain.repositories.document import DocumentRepository
 from julee_example.domain import (
     KnowledgeServiceConfig,
     Document,

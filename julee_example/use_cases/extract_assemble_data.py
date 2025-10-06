@@ -24,7 +24,7 @@ from julee_example.domain import (
     AssemblySpecification,
     KnowledgeServiceQuery,
 )
-from julee_example.repositories import (
+from julee_example.domain.repositories import (
     DocumentRepository,
     AssemblyRepository,
     AssemblySpecificationRepository,

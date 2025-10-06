@@ -26,7 +26,7 @@ from julee_example.domain.models.policy import (
     DocumentPolicyValidationStatus,
     Policy,
 )
-from julee_example.repositories import (
+from julee_example.domain.repositories import (
     DocumentRepository,
     DocumentPolicyValidationRepository,
     KnowledgeServiceConfigRepository,

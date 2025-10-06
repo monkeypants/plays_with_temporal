@@ -16,7 +16,7 @@ import logging
 from typing import Optional, List, Dict
 
 from julee_example.domain import Policy
-from julee_example.repositories.policy import PolicyRepository
+from julee_example.domain.repositories.policy import PolicyRepository
 from .client import MinioClient, MinioRepositoryMixin
 
 

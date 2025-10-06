@@ -23,9 +23,10 @@ from julee_example.domain.models.assembly_specification import (
     KnowledgeServiceQuery,
 )
 from .client import MinioClient, MinioRepositoryMixin
-from julee_example.repositories.knowledge_service_query import (
+from julee_example.domain.repositories.knowledge_service_query import (
     KnowledgeServiceQueryRepository,
 )
+
 
 logger = logging.getLogger(__name__)
 

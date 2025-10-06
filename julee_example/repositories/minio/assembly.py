@@ -14,7 +14,7 @@ import logging
 from typing import Optional, List, Dict
 
 from julee_example.domain import Assembly
-from julee_example.repositories.assembly import AssemblyRepository
+from julee_example.domain.repositories.assembly import AssemblyRepository
 from .client import MinioClient, MinioRepositoryMixin
 
 

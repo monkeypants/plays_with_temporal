@@ -17,7 +17,7 @@ import logging
 from typing import Optional, Dict, Any, List
 
 from julee_example.domain import KnowledgeServiceConfig
-from julee_example.repositories.knowledge_service_config import (
+from julee_example.domain.repositories.knowledge_service_config import (
     KnowledgeServiceConfigRepository,
 )
 from .base import MemoryRepositoryMixin
