@@ -11,7 +11,10 @@ import pytest
 from julee_example.repositories.memory.document import (
     MemoryDocumentRepository,
 )
-from julee_example.domain import Document, DocumentStatus, ContentStream
+from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.domain.models.custom_fields.content_stream import (
+    ContentStream,
+)
 
 
 @pytest.fixture

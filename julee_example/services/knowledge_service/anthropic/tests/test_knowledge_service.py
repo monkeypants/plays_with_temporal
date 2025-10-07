@@ -11,13 +11,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 import io
 
-from julee_example.domain import (
+from julee_example.domain.models.knowledge_service_config import (
     KnowledgeServiceConfig,
-    Document,
-    DocumentStatus,
 )
-from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.domain.custom_fields.content_stream import ContentStream
+from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.domain.models.knowledge_service_config import ServiceApi
+from julee_example.domain.models.custom_fields.content_stream import (
+    ContentStream,
+)
 from julee_example.services.knowledge_service.anthropic import (
     knowledge_service as anthropic_ks,
 )

@@ -9,8 +9,7 @@ dependencies during testing.
 import pytest
 from datetime import datetime, timezone
 
-
-from julee_example.domain import Assembly, AssemblyStatus
+from julee_example.domain.models.assembly import Assembly, AssemblyStatus
 from julee_example.repositories.minio.assembly import MinioAssemblyRepository
 from .fake_client import FakeMinioClient
 

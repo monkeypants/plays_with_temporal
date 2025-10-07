@@ -15,8 +15,10 @@ should be avoided.
 import logging
 from typing import Dict, Optional, Any, List
 
-from julee_example.domain.assembly_specification import KnowledgeServiceQuery
-from julee_example.repositories.knowledge_service_query import (
+from julee_example.domain.models.assembly_specification import (
+    KnowledgeServiceQuery,
+)
+from julee_example.domain.repositories.knowledge_service_query import (
     KnowledgeServiceQueryRepository,
 )
 from .base import MemoryRepositoryMixin

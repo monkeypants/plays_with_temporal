@@ -13,8 +13,8 @@ the large payload handling pattern from the architectural guidelines.
 import logging
 from typing import Optional, List, Dict
 
-from julee_example.domain import Assembly
-from julee_example.repositories.assembly import AssemblyRepository
+from julee_example.domain.models.assembly import Assembly
+from julee_example.domain.repositories.assembly import AssemblyRepository
 from .client import MinioClient, MinioRepositoryMixin
 
 

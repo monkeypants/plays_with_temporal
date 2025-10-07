@@ -12,19 +12,19 @@ and retry policies.
 """
 
 from util.temporal.decorators import temporal_workflow_proxy
-from julee_example.repositories.assembly import AssemblyRepository
-from julee_example.repositories.assembly_specification import (
+from julee_example.domain.repositories.assembly import AssemblyRepository
+from julee_example.domain.repositories.assembly_specification import (
     AssemblySpecificationRepository,
 )
-from julee_example.repositories.document import DocumentRepository
-from julee_example.repositories.knowledge_service_config import (
+from julee_example.domain.repositories.document import DocumentRepository
+from julee_example.domain.repositories.knowledge_service_config import (
     KnowledgeServiceConfigRepository,
 )
-from julee_example.repositories.knowledge_service_query import (
+from julee_example.domain.repositories.knowledge_service_query import (
     KnowledgeServiceQueryRepository,
 )
-from julee_example.repositories.policy import PolicyRepository
-from julee_example.repositories.document_policy_validation import (
+from julee_example.domain.repositories.policy import PolicyRepository
+from julee_example.domain.repositories.document_policy_validation import (
     DocumentPolicyValidationRepository,
 )
 

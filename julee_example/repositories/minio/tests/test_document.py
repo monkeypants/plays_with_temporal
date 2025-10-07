@@ -16,7 +16,10 @@ from minio.error import S3Error
 
 
 from julee_example.repositories.minio.document import MinioDocumentRepository
-from julee_example.domain import Document, DocumentStatus, ContentStream
+from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.domain.models.custom_fields.content_stream import (
+    ContentStream,
+)
 from .fake_client import FakeMinioClient
 
 
@@ -237,7 +240,7 @@ class TestMinioDocumentRepositoryStore:
             object_name: str,
             data: Any,
             length: int,
-            **kwargs: Any
+            **kwargs: Any,
         ) -> Any:
             if bucket_name == "documents-content":
                 raise S3Error(
@@ -560,7 +563,7 @@ class TestMinioDocumentRepositoryErrorHandling:
             object_name: str,
             data: Any,
             length: int,
-            **kwargs: Any
+            **kwargs: Any,
         ) -> Any:
             if bucket_name == "documents":
                 raise S3Error(

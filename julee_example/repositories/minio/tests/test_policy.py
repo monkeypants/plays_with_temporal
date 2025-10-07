@@ -9,7 +9,7 @@ testing.
 import pytest
 from datetime import datetime, timezone
 
-from julee_example.domain import Policy, PolicyStatus
+from julee_example.domain.models.policy import Policy, PolicyStatus
 from julee_example.repositories.minio.policy import MinioPolicyRepository
 from .fake_client import FakeMinioClient
 

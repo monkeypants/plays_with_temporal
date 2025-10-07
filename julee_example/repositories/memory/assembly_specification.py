@@ -16,8 +16,10 @@ avoided. All operations are still async to maintain interface compatibility.
 import logging
 from typing import Optional, Dict, Any, List
 
-from julee_example.domain import AssemblySpecification
-from julee_example.repositories.assembly_specification import (
+from julee_example.domain.models.assembly_specification import (
+    AssemblySpecification,
+)
+from julee_example.domain.repositories.assembly_specification import (
     AssemblySpecificationRepository,
 )
 from .base import MemoryRepositoryMixin

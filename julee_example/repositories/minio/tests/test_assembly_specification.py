@@ -10,7 +10,7 @@ import pytest
 from datetime import datetime, timezone
 
 
-from julee_example.domain import (
+from julee_example.domain.models.assembly_specification import (
     AssemblySpecification,
     AssemblySpecificationStatus,
 )

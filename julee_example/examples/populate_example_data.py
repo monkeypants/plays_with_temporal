@@ -17,7 +17,7 @@ from typing import Dict
 
 from minio import Minio
 
-from julee_example.domain import (
+from julee_example.domain.models import (
     Document,
     DocumentStatus,
     ContentStream,
@@ -27,7 +27,7 @@ from julee_example.domain import (
     Policy,
     PolicyStatus,
 )
-from julee_example.domain.knowledge_service_config import ServiceApi
+from julee_example.domain.models.knowledge_service_config import ServiceApi
 from julee_example.repositories.minio.assembly_specification import (
     MinioAssemblySpecificationRepository,
 )

@@ -19,7 +19,10 @@ from datetime import datetime, timezone
 
 from anthropic import AsyncAnthropic
 
-from julee_example.domain import KnowledgeServiceConfig, Document
+from julee_example.domain.models.knowledge_service_config import (
+    KnowledgeServiceConfig,
+)
+from julee_example.domain.models.document import Document
 from ..knowledge_service import (
     KnowledgeService,
     QueryResult,
