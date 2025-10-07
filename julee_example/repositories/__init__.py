@@ -11,5 +11,7 @@ Implementation packages:
 
 Import implementations using their full module paths, e.g.:
     from julee_example.repositories.memory import MemoryDocumentRepository
-    from julee_example.repositories.minio.document import MinioDocumentRepository
+    from julee_example.repositories.minio.document import (
+        MinioDocumentRepository,
+    )
 """
