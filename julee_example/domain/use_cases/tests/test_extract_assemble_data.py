@@ -16,16 +16,18 @@ from datetime import datetime, timezone
 from ..extract_assemble_data import (
     ExtractAssembleDataUseCase,
 )
-from julee_example.domain import (
-    Assembly,
-    AssemblyStatus,
-    Document,
-    DocumentStatus,
+from julee_example.domain.models.assembly import Assembly, AssemblyStatus
+from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.domain.models.custom_fields.content_stream import (
     ContentStream,
+)
+from julee_example.domain.models.assembly_specification import (
     AssemblySpecification,
     AssemblySpecificationStatus,
-    KnowledgeServiceConfig,
     KnowledgeServiceQuery,
+)
+from julee_example.domain.models.knowledge_service_config import (
+    KnowledgeServiceConfig,
 )
 from julee_example.domain.models.knowledge_service_config import ServiceApi
 from julee_example.repositories.memory import (

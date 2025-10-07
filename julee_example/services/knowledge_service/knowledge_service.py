@@ -24,9 +24,11 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from julee_example.domain import KnowledgeServiceConfig
+    from julee_example.domain.models.knowledge_service_config import (
+        KnowledgeServiceConfig,
+    )
 
-from julee_example.domain import Document
+from julee_example.domain.models.document import Document
 
 
 class QueryResult(BaseModel):

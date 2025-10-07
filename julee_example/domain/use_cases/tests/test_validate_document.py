@@ -14,11 +14,14 @@ from pydantic import ValidationError
 
 from ..validate_document import ValidateDocumentUseCase
 
-from julee_example.domain import (
-    Document,
-    DocumentStatus,
+from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.domain.models.custom_fields.content_stream import (
     ContentStream,
+)
+from julee_example.domain.models.knowledge_service_config import (
     KnowledgeServiceConfig,
+)
+from julee_example.domain.models.assembly_specification import (
     KnowledgeServiceQuery,
 )
 from julee_example.domain.models.policy import (

@@ -30,7 +30,9 @@ stubs that delegate to activities for durability and proper error handling.
 """
 
 from typing import Protocol, runtime_checkable
-from julee_example.domain import AssemblySpecification
+from julee_example.domain.models.assembly_specification import (
+    AssemblySpecification,
+)
 from .base import BaseRepository
 
 

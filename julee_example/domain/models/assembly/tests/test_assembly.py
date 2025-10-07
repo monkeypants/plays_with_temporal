@@ -23,7 +23,7 @@ import pytest
 import json
 from datetime import datetime, timezone
 
-from julee_example.domain import Assembly, AssemblyStatus
+from julee_example.domain.models.assembly import Assembly, AssemblyStatus
 from .factories import AssemblyFactory
 
 

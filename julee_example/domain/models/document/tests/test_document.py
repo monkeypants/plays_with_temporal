@@ -22,7 +22,7 @@ Design decisions documented:
 import pytest
 import json
 
-from julee_example.domain import Document
+from julee_example.domain.models.document import Document
 from .factories import DocumentFactory, ContentStreamFactory
 
 

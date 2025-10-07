@@ -16,11 +16,9 @@ import jsonpointer  # type: ignore
 import multihash
 import jsonschema
 
-from julee_example.domain import (
-    Assembly,
-    AssemblyStatus,
-    Document,
-    DocumentStatus,
+from julee_example.domain.models.assembly import Assembly, AssemblyStatus
+from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.domain.models.assembly_specification import (
     AssemblySpecification,
     KnowledgeServiceQuery,
 )

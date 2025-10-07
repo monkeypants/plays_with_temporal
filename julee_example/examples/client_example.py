@@ -20,7 +20,7 @@ from julee_example.workflows import (
     ValidateDocumentWorkflow,
     VALIDATE_DOCUMENT_RETRY_POLICY,
 )
-from julee_example.domain import Assembly
+from julee_example.domain.models.assembly import Assembly
 from julee_example.domain.models.policy import DocumentPolicyValidation
 from julee_example.examples.populate_example_data import populate_example_data
 from julee_example.repositories.minio.document import MinioDocumentRepository

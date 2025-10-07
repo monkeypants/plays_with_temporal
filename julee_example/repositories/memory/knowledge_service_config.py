@@ -16,7 +16,9 @@ interface compatibility.
 import logging
 from typing import Optional, Dict, Any, List
 
-from julee_example.domain import KnowledgeServiceConfig
+from julee_example.domain.models.knowledge_service_config import (
+    KnowledgeServiceConfig,
+)
 from julee_example.domain.repositories.knowledge_service_config import (
     KnowledgeServiceConfigRepository,
 )
