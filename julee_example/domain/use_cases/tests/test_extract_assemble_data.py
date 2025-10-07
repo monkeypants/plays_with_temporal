@@ -13,7 +13,7 @@ import pytest
 from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 
-from julee_example.use_cases.extract_assemble_data import (
+from ..extract_assemble_data import (
     ExtractAssembleDataUseCase,
 )
 from julee_example.domain import (

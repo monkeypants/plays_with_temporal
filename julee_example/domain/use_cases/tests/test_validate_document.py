@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 from pydantic import ValidationError
 
-from julee_example.use_cases.validate_document import ValidateDocumentUseCase
+from ..validate_document import ValidateDocumentUseCase
 
 from julee_example.domain import (
     Document,

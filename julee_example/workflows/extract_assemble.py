@@ -12,7 +12,7 @@ from temporalio.common import RetryPolicy
 from datetime import timedelta
 
 from julee_example.domain import Assembly
-from julee_example.use_cases.extract_assemble_data import (
+from julee_example.domain.use_cases.extract_assemble_data import (
     ExtractAssembleDataUseCase,
 )
 from julee_example.repositories.temporal.proxies import (
