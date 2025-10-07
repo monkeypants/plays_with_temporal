@@ -10,10 +10,13 @@ Subpackages:
 - repositories: Repository interface protocols
 - use_cases: Business logic and application services
 
-Import domain components using their full module paths, e.g.:
-    from julee_example.domain.models.document import Document
-    from julee_example.domain.repositories.document import DocumentRepository
-    from julee_example.domain.use_cases.validate_document import (
-        ValidateDocumentUseCase,
-    )
+Import domain components using package imports for convenience, e.g.:
+    # Models from the models package
+    from julee_example.domain.models import Document, Assembly, Policy
+
+    # Repository protocols from the repositories package
+    from julee_example.domain.repositories import DocumentRepository
+
+    # Use cases from the use_cases package
+    from julee_example.domain.use_cases import ValidateDocumentUseCase
 """

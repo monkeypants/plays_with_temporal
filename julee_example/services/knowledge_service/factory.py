@@ -9,10 +9,10 @@ import logging
 
 from julee_example.domain.models.knowledge_service_config import (
     KnowledgeServiceConfig,
+    ServiceApi,
 )
 from .knowledge_service import KnowledgeService
 from .anthropic import AnthropicKnowledgeService
-from julee_example.domain.models.knowledge_service_config import ServiceApi
 from julee_example.domain.models.document import Document
 from julee_example.services.knowledge_service import (
     QueryResult,

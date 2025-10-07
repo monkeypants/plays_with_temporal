@@ -20,10 +20,10 @@ from julee_example.services.knowledge_service.factory import (
     ConfigurableKnowledgeService,
 )
 from julee_example.domain.repositories.document import DocumentRepository
-from julee_example.domain import (
+from julee_example.domain.models.knowledge_service_config import (
     KnowledgeServiceConfig,
-    Document,
 )
+from julee_example.domain.models.document import Document
 from ..knowledge_service import FileRegistrationResult
 
 # Import activity name bases from shared module

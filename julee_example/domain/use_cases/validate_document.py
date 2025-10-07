@@ -15,17 +15,16 @@ import multihash
 from datetime import datetime
 from typing import Callable, Dict, List, Tuple
 
-from julee_example.domain.models.document import Document, DocumentStatus
-from julee_example.domain.models.custom_fields.content_stream import (
+from julee_example.domain.models import (
+    Document,
+    DocumentStatus,
     ContentStream,
-)
-from julee_example.domain.models.assembly_specification import (
     KnowledgeServiceQuery,
+    DocumentPolicyValidation,
+    Policy,
 )
 from julee_example.domain.models.policy import (
-    DocumentPolicyValidation,
     DocumentPolicyValidationStatus,
-    Policy,
 )
 from julee_example.domain.repositories import (
     DocumentRepository,

@@ -12,16 +12,13 @@ from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 from pydantic import ValidationError
 
-from ..validate_document import ValidateDocumentUseCase
+from julee_example.domain.use_cases import ValidateDocumentUseCase
 
-from julee_example.domain.models.document import Document, DocumentStatus
-from julee_example.domain.models.custom_fields.content_stream import (
+from julee_example.domain.models import (
+    Document,
+    DocumentStatus,
     ContentStream,
-)
-from julee_example.domain.models.knowledge_service_config import (
     KnowledgeServiceConfig,
-)
-from julee_example.domain.models.assembly_specification import (
     KnowledgeServiceQuery,
 )
 from julee_example.domain.models.policy import (

@@ -17,7 +17,7 @@ from typing import Dict
 
 from minio import Minio
 
-from julee_example.domain import (
+from julee_example.domain.models import (
     Document,
     DocumentStatus,
     ContentStream,
