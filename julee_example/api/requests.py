@@ -8,7 +8,7 @@ duplication while maintaining single source of truth in the domain layer.
 """
 
 from typing import Dict, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 from datetime import datetime, timezone
 
 from julee_example.domain.models.assembly_specification import (
@@ -55,7 +55,7 @@ class CreateAssemblySpecificationRequest(BaseModel):
         ].description,
     )
     version: str = Field(
-        default="0.1.0",
+        default=AssemblySpecification.model_fields["version"].default,
         description=AssemblySpecification.model_fields["version"].description,
     )
 
@@ -78,7 +78,7 @@ class CreateAssemblySpecificationRequest(BaseModel):
     @field_validator("knowledge_service_queries")
     @classmethod
     def validate_knowledge_service_queries(
-        cls, v: Dict[str, str], info: Any
+        cls, v: Dict[str, str], info: ValidationInfo
     ) -> Dict[str, str]:
         return AssemblySpecification.knowledge_service_queries_must_be_valid(
             v, info
@@ -100,6 +100,7 @@ class CreateAssemblySpecificationRequest(BaseModel):
         Returns:
             AssemblySpecification: Complete domain object with system fields
         """
+        now = datetime.now(timezone.utc)
         return AssemblySpecification(
             assembly_specification_id=assembly_specification_id,
             name=self.name,
@@ -108,6 +109,6 @@ class CreateAssemblySpecificationRequest(BaseModel):
             knowledge_service_queries=self.knowledge_service_queries,
             version=self.version,
             status=AssemblySpecificationStatus.DRAFT,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=now,
+            updated_at=now,
         )
