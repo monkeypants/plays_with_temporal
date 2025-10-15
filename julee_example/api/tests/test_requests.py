@@ -43,24 +43,35 @@ class TestCreateAssemblySpecificationRequest:
     def test_validation_delegation_to_domain_model(self) -> None:
         """Test that validation is properly delegated to domain model."""
         # Test that domain model validation errors are raised
-        with pytest.raises(
-            ValidationError,
-            match="AssemblySpecification name cannot be empty",
-        ):
+        with pytest.raises(ValidationError) as err:
             CreateAssemblySpecificationRequest(
                 name="",  # Invalid empty name
                 applicability="Valid applicability",
                 jsonschema={"type": "object"},
             )
+        errors = err.value.errors()
+        # Check that the error is for the 'name' field and is a value error
+        assert any(
+            e["loc"] == ("name",)
+            and e["type"].startswith("value_error")
+            and "name cannot be empty" in e["msg"]
+            for e in errors
+        )
 
-        with pytest.raises(
-            ValidationError, match="JSON Schema must have a 'type' field"
-        ):
+        with pytest.raises(ValidationError) as err:
             CreateAssemblySpecificationRequest(
                 name="Valid Name",
                 applicability="Valid applicability",
                 jsonschema={"invalid": "schema"},  # Missing 'type' field
             )
+        errors = err.value.errors()
+        # Check that the error is for the 'jsonschema' field
+        assert any(
+            e["loc"] == ("jsonschema",)
+            and e["type"].startswith("value_error")
+            and "type" in e["msg"]
+            for e in errors
+        )
 
     def test_to_domain_model_conversion(self) -> None:
         """Test conversion from request model to domain model."""
