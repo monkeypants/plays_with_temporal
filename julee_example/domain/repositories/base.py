@@ -96,6 +96,33 @@ class BaseRepository(Protocol[T]):
         """
         ...
 
+    async def list_all(self) -> List[T]:
+        """List all entities.
+
+        Returns:
+            List of all entities in the repository
+
+        Implementation Notes:
+        - Must be idempotent: multiple calls return same result
+        - Returns empty list if no entities exist
+        - Should return entities in a consistent order (e.g., by ID)
+        - For large datasets, consider pagination at the use case level
+
+        Workflow Context:
+        In Temporal workflows, this method is implemented as an activity
+        to ensure the list operation is durably stored and consistent
+        across workflow replays.
+
+        Default Implementation:
+        Base protocol provides a default that returns empty list.
+        Repository implementations should override this method as needed.
+
+        TODO: This default implementation returns empty list to avoid
+        breaking existing repositories. Specific repositories should
+        implement proper list_all() functionality as needed.
+        """
+        return []
+
     async def generate_id(self) -> str:
         """Generate a unique entity identifier.
 
