@@ -91,6 +91,28 @@ class MemoryKnowledgeServiceQueryRepository(
         """
         return self.generate_entity_id("query")
 
+    async def list_all(self) -> List[KnowledgeServiceQuery]:
+        """List all knowledge service queries.
+
+        Returns:
+            List of all knowledge service queries, sorted by query_id
+        """
+        self.logger.debug(
+            "MemoryKnowledgeServiceQueryRepository: Listing all queries"
+        )
+
+        # Get all entities and sort by query_id
+        entities = list(self.storage_dict.values())
+        entities.sort(key=lambda x: x.query_id)
+
+        self.logger.info(
+            "MemoryKnowledgeServiceQueryRepository: Retrieved "
+            f"{len(entities)} queries",
+            extra={"count": len(entities)},
+        )
+
+        return entities
+
     def _add_entity_specific_log_data(
         self, entity: KnowledgeServiceQuery, log_data: Dict[str, Any]
     ) -> None:
