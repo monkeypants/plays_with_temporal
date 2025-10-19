@@ -258,3 +258,281 @@ class TestKnowledgeServiceQueriesEndpoint:
         assert data["page"] == 2
         assert data["size"] == 2
         assert len(data["items"]) == 2
+
+
+class TestCreateKnowledgeServiceQueryEndpoint:
+    """Test the POST knowledge service queries endpoint."""
+
+    def test_create_knowledge_service_query_success(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test successful creation of a knowledge service query."""
+        request_data = {
+            "name": "Extract Meeting Summary",
+            "knowledge_service_id": "anthropic-claude",
+            "prompt": "Extract the main summary from this meeting transcript",
+            "query_metadata": {"model": "claude-3", "temperature": 0.2},
+            "assistant_prompt": "Please format as JSON",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify response structure
+        assert "query_id" in data
+        assert data["name"] == request_data["name"]
+        assert (
+            data["knowledge_service_id"]
+            == request_data["knowledge_service_id"]
+        )
+        assert data["prompt"] == request_data["prompt"]
+        assert data["query_metadata"] == request_data["query_metadata"]
+        assert data["assistant_prompt"] == request_data["assistant_prompt"]
+        assert "created_at" in data
+        assert "updated_at" in data
+
+        # Verify the query was saved to repository
+        query_id = data["query_id"]
+        assert query_id is not None
+        assert query_id != ""
+
+    async def test_create_knowledge_service_query_persisted(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test that created query is persisted in repository."""
+        request_data = {
+            "name": "Extract Action Items",
+            "knowledge_service_id": "openai-gpt4",
+            "prompt": "List all action items from this meeting",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+        assert response.status_code == 200
+
+        query_id = response.json()["query_id"]
+
+        # Verify query was saved by retrieving it
+        saved_query = await memory_repo.get(query_id)
+        assert saved_query is not None
+        assert saved_query.name == request_data["name"]
+        assert (
+            saved_query.knowledge_service_id
+            == request_data["knowledge_service_id"]
+        )
+        assert saved_query.prompt == request_data["prompt"]
+
+    def test_create_knowledge_service_query_minimal_fields(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test creation with only required fields."""
+        request_data = {
+            "name": "Minimal Query",
+            "knowledge_service_id": "test-service",
+            "prompt": "Test prompt",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["name"] == request_data["name"]
+        assert (
+            data["knowledge_service_id"]
+            == request_data["knowledge_service_id"]
+        )
+        assert data["prompt"] == request_data["prompt"]
+        assert data["query_metadata"] == {}
+        assert data["assistant_prompt"] is None
+
+    def test_create_knowledge_service_query_validation_errors(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test validation error handling."""
+        # Test empty name
+        request_data = {
+            "name": "",
+            "knowledge_service_id": "test-service",
+            "prompt": "Test prompt",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+        assert response.status_code == 422
+
+        # Test empty knowledge_service_id
+        request_data = {
+            "name": "Test Query",
+            "knowledge_service_id": "",
+            "prompt": "Test prompt",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+        assert response.status_code == 422
+
+        # Test empty prompt
+        request_data = {
+            "name": "Test Query",
+            "knowledge_service_id": "test-service",
+            "prompt": "",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+        assert response.status_code == 422
+
+    def test_create_knowledge_service_query_missing_required_fields(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test handling of missing required fields."""
+        # Missing name
+        request_data = {
+            "knowledge_service_id": "test-service",
+            "prompt": "Test prompt",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+        assert response.status_code == 422
+
+        # Missing knowledge_service_id
+        request_data = {
+            "name": "Test Query",
+            "prompt": "Test prompt",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+        assert response.status_code == 422
+
+        # Missing prompt
+        request_data = {
+            "name": "Test Query",
+            "knowledge_service_id": "test-service",
+        }
+
+        response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+        assert response.status_code == 422
+
+    def test_openapi_schema_includes_post_endpoint(
+        self, client: TestClient
+    ) -> None:
+        """Test that the OpenAPI schema includes the POST endpoint."""
+        response = client.get("/openapi.json")
+
+        assert response.status_code == 200
+        openapi_schema = response.json()
+
+        # Verify our endpoint is in the schema
+        paths = openapi_schema.get("paths", {})
+        assert "/knowledge_service_queries" in paths
+
+        # Verify the endpoint has POST method
+        endpoint = paths["/knowledge_service_queries"]
+        assert "post" in endpoint
+
+        # Verify POST method details
+        post_info = endpoint["post"]
+        assert "requestBody" in post_info
+        assert "responses" in post_info
+        assert "200" in post_info["responses"]
+
+    def test_post_and_get_integration(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test that POST and GET endpoints work together."""
+        # Create a query via POST
+        request_data = {
+            "name": "Integration Test Query",
+            "knowledge_service_id": "test-integration-service",
+            "prompt": "This is an integration test prompt",
+            "query_metadata": {"test": True, "integration": "yes"},
+            "assistant_prompt": "Integration test response format",
+        }
+
+        post_response = client.post(
+            "/knowledge_service_queries", json=request_data
+        )
+        assert post_response.status_code == 200
+        created_query = post_response.json()
+
+        # Verify the query appears in GET response
+        get_response = client.get("/knowledge_service_queries")
+        assert get_response.status_code == 200
+        get_data = get_response.json()
+
+        # Should find our created query in the list
+        assert get_data["total"] == 1
+        assert len(get_data["items"]) == 1
+
+        returned_query = get_data["items"][0]
+        assert returned_query["query_id"] == created_query["query_id"]
+        assert returned_query["name"] == request_data["name"]
+        assert (
+            returned_query["knowledge_service_id"]
+            == request_data["knowledge_service_id"]
+        )
+        assert returned_query["prompt"] == request_data["prompt"]
+        assert (
+            returned_query["query_metadata"] == request_data["query_metadata"]
+        )
+        assert (
+            returned_query["assistant_prompt"]
+            == request_data["assistant_prompt"]
+        )
+
+        # Create another query to test multiple items
+        request_data2 = {
+            "name": "Second Integration Query",
+            "knowledge_service_id": "another-service",
+            "prompt": "Another test prompt",
+        }
+
+        post_response2 = client.post(
+            "/knowledge_service_queries", json=request_data2
+        )
+        assert post_response2.status_code == 200
+
+        # Verify both queries appear in GET response
+        get_response2 = client.get("/knowledge_service_queries")
+        assert get_response2.status_code == 200
+        get_data2 = get_response2.json()
+
+        assert get_data2["total"] == 2
+        assert len(get_data2["items"]) == 2
+
+        # Verify both query IDs are present
+        returned_ids = {item["query_id"] for item in get_data2["items"]}
+        expected_ids = {
+            created_query["query_id"],
+            post_response2.json()["query_id"],
+        }
+        assert returned_ids == expected_ids

@@ -31,6 +31,7 @@ from julee_example.api.dependencies import (
     get_knowledge_service_query_repository,
 )
 from julee_example.api.responses import HealthCheckResponse
+from julee_example.api.requests import CreateKnowledgeServiceQueryRequest
 
 # Disable pagination extensions check for cleaner startup
 disable_installed_extensions_check()
@@ -130,6 +131,69 @@ async def get_knowledge_service_queries(
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve queries due to an internal error.",
+        )
+
+
+@app.post("/knowledge_service_queries", response_model=KnowledgeServiceQuery)
+async def create_knowledge_service_query(
+    request: CreateKnowledgeServiceQueryRequest,
+    repository: KnowledgeServiceQueryRepository = Depends(  # type: ignore[misc]
+        get_knowledge_service_query_repository
+    ),
+) -> KnowledgeServiceQuery:
+    """
+    Create a new knowledge service query.
+
+    This endpoint creates a new knowledge service query configuration that
+    defines how to extract specific data using external knowledge services
+    during the assembly process.
+
+    Args:
+        request: The knowledge service query creation request
+        repository: Injected repository for persistence
+
+    Returns:
+        KnowledgeServiceQuery: The created query with generated ID and timestamps
+    """
+    logger.info(
+        "Knowledge service query creation requested",
+        extra={"query_name": request.name},
+    )
+
+    try:
+        # Generate unique ID for the new query
+        query_id = await repository.generate_id()
+
+        # Convert request to domain model with generated ID
+        query = request.to_domain_model(query_id)
+
+        # Save the query via repository
+        await repository.save(query)
+
+        logger.info(
+            "Knowledge service query created successfully",
+            extra={
+                "query_id": query.query_id,
+                "query_name": query.name,
+                "knowledge_service_id": query.knowledge_service_id,
+            },
+        )
+
+        return query
+
+    except Exception as e:
+        logger.error(
+            "Failed to create knowledge service query",
+            exc_info=True,
+            extra={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "query_name": request.name,
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create query due to an internal error.",
         )
 
 
