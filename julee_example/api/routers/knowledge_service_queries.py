@@ -92,7 +92,8 @@ async def create_knowledge_service_query(
         repository: Injected repository for persistence
 
     Returns:
-        KnowledgeServiceQuery: The created query with generated ID and timestamps
+        KnowledgeServiceQuery: The created query with generated ID and
+            timestamps
     """
     logger.info(
         "Knowledge service query creation requested",

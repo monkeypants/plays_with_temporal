@@ -92,7 +92,7 @@ class TestHealthEndpoint:
     def test_health_check_multiple_calls_consistent(
         self, client: TestClient
     ) -> None:
-        """Test that multiple health check calls return consistent structure."""
+        """Test multiple health check calls return consistent structure."""
         # Make multiple calls
         responses = [client.get("/health") for _ in range(3)]
 
