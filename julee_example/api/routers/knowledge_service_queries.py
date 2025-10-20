@@ -13,7 +13,7 @@ These routes are mounted at /knowledge_service_queries in the main app.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_pagination import Page, paginate
 
@@ -37,7 +37,12 @@ async def get_knowledge_service_queries(
     ids: Optional[str] = Query(
         None,
         description="Comma-separated list of query IDs for bulk retrieval",
-        example="query-123,query-456,query-789",
+        openapi_examples={
+            "bulk_query": {
+                "summary": "Bulk retrieval example",
+                "value": "query-123,query-456,query-789",
+            }
+        },
     ),
     repository: KnowledgeServiceQueryRepository = Depends(  # type: ignore[misc]
         get_knowledge_service_query_repository
@@ -110,7 +115,7 @@ async def get_knowledge_service_queries(
             )
 
             # Return as paginated result for consistent API response format
-            return paginate(found_queries)  # type: ignore[no-any-return]
+            return cast(Page[KnowledgeServiceQuery], paginate(found_queries))
 
         except HTTPException:
             # Re-raise HTTP exceptions (like 400 Bad Request)
@@ -143,7 +148,7 @@ async def get_knowledge_service_queries(
             )
 
             # Use fastapi-pagination to paginate the results
-            return paginate(queries)  # type: ignore[no-any-return]
+            return cast(Page[KnowledgeServiceQuery], paginate(queries))
 
         except Exception as e:
             logger.error(

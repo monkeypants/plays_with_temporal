@@ -538,7 +538,7 @@ class TestCreateAssemblySpecification:
             "applicability": "Test applicability",
             "jsonschema": {
                 "invalid": "schema"
-            },  # Missing required 'type' field
+            },  # Invalid JSON schema: contains an unrecognized keyword
         }
 
         response = client.post("/assembly_specifications/", json=request_data)

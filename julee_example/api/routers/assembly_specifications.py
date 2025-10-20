@@ -13,6 +13,7 @@ These routes are mounted at /assembly_specifications in the main app.
 """
 
 import logging
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi_pagination import Page, paginate
 
@@ -59,7 +60,7 @@ async def get_assembly_specifications(
         )
 
         # Use fastapi-pagination to paginate the results
-        return paginate(specifications)  # type: ignore[no-any-return]
+        return cast(Page[AssemblySpecification], paginate(specifications))
 
     except Exception as e:
         logger.error(
