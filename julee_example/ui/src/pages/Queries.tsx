@@ -31,7 +31,8 @@ export default function QueriesPage() {
             Queries Management
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            This page will show all knowledge service queries, their status, and allow you to create new ones.
+            This page will show all knowledge service queries, their status, and
+            allow you to create new ones.
           </p>
           <div className="mt-6">
             <button

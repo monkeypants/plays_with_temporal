@@ -50,6 +50,16 @@ interface DashboardStats {
   };
 }
 
+interface QueryItem {
+  status: string;
+  // Add other query properties as needed
+}
+
+interface SpecificationItem {
+  status: string;
+  // Add other specification properties as needed
+}
+
 export default function DashboardPage() {
   const { data: health, isLoading: healthLoading } = useQuery({
     queryKey: ["system", "health"],
@@ -75,17 +85,21 @@ export default function DashboardPage() {
       return {
         queries: {
           total: queries.length,
-          active: queries.filter((q: any) => q.status === "active").length,
-          completed: queries.filter((q: any) => q.status === "completed")
+          active: queries.filter((q: QueryItem) => q.status === "active")
             .length,
-          failed: queries.filter((q: any) => q.status === "failed").length,
+          completed: queries.filter((q: QueryItem) => q.status === "completed")
+            .length,
+          failed: queries.filter((q: QueryItem) => q.status === "failed")
+            .length,
         },
         specifications: {
           total: specifications.length,
-          active: specifications.filter((s: any) => s.status === "active")
-            .length,
-          completed: specifications.filter((s: any) => s.status === "completed")
-            .length,
+          active: specifications.filter(
+            (s: SpecificationItem) => s.status === "active",
+          ).length,
+          completed: specifications.filter(
+            (s: SpecificationItem) => s.status === "completed",
+          ).length,
         },
         workflows: {
           running: 5, // Mock data - would come from Temporal API

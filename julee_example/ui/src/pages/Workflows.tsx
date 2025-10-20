@@ -31,7 +31,8 @@ export default function WorkflowsPage() {
             Workflow Management
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            This page will show all running and completed Temporal workflows, their status, and execution history.
+            This page will show all running and completed Temporal workflows,
+            their status, and execution history.
           </p>
           <div className="mt-6 space-x-3">
             <button
@@ -54,7 +55,7 @@ export default function WorkflowsPage() {
               Refresh Status
             </button>
             <a
-              href={`${import.meta.env.VITE_TEMPORAL_WEB_URL || 'http://localhost:8080'}`}
+              href={`${import.meta.env.VITE_TEMPORAL_WEB_URL || "http://localhost:8080"}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"

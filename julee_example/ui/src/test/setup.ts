@@ -1,6 +1,6 @@
-import '@testing-library/jest-dom';
-import { beforeAll, afterEach, afterAll } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import "@testing-library/jest-dom";
+import { afterEach } from "vitest";
+import { cleanup } from "@testing-library/react";
 
 // Runs a cleanup after each test case (e.g. clearing jsdom)
 afterEach(() => {
@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({
     matches: false,
@@ -56,5 +56,5 @@ global.fetch = () =>
     json: () => Promise.resolve({}),
     ok: true,
     status: 200,
-    statusText: 'OK',
+    statusText: "OK",
   } as Response);

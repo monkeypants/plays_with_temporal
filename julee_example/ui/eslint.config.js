@@ -28,7 +28,10 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": [
         "warn",
-        { allowConstantExport: true },
+        {
+          allowConstantExport: true,
+          allowExportNames: ["badgeVariants", "buttonVariants"],
+        },
       ],
       "react/react-in-jsx-scope": "off",
       "react/jsx-uses-react": "off",

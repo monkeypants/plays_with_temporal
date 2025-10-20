@@ -1,6 +1,6 @@
 # Julee Example UI
 
-A modern, responsive Single Page Application (SPA) built with Vite, React, TypeScript, and Tailwind CSS to interface with the Julee Example workflow system for Capture, Extract, Assemble, and Publish operations.
+A minimal responsive Single Page Application (SPA) built with Vite, React, TypeScript, and Tailwind CSS to demo the Julee Example workflow system for Capture, Extract, Assemble, and Publish operations.
 
 ## 🚀 Features
 
@@ -41,12 +41,14 @@ src/
 ## 🛠 Tech Stack
 
 ### Core Framework
+
 - **Vite 7**: Fast build tool and dev server
 - **React 18**: UI library with modern hooks
 - **TypeScript 5**: Static type checking
 - **React Router 6**: Client-side routing
 
 ### Styling & UI
+
 - **Tailwind CSS 4**: Utility-first CSS framework with new engine
 - **shadcn/ui**: Modern component library built on Radix UI
 - **Radix UI**: Accessible component primitives
@@ -55,18 +57,21 @@ src/
 - **Tailwind Merge**: Intelligent Tailwind class merging
 
 ### Development Tools
+
 - **Vitest**: Fast unit testing framework
 - **ESLint 9**: Code linting with flat config
 - **Prettier**: Code formatting
 - **TypeScript ESLint**: TypeScript-aware linting
 
 ### API & State Management
+
 - **Axios**: HTTP client for API requests
 - **React Query**: Server state management and caching
 - **React Hook Form**: Form state management
 - **Zod**: Runtime type validation
 
 ### Testing
+
 - **Vitest**: Test runner with coverage
 - **Testing Library**: React component testing
 - **jsdom**: DOM testing environment
@@ -121,7 +126,7 @@ Create a `.env.local` file in the root directory:
 # API Configuration
 VITE_API_URL=http://localhost:8000
 
-# App Configuration  
+# App Configuration
 VITE_APP_URL=http://localhost:3000
 ```
 
@@ -161,9 +166,9 @@ npx shadcn@latest add dialog table input textarea
 ### Usage Example
 
 ```tsx
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 function StatusCard() {
   return (
@@ -192,7 +197,7 @@ Components and utilities are tested using Vitest:
 # Run all tests
 npm run test
 
-# Run tests in watch mode  
+# Run tests in watch mode
 npm run test:ui
 
 # Generate coverage report
