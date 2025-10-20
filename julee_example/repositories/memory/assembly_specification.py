@@ -97,6 +97,27 @@ class MemoryAssemblySpecificationRepository(
         """
         return self.get_many_entities(assembly_specification_ids)
 
+    async def list_all(self) -> List[AssemblySpecification]:
+        """List all assembly specifications.
+
+        Returns:
+            List of all AssemblySpecification entities in the repository
+        """
+        self.logger.debug(
+            f"Memory{self.entity_name}Repository: Listing all "
+            f"{self.entity_name.lower()}s"
+        )
+
+        specifications = list(self.storage_dict.values())
+
+        self.logger.info(
+            f"Memory{self.entity_name}Repository: Listed all "
+            f"{self.entity_name.lower()}s",
+            extra={"count": len(specifications)},
+        )
+
+        return specifications
+
     def _add_entity_specific_log_data(
         self, entity: AssemblySpecification, log_data: Dict[str, Any]
     ) -> None:
