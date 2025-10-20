@@ -462,3 +462,234 @@ class TestCreateKnowledgeServiceQuery:
             post_response2.json()["query_id"],
         }
         assert returned_ids == expected_ids
+
+
+class TestBulkGetKnowledgeServiceQueries:
+    """Test the bulk GET functionality with IDs parameter."""
+
+    async def test_bulk_get_queries_success(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test successful bulk retrieval of queries by IDs."""
+        # Create test queries
+        queries = []
+        for i in range(3):
+            query = KnowledgeServiceQuery(
+                query_id=f"bulk-query-{i}",
+                name=f"Bulk Query {i}",
+                knowledge_service_id="test-service",
+                prompt=f"Test prompt {i}",
+            )
+            queries.append(query)
+            await memory_repo.save(query)
+
+        # Test bulk get with all IDs
+        ids_param = ",".join([q.query_id for q in queries])
+        response = client.get(f"/knowledge_service_queries/?ids={ids_param}")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify pagination structure
+        assert "items" in data
+        assert "total" in data
+        assert data["total"] == 3
+        assert len(data["items"]) == 3
+
+        # Verify all queries are returned
+        returned_ids = {item["query_id"] for item in data["items"]}
+        expected_ids = {query.query_id for query in queries}
+        assert returned_ids == expected_ids
+
+    async def test_bulk_get_queries_partial_found(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test bulk retrieval when only some IDs are found."""
+        # Create one query
+        query = KnowledgeServiceQuery(
+            query_id="existing-query",
+            name="Existing Query",
+            knowledge_service_id="test-service",
+            prompt="Test prompt",
+        )
+        await memory_repo.save(query)
+
+        # Request both existing and non-existing IDs
+        ids_param = "existing-query,non-existing-1,non-existing-2"
+        response = client.get(f"/knowledge_service_queries/?ids={ids_param}")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should return only the found query
+        assert data["total"] == 1
+        assert len(data["items"]) == 1
+        assert data["items"][0]["query_id"] == "existing-query"
+
+    def test_bulk_get_queries_empty_ids(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test bulk retrieval with empty IDs parameter."""
+        response = client.get("/knowledge_service_queries/?ids=")
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "Invalid ids parameter" in data["detail"]
+
+    def test_bulk_get_queries_whitespace_only_ids(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test bulk retrieval with whitespace-only IDs."""
+        response = client.get("/knowledge_service_queries/?ids=   ,  , ")
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "Invalid ids parameter" in data["detail"]
+
+    def test_bulk_get_queries_too_many_ids(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test bulk retrieval with too many IDs."""
+        # Create 101 IDs (exceeds limit of 100)
+        ids = [f"query-{i}" for i in range(101)]
+        ids_param = ",".join(ids)
+
+        response = client.get(f"/knowledge_service_queries/?ids={ids_param}")
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "Too many IDs requested" in data["detail"]
+        assert "maximum 100" in data["detail"]
+
+    async def test_bulk_get_queries_with_spaces_and_commas(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test bulk retrieval with various comma and space combinations."""
+        # Create test queries
+        queries = []
+        for i in range(2):
+            query = KnowledgeServiceQuery(
+                query_id=f"space-query-{i}",
+                name=f"Space Query {i}",
+                knowledge_service_id="test-service",
+                prompt=f"Test prompt {i}",
+            )
+            queries.append(query)
+            await memory_repo.save(query)
+
+        # Test with various spacing and comma patterns
+        test_cases = [
+            "space-query-0,space-query-1",
+            "space-query-0, space-query-1",
+            " space-query-0 , space-query-1 ",
+            "space-query-0,  space-query-1  ,",
+        ]
+
+        for ids_param in test_cases:
+            response = client.get(
+                f"/knowledge_service_queries/?ids={ids_param}"
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["total"] == 2
+            returned_ids = {item["query_id"] for item in data["items"]}
+            expected_ids = {q.query_id for q in queries}
+            assert returned_ids == expected_ids
+
+    async def test_bulk_get_queries_single_id(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test bulk retrieval with a single ID."""
+        query = KnowledgeServiceQuery(
+            query_id="single-query",
+            name="Single Query",
+            knowledge_service_id="test-service",
+            prompt="Single test prompt",
+        )
+        await memory_repo.save(query)
+
+        response = client.get("/knowledge_service_queries/?ids=single-query")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["query_id"] == "single-query"
+        assert data["items"][0]["name"] == "Single Query"
+
+    def test_bulk_get_queries_no_ids_falls_back_to_list_all(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test that without IDs parameter, it falls back to list all."""
+        response = client.get("/knowledge_service_queries/")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should have pagination structure from list all
+        assert "items" in data
+        assert "total" in data
+        assert "page" in data
+        assert "size" in data
+        assert "pages" in data
+
+    async def test_bulk_get_queries_integration_with_assembly_spec_use_case(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test the typical use case: getting queries referenced by spec."""
+        # Create queries that would be referenced by an assembly spec
+        query_mappings = {
+            "/properties/attendees": "attendee-extractor",
+            "/properties/summary": "summary-extractor",
+            "/properties/action_items": "action-extractor",
+        }
+
+        queries = []
+        for json_pointer, query_id in query_mappings.items():
+            query = KnowledgeServiceQuery(
+                query_id=query_id,
+                name=f"Query for {json_pointer}",
+                knowledge_service_id="test-service",
+                prompt=f"Extract data for {json_pointer}",
+            )
+            queries.append(query)
+            await memory_repo.save(query)
+
+        # Simulate getting all queries referenced by an assembly spec
+        query_ids = list(query_mappings.values())
+        ids_param = ",".join(query_ids)
+
+        response = client.get(f"/knowledge_service_queries/?ids={ids_param}")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should get all referenced queries
+        assert data["total"] == 3
+        returned_ids = {item["query_id"] for item in data["items"]}
+        assert returned_ids == set(query_ids)
+
+        # Verify query details are complete
+        for item in data["items"]:
+            assert "query_id" in item
+            assert "name" in item
+            assert "knowledge_service_id" in item
+            assert "prompt" in item
+            assert "query_metadata" in item
