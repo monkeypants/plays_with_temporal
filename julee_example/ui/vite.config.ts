@@ -18,8 +18,7 @@ export default defineConfig({
     hmr: {
       clientPort: 3000,
     },
-    // Allow Docker container hostnames
-    allowedHosts: ["julee-ui", "localhost", "127.0.0.1", "all"],
+    // Docker networking is handled by the host: "0.0.0.0" setting above
     proxy: {
       "/api": {
         target: process.env.VITE_API_URL || "http://localhost:8000",

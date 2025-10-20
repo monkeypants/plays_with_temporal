@@ -171,7 +171,8 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center space-x-4">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                © 2024 Julee Example. Built with Vite + React and FastAPI.
+                © {new Date().getFullYear()} Julee Example. Built with Vite +
+                React and FastAPI.
               </p>
             </div>
             <div className="flex items-center space-x-6">
