@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./ui/button";
+import { configHelpers } from "@/lib/config";
 
 interface LayoutProps {
   children: ReactNode;
@@ -78,7 +79,7 @@ export default function Layout({ children }: LayoutProps) {
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center space-x-4">
               <a
-                href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/docs`}
+                href={configHelpers.getApiDocsUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-gray-600 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors flex items-center space-x-1"
@@ -87,7 +88,7 @@ export default function Layout({ children }: LayoutProps) {
                 <span>API Docs</span>
               </a>
               <a
-                href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/health`}
+                href={configHelpers.getHealthUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-gray-600 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors flex items-center space-x-1"
@@ -138,7 +139,7 @@ export default function Layout({ children }: LayoutProps) {
               })}
               <div className="pt-4 mt-4 border-t space-y-1">
                 <a
-                  href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/docs`}
+                  href={configHelpers.getApiDocsUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-primary-400 dark:hover:bg-gray-800 transition-colors"
@@ -147,7 +148,7 @@ export default function Layout({ children }: LayoutProps) {
                   <span>API Documentation</span>
                 </a>
                 <a
-                  href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/health`}
+                  href={configHelpers.getHealthUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-primary-400 dark:hover:bg-gray-800 transition-colors"
@@ -184,7 +185,7 @@ export default function Layout({ children }: LayoutProps) {
               </a>
               <div className="flex items-center space-x-4 text-sm">
                 <a
-                  href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/docs`}
+                  href={configHelpers.getApiDocsUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-600 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
@@ -193,7 +194,7 @@ export default function Layout({ children }: LayoutProps) {
                 </a>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <a
-                  href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/health`}
+                  href={configHelpers.getHealthUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-600 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"

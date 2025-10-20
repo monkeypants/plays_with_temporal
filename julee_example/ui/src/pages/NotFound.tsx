@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Home, ArrowLeft } from "lucide-react";
+import { configHelpers } from "@/lib/config";
 
 export default function NotFoundPage() {
   return (
@@ -56,7 +57,7 @@ export default function NotFoundPage() {
             If you think this is a mistake, please contact the development team
             or check the{" "}
             <a
-              href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/docs`}
+              href={configHelpers.getApiDocsUrl()}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"

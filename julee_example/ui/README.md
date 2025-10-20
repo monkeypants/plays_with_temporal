@@ -2,9 +2,12 @@
 
 A minimal responsive Single Page Application (SPA) built with Vite, React, TypeScript, and Tailwind CSS to demo the Julee Example workflow system for Capture, Extract, Assemble, and Publish operations.
 
+It currently just displays the dashboard, but the aim is to support
+defining and running assemblies (consultant workflows (?)).
+
 ## 🚀 Features
 
-- **Modern Stack**: Vite + React 18, TypeScript, Tailwind CSS 4
+- **Stack**: Vite + React 18, TypeScript, Tailwind CSS 4
 - **Component Library**: shadcn/ui components with Radix UI primitives
 - **Type Safety**: Full TypeScript support with strict type checking
 - **Testing**: Vitest for unit tests with coverage reporting
@@ -120,15 +123,17 @@ npm run lint-staged     # Run linting on staged files
 
 ### Environment Variables
 
-Create a `.env.local` file in the root directory:
+Copy the example environment file and customize it for your setup:
 
 ```bash
-# API Configuration
-VITE_API_URL=http://localhost:8000
+# Copy the example file
+cp .env.example .env.local
 
-# App Configuration
-VITE_APP_URL=http://localhost:3000
+# Edit the file with your specific configuration
+# The defaults should work for local development
 ```
+
+The application uses a centralized configuration system (`src/lib/config.ts`) that validates and processes these environment variables at startup. See `.env.example` for all available configuration options.
 
 ### API Integration
 
@@ -163,35 +168,11 @@ npx shadcn@latest add dialog table input textarea
 # Components are added to src/components/ui/
 ```
 
-### Usage Example
-
-```tsx
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-
-function StatusCard() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>System Status</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2">
-          <Badge variant="default">Healthy</Badge>
-          <Button size="sm">Refresh</Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-```
-
 ## 🧪 Testing Strategy
 
 ### Unit Testing
 
-Components and utilities are tested using Vitest:
+Components and utilities will be tested using Vitest:
 
 ```bash
 # Run all tests
@@ -277,16 +258,3 @@ The app builds to static files that can be deployed to:
 - Add **loading states** with skeleton components
 - **Type all API responses** with TypeScript interfaces
 - Use **environment variables** for API configuration
-
-## 📄 License
-
-This project is part of the Julee Example workflow system.
-
-## 🆘 Support
-
-For questions about the UI implementation:
-
-1. Review component documentation in the source code
-2. Check the FastAPI backend documentation at `http://localhost:8000/docs`
-3. Review the main project README for system architecture
-4. Run tests to see component usage examples
