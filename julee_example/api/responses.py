@@ -9,8 +9,6 @@ by existing domain models.
 """
 
 from pydantic import BaseModel
-from datetime import datetime
-from typing import Literal
 from enum import Enum
 
 

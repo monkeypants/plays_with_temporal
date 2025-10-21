@@ -75,9 +75,10 @@ class TestHealthEndpoint:
         required_services = ["api", "temporal", "storage"]
         for service in required_services:
             assert service in services, f"Missing service: {service}"
-            assert services[service] in ["up", "down"], (
-                f"Invalid status for {service}: {services[service]}"
-            )
+            assert services[service] in [
+                "up",
+                "down",
+            ], f"Invalid status for {service}: {services[service]}"
 
     def test_health_check_timestamp_format(self, client: TestClient) -> None:
         """Test that health check timestamp is in ISO format."""
@@ -171,5 +172,6 @@ class TestHealthEndpoint:
         end_time = time.time()
 
         assert response.status_code == 200
-        # Health check should complete within 10 seconds even with external service checks
+        # Health check should complete within 10 seconds even with external
+        # service checks
         assert end_time - start_time < 10.0
