@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 interface SystemHealth {
   status: "healthy" | "degraded" | "unhealthy";
@@ -61,16 +62,30 @@ interface SpecificationItem {
 }
 
 export default function DashboardPage() {
-  const { data: health, isLoading: healthLoading } = useQuery({
+  const {
+    data: health,
+    isLoading: healthLoading,
+    error: healthError,
+    isError: healthIsError,
+    refetch: refetchHealth,
+  } = useQuery({
     queryKey: ["system", "health"],
     queryFn: async (): Promise<SystemHealth> => {
       const response = await apiClient.get("/health");
       return response.data;
     },
     refetchInterval: 30000, // Refresh every 30 seconds
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+    isError: statsIsError,
+    refetch: refetchStats,
+  } = useQuery({
     queryKey: ["dashboard", "stats"],
     queryFn: async (): Promise<DashboardStats> => {
       // This would be replaced with actual API calls to your FastAPI endpoints
@@ -109,6 +124,8 @@ export default function DashboardPage() {
       };
     },
     refetchInterval: 60000, // Refresh every minute
+    retry: 2,
+    retryDelay: 2000,
   });
 
   const getStatusIcon = (status: string) => {
@@ -144,10 +161,34 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your workflow system
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Overview of your workflow system
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {healthIsError ? (
+              <Badge variant="destructive" className="flex items-center gap-1">
+                <XCircle className="h-3 w-3" />
+                API Disconnected
+              </Badge>
+            ) : healthLoading ? (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Connecting...
+              </Badge>
+            ) : (
+              <Badge variant="default" className="flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Connected
+              </Badge>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* System Health Section */}
@@ -156,7 +197,32 @@ export default function DashboardPage() {
           System Health
         </h2>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {healthLoading ? (
+          {healthIsError ? (
+            <div className="col-span-full">
+              <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+                <CardHeader>
+                  <CardTitle className="text-red-800 dark:text-red-200 flex items-center gap-2">
+                    <XCircle className="h-5 w-5" />
+                    Unable to Connect to API
+                  </CardTitle>
+                  <CardDescription className="text-red-600 dark:text-red-400">
+                    {healthError?.message || "Failed to fetch system health"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchHealth()}
+                    disabled={healthLoading}
+                    className="text-red-700 border-red-300 hover:bg-red-100 dark:text-red-300 dark:border-red-700 dark:hover:bg-red-900"
+                  >
+                    {healthLoading ? "Retrying..." : "Retry Connection"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          ) : healthLoading ? (
             <>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -279,6 +345,30 @@ export default function DashboardPage() {
         <h2 className="text-xl font-semibold text-foreground mb-4">
           Statistics
         </h2>
+        {statsIsError ? (
+          <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 mb-6">
+            <CardHeader>
+              <CardTitle className="text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Unable to Load Statistics
+              </CardTitle>
+              <CardDescription className="text-yellow-600 dark:text-yellow-400">
+                {statsError?.message || "Failed to fetch dashboard statistics"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetchStats()}
+                disabled={statsLoading}
+                className="text-yellow-700 border-yellow-300 hover:bg-yellow-100 dark:text-yellow-300 dark:border-yellow-700 dark:hover:bg-yellow-900"
+              >
+                {statsLoading ? "Retrying..." : "Retry Loading"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Queries Stats */}
           <Card>
@@ -297,6 +387,13 @@ export default function DashboardPage() {
                     <Skeleton className="h-4 w-12" />
                     <Skeleton className="h-4 w-12" />
                   </div>
+                </div>
+              ) : statsIsError ? (
+                <div className="text-center py-4">
+                  <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Failed to load
+                  </p>
                 </div>
               ) : (
                 <>
@@ -336,6 +433,13 @@ export default function DashboardPage() {
                     <Skeleton className="h-4 w-12" />
                   </div>
                 </div>
+              ) : statsIsError ? (
+                <div className="text-center py-4">
+                  <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Failed to load
+                  </p>
+                </div>
               ) : (
                 <>
                   <div className="text-2xl font-bold">
@@ -371,6 +475,13 @@ export default function DashboardPage() {
                     <Skeleton className="h-4 w-12" />
                     <Skeleton className="h-4 w-12" />
                   </div>
+                </div>
+              ) : statsIsError ? (
+                <div className="text-center py-4">
+                  <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Failed to load
+                  </p>
                 </div>
               ) : (
                 <>
