@@ -351,7 +351,7 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
                             WebkitBoxOrient: "vertical",
                           }}
                         >
-                          {example.prompt.substring(0, 120)}...
+                          {example.prompt.substring(0, 120)}
                         </div>
                       </div>
                     </Button>
