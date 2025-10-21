@@ -21,6 +21,9 @@ Router modules follow the pattern:
 from julee_example.api.routers.knowledge_service_queries import (
     router as knowledge_service_queries_router,
 )
+from julee_example.api.routers.knowledge_service_configs import (
+    router as knowledge_service_configs_router,
+)
 from julee_example.api.routers.assembly_specifications import (
     router as assembly_specifications_router,
 )
@@ -28,6 +31,7 @@ from julee_example.api.routers.system import router as system_router
 
 __all__ = [
     "knowledge_service_queries_router",
+    "knowledge_service_configs_router",
     "assembly_specifications_router",
     "system_router",
 ]

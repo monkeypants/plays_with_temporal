@@ -25,6 +25,7 @@ from fastapi_pagination.utils import disable_installed_extensions_check
 from julee_example.api.routers import (
     assembly_specifications_router,
     knowledge_service_queries_router,
+    knowledge_service_configs_router,
     system_router,
 )
 
@@ -82,6 +83,12 @@ app.include_router(
     knowledge_service_queries_router,
     prefix="/knowledge_service_queries",
     tags=["Knowledge Service Queries"],
+)
+
+app.include_router(
+    knowledge_service_configs_router,
+    prefix="/knowledge_service_configs",
+    tags=["Knowledge Service Configs"],
 )
 
 app.include_router(
