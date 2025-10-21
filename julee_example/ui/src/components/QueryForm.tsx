@@ -336,15 +336,22 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-auto p-3 text-left justify-start"
+                      className="h-auto p-3 text-left justify-start min-h-[60px]"
                       onClick={() => handleExamplePrompt(example.prompt)}
                     >
-                      <div>
-                        <div className="font-medium text-xs">
+                      <div className="w-full">
+                        <div className="font-medium text-xs mb-1">
                           {example.name}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {example.prompt.substring(0, 100)}...
+                        <div
+                          className="text-xs text-muted-foreground leading-relaxed overflow-hidden"
+                          style={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                          }}
+                        >
+                          {example.prompt.substring(0, 120)}...
                         </div>
                       </div>
                     </Button>
