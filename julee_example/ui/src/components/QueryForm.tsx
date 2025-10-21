@@ -101,7 +101,7 @@ const EXAMPLE_PROMPTS = [
 ];
 
 export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Used as fallback when props are not provided
   const queryClient = useQueryClient();
 
   const form = useForm<QueryFormValues>({
@@ -158,10 +158,6 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
     createQueryMutation.mutate(submitData);
   };
 
-  const handleFormError = (errors: any) => {
-    console.error("Form validation errors:", errors);
-  };
-
   const handleServiceSelect = (serviceId: string) => {
     form.setValue("knowledge_service_id", serviceId);
   };
@@ -187,10 +183,7 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <form
-          onSubmit={form.handleSubmit(onSubmit, handleFormError)}
-          className="space-y-6"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Error Alert */}
           {createQueryMutation.isError && (
             <Alert variant="destructive">

@@ -85,12 +85,12 @@ export default function QueriesPage() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const getStatusIcon = (query: KnowledgeServiceQuery) => {
+  const getStatusIcon = () => {
     // For now, all queries are considered active since we don't have status field
     return <CheckCircle2 className="h-4 w-4 text-green-500" />;
   };
 
-  const getStatusBadge = (query: KnowledgeServiceQuery) => {
+  const getStatusBadge = () => {
     // For now, all queries are considered active since we don't have status field
     return <Badge variant="default">Active</Badge>;
   };
@@ -220,8 +220,8 @@ export default function QueriesPage() {
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2 ml-2">
-                      {getStatusIcon(query)}
-                      {getStatusBadge(query)}
+                      {getStatusIcon()}
+                      {getStatusBadge()}
                     </div>
                   </div>
                 </CardHeader>
