@@ -28,7 +28,7 @@ knowledge_services:
     description: "Uses Anthropic's Claude Haiku 4.5 for fast, lightweight text processing"
     service_api: "anthropic"
     metadata:
-      model: "claude-3-haiku"
+      model: "claude-haiku-4-5"
       max_tokens: 2048
       temperature: 0.1
       capabilities:
