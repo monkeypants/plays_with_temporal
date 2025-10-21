@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Queries from "./pages/Queries";
+import CreateQuery from "./pages/CreateQuery";
 import Specifications from "./pages/Specifications";
 import Workflows from "./pages/Workflows";
 import NotFound from "./pages/NotFound";
@@ -41,6 +42,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/queries" element={<Queries />} />
+            <Route path="/queries/create" element={<CreateQuery />} />
             <Route path="/specifications" element={<Specifications />} />
             <Route path="/workflows" element={<Workflows />} />
             <Route path="*" element={<NotFound />} />
