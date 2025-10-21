@@ -22,6 +22,14 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
+// Reusable error state component for cards
+const CardErrorState = () => (
+  <div className="text-center py-4">
+    <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+    <p className="text-sm text-muted-foreground">Failed to load</p>
+  </div>
+);
+
 interface SystemHealth {
   status: "healthy" | "degraded" | "unhealthy";
   timestamp: string;
@@ -389,12 +397,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ) : statsIsError ? (
-                <div className="text-center py-4">
-                  <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Failed to load
-                  </p>
-                </div>
+                <CardErrorState />
               ) : (
                 <>
                   <div className="text-2xl font-bold">
@@ -434,12 +437,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ) : statsIsError ? (
-                <div className="text-center py-4">
-                  <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Failed to load
-                  </p>
-                </div>
+                <CardErrorState />
               ) : (
                 <>
                   <div className="text-2xl font-bold">
@@ -477,12 +475,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ) : statsIsError ? (
-                <div className="text-center py-4">
-                  <XCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Failed to load
-                  </p>
-                </div>
+                <CardErrorState />
               ) : (
                 <>
                   <div className="text-2xl font-bold">
