@@ -230,14 +230,7 @@ export default function SpecificationsPage() {
           {specifications.map((spec) => (
             <Card
               key={spec.assembly_specification_id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => {
-                // TODO: Navigate to spec detail page when implemented
-                console.log(
-                  "View specification:",
-                  spec.assembly_specification_id,
-                );
-              }}
+              className="hover:shadow-md transition-shadow"
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">

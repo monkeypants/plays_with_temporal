@@ -230,7 +230,11 @@ export default function AssemblySpecificationForm({
       if (onSuccess) {
         onSuccess(data);
       } else {
-        navigate("/specifications");
+        navigate("/specifications", {
+          state: {
+            message: `Assembly specification "${data.name}" created successfully!`,
+          },
+        });
       }
     },
   });
