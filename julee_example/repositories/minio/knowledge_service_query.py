@@ -71,7 +71,7 @@ class MinioKnowledgeServiceQueryRepository(
             extra={"query_id": query_id, "bucket": self.bucket_name},
         )
 
-        object_name = f"query/{query_id}.json"
+        object_name = f"query/{query_id}"
 
         # Get object from Minio
         query_data = self.get_json_object(
@@ -99,7 +99,7 @@ class MinioKnowledgeServiceQueryRepository(
         # Update the updated_at timestamp
         self.update_timestamps(query)
 
-        object_name = f"query/{query.query_id}.json"
+        object_name = f"query/{query.query_id}"
 
         # Store in Minio
         self.put_json_object(
@@ -149,7 +149,7 @@ class MinioKnowledgeServiceQueryRepository(
         )
 
         # Convert query IDs to object names
-        object_names = [f"query/{query_id}.json" for query_id in query_ids]
+        object_names = [f"query/{query_id}" for query_id in query_ids]
 
         # Get objects from Minio using batch method
         object_results = self.get_many_json_objects(
@@ -189,11 +189,9 @@ class MinioKnowledgeServiceQueryRepository(
             # Extract query IDs from object names
             query_ids = []
             for obj in objects:
-                if obj.object_name.endswith(".json"):
-                    # Extract query ID from "query/{query_id}.json" format
-                    query_id = obj.object_name[
-                        6:-5
-                    ]  # Remove "query/" and ".json"
+                if obj.object_name.startswith("query/"):
+                    # Extract query ID from "query/{query_id}" format
+                    query_id = obj.object_name[6:]  # Remove "query/"
                     query_ids.append(query_id)
 
             logger.debug(

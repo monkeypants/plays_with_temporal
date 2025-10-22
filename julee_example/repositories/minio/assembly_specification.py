@@ -54,9 +54,11 @@ class MinioAssemblySpecificationRepository(
         self, assembly_specification_id: str
     ) -> Optional[AssemblySpecification]:
         """Retrieve an assembly specification by ID."""
+        object_name = f"spec/{assembly_specification_id}"
+
         return self.get_json_object(
             bucket_name=self.specifications_bucket,
-            object_name=assembly_specification_id,
+            object_name=object_name,
             model_class=AssemblySpecification,
             not_found_log_message="Specification not found",
             error_log_message="Error retrieving specification",
@@ -72,9 +74,13 @@ class MinioAssemblySpecificationRepository(
         # Update timestamps
         self.update_timestamps(assembly_specification)
 
+        object_name = (
+            f"spec/{assembly_specification.assembly_specification_id}"
+        )
+
         self.put_json_object(
             bucket_name=self.specifications_bucket,
-            object_name=assembly_specification.assembly_specification_id,
+            object_name=object_name,
             model=assembly_specification,
             success_log_message="Specification saved successfully",
             error_log_message="Error saving specification",
@@ -101,8 +107,10 @@ class MinioAssemblySpecificationRepository(
             Dict mapping specification_id to AssemblySpecification (or None if
             not found)
         """
-        # Convert specification IDs to object names (direct mapping)
-        object_names = assembly_specification_ids
+        # Convert specification IDs to object names
+        object_names = [
+            f"spec/{spec_id}" for spec_id in assembly_specification_ids
+        ]
 
         # Get objects from Minio using batch method
         object_results = self.get_many_json_objects(
@@ -118,11 +126,76 @@ class MinioAssemblySpecificationRepository(
 
         # Convert object names back to specification IDs for the result
         result: Dict[str, Optional[AssemblySpecification]] = {}
-        for spec_id in assembly_specification_ids:
-            result[spec_id] = object_results[spec_id]
+        for i, spec_id in enumerate(assembly_specification_ids):
+            object_name = object_names[i]
+            result[spec_id] = object_results[object_name]
 
         return result
 
     async def generate_id(self) -> str:
         """Generate a unique assembly specification identifier."""
         return self.generate_id_with_prefix("spec")
+
+    async def list_all(self) -> List[AssemblySpecification]:
+        """List all assembly specifications.
+
+        Returns:
+            List of all assembly specifications, sorted by
+            assembly_specification_id
+        """
+
+        self.logger.debug(
+            "MinioAssemblySpecificationRepository: Listing all specifications",
+            extra={"bucket": self.specifications_bucket},
+        )
+
+        try:
+            # List all objects with the spec/ prefix
+            objects = self.client.list_objects(
+                bucket_name=self.specifications_bucket, prefix="spec/"
+            )
+
+            # Extract assembly specification IDs from object names
+            spec_ids = []
+            for obj in objects:
+                if obj.object_name.startswith("spec/"):
+                    # Extract spec ID from "spec/{spec_id}" format
+                    spec_id = obj.object_name[5:]  # Remove "spec/"
+                    spec_ids.append(spec_id)
+
+            self.logger.debug(
+                "MinioAssemblySpecificationRepository: Found spec objects",
+                extra={"count": len(spec_ids), "spec_ids": spec_ids},
+            )
+
+            if not spec_ids:
+                return []
+
+            # Get all specifications using the existing get_many method
+            spec_results = await self.get_many(spec_ids)
+
+            # Filter out None results and sort by assembly_specification_id
+            specs = [
+                spec for spec in spec_results.values() if spec is not None
+            ]
+            specs.sort(key=lambda x: x.assembly_specification_id)
+
+            self.logger.debug(
+                "MinioAssemblySpecificationRepository: Retrieved specs",
+                extra={"count": len(specs)},
+            )
+
+            return specs
+
+        except Exception as e:
+            self.logger.error(
+                "MinioAssemblySpecificationRepository: Error listing specs",
+                exc_info=True,
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "bucket": self.specifications_bucket,
+                },
+            )
+            # Return empty list on error to avoid breaking the API
+            return []

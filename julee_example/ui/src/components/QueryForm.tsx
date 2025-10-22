@@ -122,7 +122,7 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
     queryKey: ["knowledge-service-configs"],
     queryFn: async (): Promise<KnowledgeServiceConfigsResponse> => {
       const response = await apiClient.get(
-        "/knowledge_service_configs?size=50",
+        "/knowledge_service_configs/?size=50",
       );
       return response.data;
     },
@@ -132,7 +132,10 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
 
   const createQueryMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiClient.post("/knowledge_service_queries", data);
+      const response = await apiClient.post(
+        "/knowledge_service_queries/",
+        data,
+      );
       return response.data;
     },
     onSuccess: (data) => {

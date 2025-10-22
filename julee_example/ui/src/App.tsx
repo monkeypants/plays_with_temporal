@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Queries from "./pages/Queries";
 import CreateQuery from "./pages/CreateQuery";
 import Specifications from "./pages/Specifications";
+import CreateAssemblySpecification from "./pages/CreateAssemblySpecification";
 import Workflows from "./pages/Workflows";
 import NotFound from "./pages/NotFound";
 import { Skeleton } from "./components/ui/skeleton";
@@ -44,6 +45,10 @@ function App() {
             <Route path="/queries" element={<Queries />} />
             <Route path="/queries/create" element={<CreateQuery />} />
             <Route path="/specifications" element={<Specifications />} />
+            <Route
+              path="/specifications/create"
+              element={<CreateAssemblySpecification />}
+            />
             <Route path="/workflows" element={<Workflows />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
