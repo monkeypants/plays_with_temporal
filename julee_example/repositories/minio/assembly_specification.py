@@ -145,7 +145,7 @@ class MinioAssemblySpecificationRepository(
         """
 
         self.logger.debug(
-            "MinioAssemblySpecificationRepository: Listing all specifications",
+            "MinioAssemblySpecificationRepository: Listing all specs",
             extra={"bucket": self.specifications_bucket},
         )
 

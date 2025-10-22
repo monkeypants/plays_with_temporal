@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -53,7 +52,7 @@ const queryFormSchema = z.object({
 type QueryFormValues = z.infer<typeof queryFormSchema>;
 
 interface QueryFormProps {
-  onSuccess?: (query: any) => void;
+  onSuccess?: (query: unknown) => void;
   onCancel?: () => void;
 }
 
@@ -131,7 +130,7 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
   const knowledgeServices = knowledgeServicesData?.items || [];
 
   const createQueryMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: unknown) => {
       const response = await apiClient.post(
         "/knowledge_service_queries/",
         data,
@@ -157,7 +156,7 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
     if (data.query_metadata?.trim()) {
       try {
         parsedMetadata = JSON.parse(data.query_metadata);
-      } catch (error) {
+      } catch {
         form.setError("query_metadata", {
           message: "Invalid JSON format in metadata",
         });

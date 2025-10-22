@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -24,7 +23,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
@@ -71,7 +69,7 @@ const assemblySpecFormSchema = z.object({
 type AssemblySpecFormValues = z.infer<typeof assemblySpecFormSchema>;
 
 interface AssemblySpecificationFormProps {
-  onSuccess?: (spec: any) => void;
+  onSuccess?: (spec: unknown) => void;
   onCancel?: () => void;
 }
 
@@ -208,11 +206,7 @@ export default function AssemblySpecificationForm({
   });
 
   // Fetch available knowledge service queries
-  const {
-    data: queriesData,
-    isLoading: isLoadingQueries,
-    isError: isQueriesError,
-  } = useQuery({
+  const { data: queriesData } = useQuery({
     queryKey: ["knowledge-service-queries"],
     queryFn: async (): Promise<KnowledgeServiceQueriesResponse> => {
       const response = await apiClient.get(
@@ -225,7 +219,7 @@ export default function AssemblySpecificationForm({
   const availableQueries = queriesData?.items || [];
 
   const createSpecMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: unknown) => {
       const response = await apiClient.post("/assembly_specifications/", data);
       return response.data;
     },
@@ -249,7 +243,7 @@ export default function AssemblySpecificationForm({
     // Parse JSON schema
     try {
       parsedJsonSchema = JSON.parse(data.jsonschema);
-    } catch (error) {
+    } catch {
       form.setError("jsonschema", {
         message: "Invalid JSON format in schema",
       });
@@ -262,7 +256,7 @@ export default function AssemblySpecificationForm({
         parsedKnowledgeServiceQueries = JSON.parse(
           data.knowledge_service_queries,
         );
-      } catch (error) {
+      } catch {
         form.setError("knowledge_service_queries", {
           message: "Invalid JSON format in knowledge service queries",
         });
@@ -281,7 +275,7 @@ export default function AssemblySpecificationForm({
     createSpecMutation.mutate(submitData);
   };
 
-  const handleExampleSchema = (exampleSchema: any) => {
+  const handleExampleSchema = (exampleSchema: unknown) => {
     form.setValue("jsonschema", JSON.stringify(exampleSchema, null, 2));
   };
 

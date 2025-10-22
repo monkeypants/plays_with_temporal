@@ -6,13 +6,13 @@ import QueryForm from "@/components/QueryForm";
 export default function CreateQueryPage() {
   const navigate = useNavigate();
 
-  const handleSuccess = (query: any) => {
+  const handleSuccess = (query: unknown) => {
     console.log("Query created successfully:", query);
     // Navigate back to queries page with success message
     navigate("/queries", {
       state: {
-        success: `Query "${query.name}" created successfully!`
-      }
+        success: `Query "${query.name}" created successfully!`,
+      },
     });
   };
 
@@ -27,7 +27,8 @@ export default function CreateQueryPage() {
           Create New Query
         </h1>
         <p className="text-muted-foreground">
-          Define a new knowledge service query to extract specific information from documents
+          Define a new knowledge service query to extract specific information
+          from documents
         </p>
       </div>
 

@@ -29,7 +29,7 @@ interface AssemblySpecification {
   assembly_specification_id: string;
   name: string;
   applicability: string;
-  jsonschema: Record<string, any>;
+  jsonschema: Record<string, unknown>;
   status: "active" | "inactive" | "draft" | "deprecated";
   knowledge_service_queries: Record<string, string>;
   version: string;
@@ -80,6 +80,32 @@ const getStatusBadge = (status: string) => {
   );
 };
 
+const LoadingSkeleton = () => (
+  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <Card key={i}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+          <Skeleton className="h-4 w-24" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-3/4" />
+          </div>
+          <div className="flex items-center justify-between mt-4">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
+
 export default function SpecificationsPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -88,12 +114,20 @@ export default function SpecificationsPage() {
   // Check for success message from navigation state
   useEffect(() => {
     if (location.state?.message) {
-      setSuccessMessage(location.state.message);
-      // Clear the message after showing it
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => setSuccessMessage(location.state.message), 0);
+      // Clear the navigation state to prevent showing the message on refresh
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state?.message, location.pathname, navigate]);
+
+  // Auto-dismiss success message after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
       const timer = setTimeout(() => setSuccessMessage(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.state]);
+  }, [successMessage]);
 
   const {
     data: specificationsData,
@@ -115,32 +149,6 @@ export default function SpecificationsPage() {
   const handleCreateNew = () => {
     navigate("/specifications/create");
   };
-
-  const LoadingSkeleton = () => (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-5 w-16" />
-            </div>
-            <Skeleton className="h-4 w-24" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-3/4" />
-            </div>
-            <div className="flex items-center justify-between mt-4">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-16" />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
