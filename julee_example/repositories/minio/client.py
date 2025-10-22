@@ -569,10 +569,9 @@ class MinioRepositoryMixin:
         # Extract IDs from object names by removing the prefix
         entity_ids = []
         for obj in objects:
-            if obj.object_name.startswith(prefix):
-                # Extract ID by removing the prefix
-                entity_id = obj.object_name[len(prefix) :]
-                entity_ids.append(entity_id)
+            # Extract ID by removing the prefix
+            entity_id = obj.object_name[len(prefix) :]
+            entity_ids.append(entity_id)
 
         self.logger.debug(
             f"Found {entity_type_name} objects",
