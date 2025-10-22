@@ -154,28 +154,12 @@ class MinioKnowledgeServiceConfigRepository(
             List of all knowledge service configurations, sorted by
             knowledge_service_id
         """
-        self.logger.debug(
-            "MinioKnowledgeServiceConfigRepository: Listing all configs",
-            extra={"bucket": self.bucket_name},
-        )
-
         try:
-            # List all objects with the config/ prefix
-            objects = self.client.list_objects(
-                bucket_name=self.bucket_name, prefix="config/"
-            )
-
-            # Extract knowledge service IDs from object names
-            service_ids = []
-            for obj in objects:
-                if obj.object_name.startswith("config/"):
-                    # Extract service ID from "config/{service_id}" format
-                    service_id = obj.object_name[7:]  # Remove "config/"
-                    service_ids.append(service_id)
-
-            self.logger.debug(
-                "MinioKnowledgeServiceConfigRepository: Found config objects",
-                extra={"count": len(service_ids), "service_ids": service_ids},
+            # Extract knowledge service IDs from objects with config/ prefix
+            service_ids = self.list_objects_with_prefix_extract_ids(
+                bucket_name=self.bucket_name,
+                prefix="config/",
+                entity_type_name="configs",
             )
 
             if not service_ids:
@@ -193,7 +177,7 @@ class MinioKnowledgeServiceConfigRepository(
             configs.sort(key=lambda x: x.knowledge_service_id)
 
             self.logger.debug(
-                "MinioKnowledgeServiceConfigRepository: Retrieved configs",
+                "Retrieved configs",
                 extra={"count": len(configs)},
             )
 
@@ -201,7 +185,7 @@ class MinioKnowledgeServiceConfigRepository(
 
         except Exception as e:
             self.logger.error(
-                "MinioKnowledgeServiceConfigRepository: Error listing",
+                "Error listing configs",
                 exc_info=True,
                 extra={
                     "error_type": type(e).__name__,
