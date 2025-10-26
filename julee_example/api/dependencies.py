@@ -31,6 +31,7 @@ from julee_example.repositories.minio.assembly_specification import (
     MinioAssemblySpecificationRepository,
 )
 from julee_example.repositories.minio.client import MinioClient
+from minio import Minio
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +92,6 @@ class DependencyContainer:
 
     async def _create_minio_client(self) -> MinioClient:
         """Create Minio client with proper configuration."""
-        from minio import Minio
-
         endpoint = os.environ.get("MINIO_ENDPOINT", "localhost:9000")
         access_key = os.environ.get("MINIO_ACCESS_KEY", "minioadmin")
         secret_key = os.environ.get("MINIO_SECRET_KEY", "minioadmin")

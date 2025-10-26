@@ -15,7 +15,7 @@ with proper HTTP status codes and error handling.
 """
 
 import logging
-
+import uvicorn
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -92,8 +92,6 @@ app.include_router(
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(
         "julee_example.api.app:app",
         host="0.0.0.0",
