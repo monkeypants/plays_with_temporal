@@ -381,3 +381,382 @@ class TestGetAssemblySpecification:
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == status.value
+
+
+class TestCreateAssemblySpecification:
+    """Test the POST / endpoint for creating assembly specifications."""
+
+    def test_create_assembly_specification_success(
+        self,
+        client: TestClient,
+        memory_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test successful creation of an assembly specification."""
+        request_data = {
+            "name": "Meeting Minutes Template",
+            "applicability": "Online video meeting transcripts",
+            "jsonschema": {
+                "type": "object",
+                "properties": {
+                    "attendees": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "summary": {"type": "string"},
+                    "action_items": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+            },
+            "knowledge_service_queries": {
+                "/properties/attendees": "attendee-extractor-query",
+                "/properties/summary": "summary-extractor-query",
+            },
+            "version": "1.0.0",
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify response structure
+        assert "assembly_specification_id" in data
+        assert data["name"] == request_data["name"]
+        assert data["applicability"] == request_data["applicability"]
+        assert data["jsonschema"] == request_data["jsonschema"]
+        assert (
+            data["knowledge_service_queries"]
+            == request_data["knowledge_service_queries"]
+        )
+        assert data["version"] == request_data["version"]
+        assert data["status"] == "draft"  # Default status
+        assert "created_at" in data
+        assert "updated_at" in data
+
+        # Verify the specification was saved to repository
+        spec_id = data["assembly_specification_id"]
+        assert spec_id is not None
+        assert spec_id != ""
+
+    async def test_create_assembly_specification_persisted(
+        self,
+        client: TestClient,
+        memory_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test that created specification is persisted in repository."""
+        request_data = {
+            "name": "Project Status Report",
+            "applicability": "Weekly project status documents",
+            "jsonschema": {
+                "type": "object",
+                "properties": {
+                    "project_name": {"type": "string"},
+                    "status": {"type": "string"},
+                    "milestones": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+            },
+            "knowledge_service_queries": {
+                "/properties/project_name": "project-name-query",
+                "/properties/status": "status-query",
+            },
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 200
+
+        spec_id = response.json()["assembly_specification_id"]
+
+        # Verify specification was saved by retrieving it
+        saved_spec = await memory_repo.get(spec_id)
+        assert saved_spec is not None
+        assert saved_spec.name == request_data["name"]
+        assert saved_spec.applicability == request_data["applicability"]
+        assert saved_spec.jsonschema == request_data["jsonschema"]
+        assert (
+            saved_spec.knowledge_service_queries
+            == request_data["knowledge_service_queries"]
+        )
+
+    def test_create_assembly_specification_minimal_fields(
+        self,
+        client: TestClient,
+        memory_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test creation with only required fields."""
+        request_data = {
+            "name": "Minimal Spec",
+            "applicability": "Test applicability",
+            "jsonschema": {"type": "object", "properties": {}},
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["name"] == request_data["name"]
+        assert data["applicability"] == request_data["applicability"]
+        assert data["jsonschema"] == request_data["jsonschema"]
+        assert data["knowledge_service_queries"] == {}
+        assert data["version"] == "0.1.0"  # Default version
+        assert data["status"] == "draft"  # Default status
+
+    def test_create_assembly_specification_validation_errors(
+        self,
+        client: TestClient,
+        memory_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test validation error handling."""
+        # Test empty name
+        request_data = {
+            "name": "",
+            "applicability": "Test applicability",
+            "jsonschema": {"type": "object", "properties": {}},
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 422
+
+        # Test empty applicability
+        request_data = {
+            "name": "Test Spec",
+            "applicability": "",
+            "jsonschema": {"type": "object", "properties": {}},
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 422
+
+        # Test invalid JSON schema
+        request_data = {
+            "name": "Test Spec",
+            "applicability": "Test applicability",
+            "jsonschema": {
+                "invalid": "schema"
+            },  # Invalid JSON schema: contains an unrecognized keyword
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 422
+
+    def test_create_assembly_specification_missing_required_fields(
+        self,
+        client: TestClient,
+        memory_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test handling of missing required fields."""
+        # Missing name
+        request_data = {
+            "applicability": "Test applicability",
+            "jsonschema": {"type": "object", "properties": {}},
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 422
+
+        # Missing applicability
+        request_data = {
+            "name": "Test Spec",
+            "jsonschema": {"type": "object", "properties": {}},
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 422
+
+        # Missing jsonschema
+        request_data = {
+            "name": "Test Spec",
+            "applicability": "Test applicability",
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 422
+
+    def test_create_assembly_specification_invalid_json_pointers(
+        self,
+        client: TestClient,
+        memory_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test validation of JSON pointer paths in knowledge queries."""
+        # Invalid JSON pointer (doesn't exist in schema)
+        request_data = {
+            "name": "Test Spec",
+            "applicability": "Test applicability",
+            "jsonschema": {
+                "type": "object",
+                "properties": {"summary": {"type": "string"}},
+            },
+            "knowledge_service_queries": {
+                "/properties/nonexistent": "some-query-id",  # Path not found
+            },
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 422
+
+        # Invalid JSON pointer format
+        request_data = {
+            "name": "Test Spec",
+            "applicability": "Test applicability",
+            "jsonschema": {
+                "type": "object",
+                "properties": {"summary": {"type": "string"}},
+            },
+            "knowledge_service_queries": {
+                "invalid-pointer": "some-query-id",  # Invalid format
+            },
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+        assert response.status_code == 422
+
+    def test_create_assembly_specification_complex_schema(
+        self,
+        client: TestClient,
+        memory_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test creation with complex JSON schema and query mappings."""
+        request_data = {
+            "name": "Complex Meeting Minutes",
+            "applicability": "Detailed enterprise meeting transcripts",
+            "jsonschema": {
+                "type": "object",
+                "properties": {
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "meeting_date": {
+                                "type": "string",
+                                "format": "date",
+                            },
+                            "duration_minutes": {"type": "integer"},
+                            "location": {"type": "string"},
+                        },
+                        "required": ["meeting_date"],
+                    },
+                    "attendees": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "role": {"type": "string"},
+                                "department": {"type": "string"},
+                            },
+                            "required": ["name"],
+                        },
+                    },
+                    "agenda_items": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "decisions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "description": {"type": "string"},
+                                "owner": {"type": "string"},
+                                "due_date": {
+                                    "type": "string",
+                                    "format": "date",
+                                },
+                            },
+                        },
+                    },
+                },
+                "required": ["metadata", "attendees"],
+            },
+            "knowledge_service_queries": {
+                "/properties/metadata/properties/meeting_date": (
+                    "date-extractor"
+                ),
+                "/properties/metadata/properties/location": (
+                    "location-extractor"
+                ),
+                "/properties/attendees": "attendee-extractor",
+                "/properties/agenda_items": "agenda-extractor",
+                "/properties/decisions": "decision-extractor",
+            },
+            "version": "2.1.0",
+        }
+
+        response = client.post("/assembly_specifications/", json=request_data)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify complex schema is preserved
+        assert data["jsonschema"]["properties"]["metadata"]["properties"]
+        assert data["jsonschema"]["required"] == ["metadata", "attendees"]
+        assert len(data["knowledge_service_queries"]) == 5
+        assert data["version"] == "2.1.0"
+
+    def test_post_and_get_integration(
+        self,
+        client: TestClient,
+        memory_repo: MemoryAssemblySpecificationRepository,
+    ) -> None:
+        """Test that POST and GET endpoints work together."""
+        # Create a specification via POST
+        request_data = {
+            "name": "Integration Test Specification",
+            "applicability": "Test integration between endpoints",
+            "jsonschema": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "content": {"type": "string"},
+                },
+            },
+            "knowledge_service_queries": {
+                "/properties/title": "title-query",
+                "/properties/content": "content-query",
+            },
+        }
+
+        post_response = client.post(
+            "/assembly_specifications/", json=request_data
+        )
+        assert post_response.status_code == 200
+        created_spec = post_response.json()
+
+        # Verify the specification appears in GET list response
+        list_response = client.get("/assembly_specifications/")
+        assert list_response.status_code == 200
+        list_data = list_response.json()
+
+        # Should find our created specification in the list
+        assert list_data["total"] == 1
+        assert len(list_data["items"]) == 1
+
+        returned_spec = list_data["items"][0]
+        assert (
+            returned_spec["assembly_specification_id"]
+            == created_spec["assembly_specification_id"]
+        )
+        assert returned_spec["name"] == request_data["name"]
+
+        # Verify the specification can be retrieved by ID
+        spec_id = created_spec["assembly_specification_id"]
+        get_response = client.get(f"/assembly_specifications/{spec_id}")
+        assert get_response.status_code == 200
+        retrieved_spec = get_response.json()
+
+        assert (
+            retrieved_spec["assembly_specification_id"]
+            == created_spec["assembly_specification_id"]
+        )
+        assert retrieved_spec["name"] == request_data["name"]
+        assert (
+            retrieved_spec["applicability"] == request_data["applicability"]
+        )
+        assert (
+            retrieved_spec["knowledge_service_queries"]
+            == request_data["knowledge_service_queries"]
+        )

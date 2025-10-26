@@ -13,6 +13,7 @@ These routes are mounted at /assembly_specifications in the main app.
 """
 
 import logging
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi_pagination import Page, paginate
 
@@ -23,6 +24,7 @@ from julee_example.domain.repositories.assembly_specification import (
 from julee_example.api.dependencies import (
     get_assembly_specification_repository,
 )
+from julee_example.api.requests import CreateAssemblySpecificationRequest
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +60,7 @@ async def get_assembly_specifications(
         )
 
         # Use fastapi-pagination to paginate the results
-        return paginate(specifications)  # type: ignore[no-any-return]
+        return cast(Page[AssemblySpecification], paginate(specifications))
 
     except Exception as e:
         logger.error(
@@ -149,4 +151,70 @@ async def get_assembly_specification(
             status_code=500,
             detail="Failed to retrieve specification due to an internal "
             "error.",
+        )
+
+
+@router.post("/", response_model=AssemblySpecification)
+async def create_assembly_specification(
+    request: CreateAssemblySpecificationRequest,
+    repository: AssemblySpecificationRepository = Depends(  # type: ignore[misc]
+        get_assembly_specification_repository
+    ),
+) -> AssemblySpecification:
+    """
+    Create a new assembly specification.
+
+    This endpoint creates a new assembly specification that defines how to
+    assemble documents of specific types, including JSON schemas and
+    knowledge service query configurations.
+
+    Args:
+        request: The assembly specification creation request
+        repository: Injected repository for persistence
+
+    Returns:
+        AssemblySpecification: The created specification with generated ID and
+            timestamps
+    """
+    logger.info(
+        "Assembly specification creation requested",
+        extra={"specification_name": request.name},
+    )
+
+    try:
+        # Generate unique ID for the new specification
+        specification_id = await repository.generate_id()
+
+        # Convert request to domain model with generated ID
+        specification = request.to_domain_model(specification_id)
+
+        # Save the specification via repository
+        await repository.save(specification)
+
+        logger.info(
+            "Assembly specification created successfully",
+            extra={
+                "assembly_specification_id": (
+                    specification.assembly_specification_id
+                ),
+                "specification_name": specification.name,
+                "version": specification.version,
+            },
+        )
+
+        return specification
+
+    except Exception as e:
+        logger.error(
+            "Failed to create assembly specification",
+            exc_info=True,
+            extra={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "specification_name": request.name,
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create specification due to an internal error.",
         )

@@ -13,7 +13,8 @@ These routes are mounted at /knowledge_service_queries in the main app.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional, cast
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_pagination import Page, paginate
 
 from julee_example.domain.models import KnowledgeServiceQuery
@@ -33,44 +34,135 @@ router = APIRouter()
 
 @router.get("/", response_model=Page[KnowledgeServiceQuery])
 async def get_knowledge_service_queries(
+    ids: Optional[str] = Query(
+        None,
+        description="Comma-separated list of query IDs for bulk retrieval",
+        openapi_examples={
+            "bulk_query": {
+                "summary": "Bulk retrieval example",
+                "value": "query-123,query-456,query-789",
+            }
+        },
+    ),
     repository: KnowledgeServiceQueryRepository = Depends(  # type: ignore[misc]
         get_knowledge_service_query_repository
     ),
 ) -> Page[KnowledgeServiceQuery]:
     """
-    Get a paginated list of knowledge service queries.
+    Get knowledge service queries by IDs or list all with pagination.
 
-    This endpoint returns all knowledge service queries in the system
-    with pagination support. Each query contains the configuration needed to
-    extract specific data using external knowledge services.
+    This endpoint supports two modes:
+    1. Bulk retrieval: Pass comma-separated IDs to get specific queries
+    2. List all: Without IDs parameter, returns paginated list of all queries
+
+    Each query contains the configuration needed to extract specific data
+    using external knowledge services.
+
+    Args:
+        ids: Optional comma-separated list of query IDs for bulk retrieval
 
     Returns:
-        Page[KnowledgeServiceQuery]: Paginated list of queries
+        Page[KnowledgeServiceQuery]: List of queries (bulk) or paginated
+            list (all)
     """
-    logger.info("Knowledge service queries requested")
+    if ids is not None:
+        # Check for empty or whitespace-only parameter
+        if not ids.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid ids parameter: must contain at least one "
+                "valid ID",
+            )
 
-    try:
-        # Get all knowledge service queries from the repository
-        queries = await repository.list_all()
-
+        # Bulk retrieval mode
         logger.info(
-            "Knowledge service queries retrieved successfully",
-            extra={"count": len(queries)},
+            "Bulk knowledge service queries requested",
+            extra={"ids_param": ids},
         )
 
-        # Use fastapi-pagination to paginate the results
-        return paginate(queries)  # type: ignore[no-any-return]
+        try:
+            # Parse and validate IDs
+            id_list = [id.strip() for id in ids.split(",") if id.strip()]
+            if not id_list:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid ids parameter: must contain at least "
+                    "one valid ID",
+                )
 
-    except Exception as e:
-        logger.error(
-            "Failed to retrieve knowledge service queries",
-            exc_info=True,
-            extra={"error_type": type(e).__name__, "error_message": str(e)},
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve queries due to an internal error.",
-        )
+            if len(id_list) > 100:  # Reasonable limit
+                raise HTTPException(
+                    status_code=400,
+                    detail="Too many IDs requested: maximum 100 IDs per "
+                    "request",
+                )
+
+            # Use repository's get_many method
+            results = await repository.get_many(id_list)
+
+            # Filter out None results and preserve found queries
+            found_queries = [
+                query for query in results.values() if query is not None
+            ]
+
+            logger.info(
+                "Bulk knowledge service queries retrieved successfully",
+                extra={
+                    "requested_count": len(id_list),
+                    "found_count": len(found_queries),
+                    "missing_count": len(id_list) - len(found_queries),
+                },
+            )
+
+            # Return as paginated result for consistent API response format
+            return cast(Page[KnowledgeServiceQuery], paginate(found_queries))
+
+        except HTTPException:
+            # Re-raise HTTP exceptions (like 400 Bad Request)
+            raise
+        except Exception as e:
+            logger.error(
+                "Failed to retrieve bulk knowledge service queries",
+                exc_info=True,
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "ids_param": ids,
+                },
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to retrieve queries due to an internal error.",
+            )
+    else:
+        # List all mode (existing functionality)
+        logger.info("All knowledge service queries requested")
+
+        try:
+            # Get all knowledge service queries from the repository
+            queries = await repository.list_all()
+
+            logger.info(
+                "Knowledge service queries retrieved successfully",
+                extra={"count": len(queries)},
+            )
+
+            # Use fastapi-pagination to paginate the results
+            return cast(Page[KnowledgeServiceQuery], paginate(queries))
+
+        except Exception as e:
+            logger.error(
+                "Failed to retrieve knowledge service queries",
+                exc_info=True,
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                },
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to retrieve queries due to an internal error.",
+            )
 
 
 @router.post("/", response_model=KnowledgeServiceQuery)
