@@ -1,27 +1,17 @@
 """
-Repository protocols for julee_example domain.
+Repository implementations and infrastructure.
 
-This module exports all repository protocol interfaces for the Capture,
-Extract, Assemble, Publish workflow, following the Clean Architecture
-patterns established in the Fun-Police framework.
+This package contains concrete implementations of the repository interfaces
+defined in julee_example.domain.repositories.
+
+Implementation packages:
+- memory: In-memory implementations for testing
+- minio: MinIO-based implementations for production
+- temporal: Temporal workflow proxy implementations
+
+Import implementations using their full module paths, e.g.:
+    from julee_example.repositories.memory import MemoryDocumentRepository
+    from julee_example.repositories.minio.document import (
+        MinioDocumentRepository,
+    )
 """
-
-from .base import BaseRepository
-from .document import DocumentRepository
-from .assembly import AssemblyRepository
-from .assembly_specification import AssemblySpecificationRepository
-from .knowledge_service_config import KnowledgeServiceConfigRepository
-from .knowledge_service_query import KnowledgeServiceQueryRepository
-from .policy import PolicyRepository
-from .document_policy_validation import DocumentPolicyValidationRepository
-
-__all__ = [
-    "BaseRepository",
-    "DocumentRepository",
-    "AssemblyRepository",
-    "AssemblySpecificationRepository",
-    "KnowledgeServiceConfigRepository",
-    "KnowledgeServiceQueryRepository",
-    "PolicyRepository",
-    "DocumentPolicyValidationRepository",
-]

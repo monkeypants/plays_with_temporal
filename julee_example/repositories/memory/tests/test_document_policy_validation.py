@@ -10,7 +10,7 @@ import pytest
 from datetime import datetime, timezone
 from typing import Any
 
-from julee_example.domain.policy import (
+from julee_example.domain.models.policy import (
     DocumentPolicyValidation,
     DocumentPolicyValidationStatus,
 )

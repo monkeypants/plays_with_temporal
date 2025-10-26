@@ -16,8 +16,10 @@ key.
 import logging
 from typing import Optional, List, Dict
 
-from julee_example.domain import KnowledgeServiceConfig
-from julee_example.repositories.knowledge_service_config import (
+from julee_example.domain.models.knowledge_service_config import (
+    KnowledgeServiceConfig,
+)
+from julee_example.domain.repositories.knowledge_service_config import (
     KnowledgeServiceConfigRepository,
 )
 from .client import MinioClient, MinioRepositoryMixin

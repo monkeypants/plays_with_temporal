@@ -7,13 +7,14 @@ KnowledgeService implementations based on configuration.
 
 import pytest
 
-from julee_example.domain import (
+from julee_example.domain.models.knowledge_service_config import (
     KnowledgeServiceConfig,
-    Document,
-    DocumentStatus,
 )
-from julee_example.domain.knowledge_service_config import ServiceApi
-from julee_example.domain.custom_fields.content_stream import ContentStream
+from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.domain.models.knowledge_service_config import ServiceApi
+from julee_example.domain.models.custom_fields.content_stream import (
+    ContentStream,
+)
 from julee_example.services.knowledge_service import ensure_knowledge_service
 from julee_example.services.knowledge_service.factory import (
     knowledge_service_factory,

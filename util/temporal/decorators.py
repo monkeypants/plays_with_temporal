@@ -25,7 +25,7 @@ from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 from pydantic import BaseModel
 
-from julee_example.repositories.base import BaseRepository
+from julee_example.domain.repositories.base import BaseRepository
 from .activities import discover_protocol_methods
 
 logger = logging.getLogger(__name__)
