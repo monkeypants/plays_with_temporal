@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   Activity,
   Database,
@@ -70,6 +71,8 @@ interface SpecificationItem {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
+
   const {
     data: health,
     isLoading: healthLoading,
@@ -505,7 +508,10 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer hover:bg-accent/50">
+          <Card
+            className="hover:shadow-md transition-shadow cursor-pointer hover:bg-accent/50"
+            onClick={() => navigate("/queries/create")}
+          >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Create Query</CardTitle>
               <CardDescription>

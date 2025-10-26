@@ -168,3 +168,67 @@ class MinioKnowledgeServiceQueryRepository(
             result[query_id] = object_results[object_name]
 
         return result
+
+    async def list_all(self) -> List[KnowledgeServiceQuery]:
+        """List all knowledge service queries.
+
+        Returns:
+            List of all knowledge service queries, sorted by query_id
+        """
+        logger.debug(
+            "MinioKnowledgeServiceQueryRepository: Listing all queries",
+            extra={"bucket": self.bucket_name},
+        )
+
+        try:
+            # List all objects with the query/ prefix
+            objects = self.client.list_objects(
+                bucket_name=self.bucket_name, prefix="query/"
+            )
+
+            # Extract query IDs from object names
+            query_ids = []
+            for obj in objects:
+                if obj.object_name.endswith(".json"):
+                    # Extract query ID from "query/{query_id}.json" format
+                    query_id = obj.object_name[
+                        6:-5
+                    ]  # Remove "query/" and ".json"
+                    query_ids.append(query_id)
+
+            logger.debug(
+                "MinioKnowledgeServiceQueryRepository: Found query objects",
+                extra={"count": len(query_ids), "query_ids": query_ids},
+            )
+
+            if not query_ids:
+                return []
+
+            # Get all queries using the existing get_many method
+            query_results = await self.get_many(query_ids)
+
+            # Filter out None results and sort by query_id
+            queries = [
+                query for query in query_results.values() if query is not None
+            ]
+            queries.sort(key=lambda x: x.query_id)
+
+            logger.debug(
+                "MinioKnowledgeServiceQueryRepository: Retrieved queries",
+                extra={"count": len(queries)},
+            )
+
+            return queries
+
+        except Exception as e:
+            logger.error(
+                "MinioKnowledgeServiceQueryRepository: Error listing queries",
+                exc_info=True,
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "bucket": self.bucket_name,
+                },
+            )
+            # Return empty list on error to avoid breaking the API
+            return []
