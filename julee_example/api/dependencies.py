@@ -21,8 +21,14 @@ from temporalio.contrib.pydantic import pydantic_data_converter
 from julee_example.domain.repositories.knowledge_service_query import (
     KnowledgeServiceQueryRepository,
 )
+from julee_example.domain.repositories.assembly_specification import (
+    AssemblySpecificationRepository,
+)
 from julee_example.repositories.minio.knowledge_service_query import (
     MinioKnowledgeServiceQueryRepository,
+)
+from julee_example.repositories.minio.assembly_specification import (
+    MinioAssemblySpecificationRepository,
 )
 from julee_example.repositories.minio.client import MinioClient
 
@@ -132,6 +138,13 @@ async def get_knowledge_service_query_repository(
 ) -> KnowledgeServiceQueryRepository:
     """FastAPI dependency for KnowledgeServiceQueryRepository."""
     return MinioKnowledgeServiceQueryRepository(client=minio_client)
+
+
+async def get_assembly_specification_repository(
+    minio_client: MinioClient = Depends(get_minio_client),
+) -> AssemblySpecificationRepository:
+    """FastAPI dependency for AssemblySpecificationRepository."""
+    return MinioAssemblySpecificationRepository(client=minio_client)
 
 
 # Note: Use cases and more complex dependencies can be added here as needed
