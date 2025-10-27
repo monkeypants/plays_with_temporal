@@ -5,7 +5,6 @@ import {
   FormuleContext,
   SelectOrEdit,
   SchemaPreview,
-  FormPreview,
   initFormuleSchema,
 } from "react-formule";
 import {
@@ -15,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code2, FileJson } from "lucide-react";
@@ -55,7 +54,7 @@ export default function JsonSchemaEditor({
 
   // Handle formule state changes
   const handleFormuleStateChange = useCallback(
-    (state: any) => {
+    (state: { current?: { schema?: unknown } }) => {
       if (state?.current?.schema) {
         try {
           const schemaString = JSON.stringify(state.current.schema, null, 2);
