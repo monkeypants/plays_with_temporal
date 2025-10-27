@@ -143,29 +143,12 @@ class MinioAssemblySpecificationRepository(
             List of all assembly specifications, sorted by
             assembly_specification_id
         """
-
-        self.logger.debug(
-            "MinioAssemblySpecificationRepository: Listing all specs",
-            extra={"bucket": self.specifications_bucket},
-        )
-
         try:
-            # List all objects with the spec/ prefix
-            objects = self.client.list_objects(
-                bucket_name=self.specifications_bucket, prefix="spec/"
-            )
-
-            # Extract assembly specification IDs from object names
-            spec_ids = []
-            for obj in objects:
-                if obj.object_name.startswith("spec/"):
-                    # Extract spec ID from "spec/{spec_id}" format
-                    spec_id = obj.object_name[5:]  # Remove "spec/"
-                    spec_ids.append(spec_id)
-
-            self.logger.debug(
-                "MinioAssemblySpecificationRepository: Found spec objects",
-                extra={"count": len(spec_ids), "spec_ids": spec_ids},
+            # Extract specification IDs from objects with the spec/ prefix
+            spec_ids = self.list_objects_with_prefix_extract_ids(
+                bucket_name=self.specifications_bucket,
+                prefix="spec/",
+                entity_type_name="specs",
             )
 
             if not spec_ids:
@@ -181,7 +164,7 @@ class MinioAssemblySpecificationRepository(
             specs.sort(key=lambda x: x.assembly_specification_id)
 
             self.logger.debug(
-                "MinioAssemblySpecificationRepository: Retrieved specs",
+                "Retrieved specs",
                 extra={"count": len(specs)},
             )
 
@@ -189,7 +172,7 @@ class MinioAssemblySpecificationRepository(
 
         except Exception as e:
             self.logger.error(
-                "MinioAssemblySpecificationRepository: Error listing specs",
+                "Error listing specs",
                 exc_info=True,
                 extra={
                     "error_type": type(e).__name__,

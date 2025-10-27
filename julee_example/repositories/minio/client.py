@@ -533,3 +533,49 @@ class MinioRepositoryMixin:
         )
 
         return generated_id
+
+    def list_objects_with_prefix_extract_ids(
+        self,
+        bucket_name: str,
+        prefix: str,
+        entity_type_name: str,
+    ) -> List[str]:
+        """Extract entity IDs from objects with a given prefix.
+
+        This method provides a common implementation for listing objects
+        and extracting IDs, eliminating code duplication in list_all methods.
+
+        Args:
+            bucket_name: Name of the bucket to list objects from
+            prefix: Object name prefix to filter by (e.g., "spec/", "query/")
+            entity_type_name: Name for logging (e.g., "specs", "queries")
+
+        Returns:
+            List of entity IDs extracted from object names
+
+        Raises:
+            Exception: If listing objects fails
+        """
+        self.logger.debug(
+            f"Listing all {entity_type_name}",
+            extra={"bucket": bucket_name, "prefix": prefix},
+        )
+
+        # List all objects with the specified prefix
+        objects = self.client.list_objects(
+            bucket_name=bucket_name, prefix=prefix
+        )
+
+        # Extract IDs from object names by removing the prefix
+        entity_ids = []
+        for obj in objects:
+            # Extract ID by removing the prefix
+            entity_id = obj.object_name[len(prefix) :]
+            entity_ids.append(entity_id)
+
+        self.logger.debug(
+            f"Found {entity_type_name} objects",
+            extra={"count": len(entity_ids), "entity_ids": entity_ids},
+        )
+
+        return entity_ids

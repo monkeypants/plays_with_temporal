@@ -175,28 +175,12 @@ class MinioKnowledgeServiceQueryRepository(
         Returns:
             List of all knowledge service queries, sorted by query_id
         """
-        logger.debug(
-            "MinioKnowledgeServiceQueryRepository: Listing all queries",
-            extra={"bucket": self.bucket_name},
-        )
-
         try:
-            # List all objects with the query/ prefix
-            objects = self.client.list_objects(
-                bucket_name=self.bucket_name, prefix="query/"
-            )
-
-            # Extract query IDs from object names
-            query_ids = []
-            for obj in objects:
-                if obj.object_name.startswith("query/"):
-                    # Extract query ID from "query/{query_id}" format
-                    query_id = obj.object_name[6:]  # Remove "query/"
-                    query_ids.append(query_id)
-
-            logger.debug(
-                "MinioKnowledgeServiceQueryRepository: Found query objects",
-                extra={"count": len(query_ids), "query_ids": query_ids},
+            # Extract query IDs from objects with the query/ prefix
+            query_ids = self.list_objects_with_prefix_extract_ids(
+                bucket_name=self.bucket_name,
+                prefix="query/",
+                entity_type_name="queries",
             )
 
             if not query_ids:
@@ -212,7 +196,7 @@ class MinioKnowledgeServiceQueryRepository(
             queries.sort(key=lambda x: x.query_id)
 
             logger.debug(
-                "MinioKnowledgeServiceQueryRepository: Retrieved queries",
+                "Retrieved queries",
                 extra={"count": len(queries)},
             )
 
@@ -220,7 +204,7 @@ class MinioKnowledgeServiceQueryRepository(
 
         except Exception as e:
             logger.error(
-                "MinioKnowledgeServiceQueryRepository: Error listing queries",
+                "Error listing queries",
                 exc_info=True,
                 extra={
                     "error_type": type(e).__name__,
