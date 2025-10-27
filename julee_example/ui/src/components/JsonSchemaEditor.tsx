@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { diffLines } from "diff";
 import {
   FormuleContext,
   SelectOrEdit,
   SchemaPreview,
   initFormuleSchema,
-  AiDiff,
 } from "react-formule";
 import {
   Card,
@@ -32,7 +31,10 @@ const CustomAiChat = ({
 }) => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [proposedChanges, setProposedChanges] = useState(null);
+  const [proposedChanges, setProposedChanges] = useState<{
+    schema: object;
+    prompt: string;
+  } | null>(null);
   const [error, setError] = useState("");
 
   const generateSchema = async () => {
@@ -69,15 +71,43 @@ Create a JSON schema for: ${prompt}. Current schema: ${JSON.stringify(currentSch
       );
 
       const data = await response.json();
-      const content = JSON.parse(data.candidates[0].content.parts[0].text);
 
-      setProposedChanges({
-        schema: content.schema || content,
-        prompt: prompt,
-      });
-      setPrompt("");
+      // Validate response structure
+      if (
+        data &&
+        Array.isArray(data.candidates) &&
+        data.candidates.length > 0 &&
+        data.candidates[0].content &&
+        Array.isArray(data.candidates[0].content.parts) &&
+        data.candidates[0].content.parts.length > 0 &&
+        typeof data.candidates[0].content.parts[0].text === "string"
+      ) {
+        let content;
+        try {
+          content = JSON.parse(data.candidates[0].content.parts[0].text);
+        } catch (parseErr) {
+          setError(
+            "Failed to parse schema JSON: " +
+              (parseErr instanceof Error
+                ? parseErr.message
+                : "Unknown parsing error"),
+          );
+          setIsGenerating(false);
+          return;
+        }
+
+        setProposedChanges({
+          schema: content.schema || content,
+          prompt: prompt,
+        });
+        setPrompt("");
+      } else {
+        setError("Unexpected response structure from API.");
+      }
     } catch (err) {
-      setError(err.message);
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred",
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -131,34 +161,45 @@ Create a JSON schema for: ${prompt}. Current schema: ${JSON.stringify(currentSch
       {proposedChanges && (
         <div className="border rounded-lg p-4 bg-gray-50">
           <h3 className="font-medium mb-3">Proposed Schema Changes</h3>
-          <div className="text-sm mb-3 text-gray-600">
+          <div className="text-sm mb-3 text-gray-600 break-words">
             Request: "{proposedChanges.prompt}"
           </div>
 
           <div className="mb-3">
-            <div className="border rounded bg-white">
+            <div className="border rounded bg-white overflow-hidden">
               <div className="text-xs bg-gray-100 px-3 py-2 border-b font-mono">
                 Schema Changes
               </div>
-              <div className="p-3 overflow-auto max-h-64">
-                {diffLines(
-                  JSON.stringify(currentSchema, null, 2),
-                  JSON.stringify(proposedChanges.schema, null, 2),
-                ).map((part, index) => (
-                  <div
-                    key={index}
-                    className={`font-mono text-sm whitespace-pre ${
-                      part.added
-                        ? "bg-green-100 text-green-800"
-                        : part.removed
-                          ? "bg-red-100 text-red-800"
-                          : ""
-                    }`}
-                  >
-                    {part.added ? "+ " : part.removed ? "- " : "  "}
-                    {part.value}
-                  </div>
-                ))}
+              <div className="overflow-auto max-h-64 w-full max-w-full">
+                <table className="w-full table-fixed">
+                  <tbody>
+                    {diffLines(
+                      JSON.stringify(currentSchema, null, 2),
+                      JSON.stringify(proposedChanges.schema, null, 2),
+                    ).map((part, index) => (
+                      <tr key={index}>
+                        <td className="w-8 px-2 py-0 text-center font-mono text-xs text-gray-400 bg-gray-50">
+                          {part.added ? "+" : part.removed ? "-" : " "}
+                        </td>
+                        <td
+                          className={`font-mono text-sm whitespace-pre px-2 py-0 ${
+                            part.added
+                              ? "bg-green-100 text-green-800"
+                              : part.removed
+                                ? "bg-red-100 text-red-800"
+                                : ""
+                          }`}
+                          style={{
+                            maxWidth: "0",
+                            overflow: "auto",
+                          }}
+                        >
+                          {part.value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -198,7 +239,18 @@ export default function JsonSchemaEditor({
 }: JsonSchemaEditorProps) {
   const [activeTab, setActiveTab] = useState("builder");
   const [currentSchema, setCurrentSchema] = useState<string>("{}");
-  const [parsedSchema, setParsedSchema] = useState<object>({});
+  // Parse current value for AI chat component
+  const parsedSchema = useMemo(() => {
+    if (value) {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return {};
+      }
+    } else {
+      return {};
+    }
+  }, [value]);
 
   // Initialize formule with existing schema if provided
   useEffect(() => {
@@ -234,15 +286,6 @@ export default function JsonSchemaEditor({
     [onChange],
   );
 
-  // Parse current value to provide to AI chat
-  useEffect(() => {
-    try {
-      setParsedSchema(JSON.parse(value));
-    } catch {
-      setParsedSchema({});
-    }
-  }, [value]);
-
   return (
     <div className="space-y-4">
       {/* Label and Description */}
@@ -262,8 +305,10 @@ export default function JsonSchemaEditor({
           <CardTitle className="text-lg">Data format</CardTitle>
           <CardDescription>
             Define the structure and fields of data you want to extract from
-            documents. Drag field types from the left panel to build your data
-            structure in the right panel.
+            documents. You can drag field types from the left panel to build
+            your data structure in the right panel. Or you can simply ask an AI
+            agent to do it for you with a prompt below - you will be shown the
+            changes it proposes and can accept or reject them.
           </CardDescription>
         </CardHeader>
         <CardContent>
