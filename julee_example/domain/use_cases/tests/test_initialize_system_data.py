@@ -298,9 +298,9 @@ class TestYamlFixtureIntegration:
         fixture_path = julee_example_dir / "knowledge_services_fixture.yaml"
 
         # Verify file exists
-        assert fixture_path.exists(), (
-            f"Fixture file not found: {fixture_path}"
-        )
+        assert (
+            fixture_path.exists()
+        ), f"Fixture file not found: {fixture_path}"
 
         # Verify file can be parsed
         with open(fixture_path, "r", encoding="utf-8") as f:
@@ -339,9 +339,9 @@ class TestYamlFixtureIntegration:
             )
 
             # Verify IDs are not empty
-            assert config["knowledge_service_id"].strip(), (
-                "Empty knowledge_service_id"
-            )
+            assert config[
+                "knowledge_service_id"
+            ].strip(), "Empty knowledge_service_id"
             assert config["name"].strip(), "Empty name"
             assert config["description"].strip(), "Empty description"
 
@@ -352,9 +352,9 @@ class TestYamlFixtureIntegration:
         config_ids = [
             config["knowledge_service_id"] for config in fixture_configs
         ]
-        assert len(config_ids) == len(set(config_ids)), (
-            "Duplicate knowledge_service_id found in fixture"
-        )
+        assert len(config_ids) == len(
+            set(config_ids)
+        ), "Duplicate knowledge_service_id found in fixture"
 
     @pytest.mark.asyncio
     async def test_load_fixture_configurations_method(

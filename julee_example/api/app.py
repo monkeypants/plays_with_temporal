@@ -17,7 +17,7 @@ with proper HTTP status codes and error handling.
 import logging
 import uvicorn
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Any, Callable
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,7 +30,10 @@ from julee_example.api.routers import (
     knowledge_service_configs_router,
     system_router,
 )
-from julee_example.api.dependencies import get_startup_dependencies
+from julee_example.api.dependencies import (
+    get_startup_dependencies,
+    get_knowledge_service_config_repository,
+)
 
 # Disable pagination extensions check for cleaner startup
 disable_installed_extensions_check()
@@ -58,6 +61,14 @@ def setup_logging() -> None:
 setup_logging()
 
 
+def resolve_dependency(
+    app: FastAPI, dependency_func: Callable[[], Any]
+) -> Any:
+    """Resolve a dependency, respecting test overrides."""
+    override = app.dependency_overrides.get(dependency_func)
+    return override() if override else dependency_func()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for application startup and shutdown."""
@@ -65,20 +76,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting application initialization")
 
     try:
-        # Get dependencies through clean provider
-        startup_deps = await get_startup_dependencies()
-        service = await startup_deps.get_system_initialization_service()
+        # Check if we're in test mode by looking for repository overrides
+        if (
+            get_knowledge_service_config_repository
+            in app.dependency_overrides
+        ):
+            logger.info("Test mode detected, skipping system initialization")
+        else:
+            # Normal production initialization
+            startup_deps = await resolve_dependency(
+                app, get_startup_dependencies
+            )
+            service = await startup_deps.get_system_initialization_service()
 
-        # Execute initialization
-        results = await service.initialize()
+            # Execute initialization
+            results = await service.initialize()
 
-        logger.info(
-            "Application initialization completed successfully",
-            extra={
-                "initialization_results": results,
-                "tasks_completed": results.get("tasks_completed", []),
-            },
-        )
+            logger.info(
+                "Application initialization completed successfully",
+                extra={
+                    "initialization_results": results,
+                    "tasks_completed": results.get("tasks_completed", []),
+                },
+            )
 
     except Exception as e:
         logger.error(
