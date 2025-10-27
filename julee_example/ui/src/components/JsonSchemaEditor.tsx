@@ -43,33 +43,33 @@ const CustomAiChat = ({
 
     try {
       const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
+            contents: [
               {
-                role: "system",
-                content:
-                  "You are a JSON Schema expert. Generate only JSON schemas, no UI schemas. Return JSON with only a 'schema' property containing the JSON Schema.",
-              },
-              {
-                role: "user",
-                content: `Create a JSON schema for: ${prompt}. Current schema: ${JSON.stringify(currentSchema)}. Return only the schema property.`,
+                parts: [
+                  {
+                    text: `You are a JSON Schema expert. Generate only JSON schemas, no UI schemas. Return JSON with only a 'schema' property containing the JSON Schema.
+
+Create a JSON schema for: ${prompt}. Current schema: ${JSON.stringify(currentSchema)}. Return only the schema property as valid JSON.`,
+                  },
+                ],
               },
             ],
-            response_format: { type: "json_object" },
+            generationConfig: {
+              response_mime_type: "application/json",
+            },
           }),
         },
       );
 
       const data = await response.json();
-      const content = JSON.parse(data.choices[0].message.content);
+      const content = JSON.parse(data.candidates[0].content.parts[0].text);
 
       setProposedChanges({
         schema: content.schema || content,
