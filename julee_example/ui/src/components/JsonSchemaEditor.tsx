@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { diffLines } from "diff";
 import {
   FormuleContext,
   SelectOrEdit,
   SchemaPreview,
   initFormuleSchema,
+  AiDiff,
 } from "react-formule";
 import {
   Card,
@@ -14,10 +16,170 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code2, FileJson } from "lucide-react";
+import { Code2, FileJson, Send } from "lucide-react";
+
+// Custom AI Chat Component
+const CustomAiChat = ({
+  onSchemaChange,
+  currentSchema,
+}: {
+  onSchemaChange: (schema: object) => void;
+  currentSchema: object;
+}) => {
+  const [prompt, setPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [proposedChanges, setProposedChanges] = useState(null);
+  const [error, setError] = useState("");
+
+  const generateSchema = async () => {
+    if (!prompt.trim()) return;
+
+    setIsGenerating(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a JSON Schema expert. Generate only JSON schemas, no UI schemas. Return JSON with only a 'schema' property containing the JSON Schema.",
+              },
+              {
+                role: "user",
+                content: `Create a JSON schema for: ${prompt}. Current schema: ${JSON.stringify(currentSchema)}. Return only the schema property.`,
+              },
+            ],
+            response_format: { type: "json_object" },
+          }),
+        },
+      );
+
+      const data = await response.json();
+      const content = JSON.parse(data.choices[0].message.content);
+
+      setProposedChanges({
+        schema: content.schema || content,
+        prompt: prompt,
+      });
+      setPrompt("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleApply = () => {
+    if (proposedChanges && onSchemaChange) {
+      onSchemaChange(proposedChanges.schema);
+    }
+    setProposedChanges(null);
+  };
+
+  const handleReject = () => {
+    setProposedChanges(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Chat Input */}
+      <div className="flex gap-2">
+        <Input
+          placeholder="Describe the data structure you want to create..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyPress={(e) =>
+            e.key === "Enter" && !isGenerating && generateSchema()
+          }
+          className="flex-1"
+        />
+        <Button
+          onClick={generateSchema}
+          disabled={isGenerating || !prompt.trim()}
+          size="sm"
+        >
+          {isGenerating ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="text-red-600 text-sm p-2 bg-red-50 rounded">
+          Error: {error}
+        </div>
+      )}
+
+      {/* Schema Diff */}
+      {proposedChanges && (
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <h3 className="font-medium mb-3">Proposed Schema Changes</h3>
+          <div className="text-sm mb-3 text-gray-600">
+            Request: "{proposedChanges.prompt}"
+          </div>
+
+          <div className="mb-3">
+            <div className="border rounded bg-white">
+              <div className="text-xs bg-gray-100 px-3 py-2 border-b font-mono">
+                Schema Changes
+              </div>
+              <div className="p-3 overflow-auto max-h-64">
+                {diffLines(
+                  JSON.stringify(currentSchema, null, 2),
+                  JSON.stringify(proposedChanges.schema, null, 2),
+                ).map((part, index) => (
+                  <div
+                    key={index}
+                    className={`font-mono text-sm whitespace-pre ${
+                      part.added
+                        ? "bg-green-100 text-green-800"
+                        : part.removed
+                          ? "bg-red-100 text-red-800"
+                          : ""
+                    }`}
+                  >
+                    {part.added ? "+ " : part.removed ? "- " : "  "}
+                    {part.value}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={handleApply}
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Apply Changes
+            </Button>
+            <Button onClick={handleReject} variant="outline" size="sm">
+              Reject
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface JsonSchemaEditorProps {
   value?: string;
@@ -36,6 +198,7 @@ export default function JsonSchemaEditor({
 }: JsonSchemaEditorProps) {
   const [activeTab, setActiveTab] = useState("builder");
   const [currentSchema, setCurrentSchema] = useState<string>("{}");
+  const [parsedSchema, setParsedSchema] = useState<object>({});
 
   // Initialize formule with existing schema if provided
   useEffect(() => {
@@ -59,6 +222,7 @@ export default function JsonSchemaEditor({
         try {
           const schemaString = JSON.stringify(state.current.schema, null, 2);
           setCurrentSchema(schemaString);
+          setParsedSchema(state.current.schema);
           if (onChange) {
             onChange(schemaString);
           }
@@ -69,6 +233,15 @@ export default function JsonSchemaEditor({
     },
     [onChange],
   );
+
+  // Parse current value to provide to AI chat
+  useEffect(() => {
+    try {
+      setParsedSchema(JSON.parse(value));
+    } catch {
+      setParsedSchema({});
+    }
+  }, [value]);
 
   return (
     <div className="space-y-4">
@@ -210,7 +383,28 @@ export default function JsonSchemaEditor({
               .ant-collapse-item:nth-child(3) {
                 display: none !important;
               }
+              /* Hide form diff tab in AI component */
+              .ant-tabs-tab:first-child {
+                display: none !important;
+              }
+              /* Make schema diff tab active by default */
+              .ant-tabs-tab:nth-child(2) .ant-tabs-tab-btn {
+                color: #1890ff !important;
+              }
             `}</style>
+            {/* Custom AI Chat Component */}
+            <div className="mb-4 border rounded-lg p-4">
+              <CustomAiChat
+                onSchemaChange={(newSchema) => {
+                  initFormuleSchema({ schema: newSchema });
+                  const schemaString = JSON.stringify(newSchema, null, 2);
+                  if (onChange) {
+                    onChange(schemaString);
+                  }
+                }}
+                currentSchema={parsedSchema}
+              />
+            </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2">
