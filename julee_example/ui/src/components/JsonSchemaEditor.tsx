@@ -205,12 +205,13 @@ export default function JsonSchemaEditor({
               return customFieldTypes;
             })()}
           >
-            {/* Hide Advanced fields section with simpler CSS */}
+            {/* TODO: Temporary CSS solution - will be replaced with custom FieldTypePicker component in next PR */}
             <style>{`
               .ant-collapse-item:nth-child(3) {
                 display: none !important;
               }
             `}</style>
+
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger

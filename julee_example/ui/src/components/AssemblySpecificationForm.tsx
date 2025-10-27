@@ -195,8 +195,6 @@ export default function AssemblySpecificationForm({
 
   return (
     <div className="space-y-8">
-      {/* Temporary test component */}
-
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle>Create Assembly Specification</CardTitle>
