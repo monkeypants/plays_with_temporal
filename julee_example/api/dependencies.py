@@ -12,7 +12,12 @@ with test overrides available through FastAPI's dependency override system.
 
 import os
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from julee_example.api.services.system_initialization import (
+        SystemInitializationService,
+    )
 
 from fastapi import Depends
 from temporalio.client import Client
@@ -21,11 +26,17 @@ from temporalio.contrib.pydantic import pydantic_data_converter
 from julee_example.domain.repositories.knowledge_service_query import (
     KnowledgeServiceQueryRepository,
 )
+from julee_example.domain.repositories.knowledge_service_config import (
+    KnowledgeServiceConfigRepository,
+)
 from julee_example.domain.repositories.assembly_specification import (
     AssemblySpecificationRepository,
 )
 from julee_example.repositories.minio.knowledge_service_query import (
     MinioKnowledgeServiceQueryRepository,
+)
+from julee_example.repositories.minio.knowledge_service_config import (
+    MinioKnowledgeServiceConfigRepository,
 )
 from julee_example.repositories.minio.assembly_specification import (
     MinioAssemblySpecificationRepository,
@@ -139,11 +150,70 @@ async def get_knowledge_service_query_repository(
     return MinioKnowledgeServiceQueryRepository(client=minio_client)
 
 
+async def get_knowledge_service_config_repository(
+    minio_client: MinioClient = Depends(get_minio_client),
+) -> KnowledgeServiceConfigRepository:
+    """FastAPI dependency for KnowledgeServiceConfigRepository."""
+    return MinioKnowledgeServiceConfigRepository(client=minio_client)
+
+
 async def get_assembly_specification_repository(
     minio_client: MinioClient = Depends(get_minio_client),
 ) -> AssemblySpecificationRepository:
     """FastAPI dependency for AssemblySpecificationRepository."""
     return MinioAssemblySpecificationRepository(client=minio_client)
+
+
+class StartupDependenciesProvider:
+    """
+    Provider for dependencies needed during application startup.
+
+    This class provides clean access to repositories and services needed
+    during the lifespan startup phase, without exposing internal container
+    details or requiring FastAPI's dependency injection system.
+    """
+
+    def __init__(self, container: DependencyContainer):
+        """Initialize with dependency container."""
+        self.container = container
+        self.logger = logging.getLogger("StartupDependenciesProvider")
+
+    async def get_knowledge_service_config_repository(
+        self,
+    ) -> KnowledgeServiceConfigRepository:
+        """Get knowledge service config repository for startup use."""
+        self.logger.debug("Creating knowledge service config repository")
+        minio_client = await self.container.get_minio_client()
+        return MinioKnowledgeServiceConfigRepository(client=minio_client)
+
+    async def get_system_initialization_service(
+        self,
+    ) -> "SystemInitializationService":
+        """Get fully configured system initialization service."""
+        from julee_example.api.services.system_initialization import (
+            SystemInitializationService,
+        )
+        from julee_example.domain.use_cases.initialize_system_data import (
+            InitializeSystemDataUseCase,
+        )
+
+        self.logger.debug("Creating system initialization service")
+
+        # Create repository and use case
+        config_repo = await self.get_knowledge_service_config_repository()
+        use_case = InitializeSystemDataUseCase(config_repo)
+
+        # Create and return service
+        return SystemInitializationService(use_case)
+
+
+# Global startup dependencies provider
+_startup_provider = StartupDependenciesProvider(_container)
+
+
+async def get_startup_dependencies() -> StartupDependenciesProvider:
+    """Get startup dependencies provider for lifespan contexts."""
+    return _startup_provider
 
 
 # Note: Use cases and more complex dependencies can be added here as needed

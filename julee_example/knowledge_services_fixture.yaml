@@ -1,0 +1,37 @@
+# Knowledge Services Fixture Configuration
+#
+# This file defines the knowledge service configurations that should be
+# created during system initialization. Each configuration represents
+# an external AI/ML service that can be used for document analysis
+# and data extraction in the CEAP workflow.
+#
+# The configurations are loaded during application startup and stored
+# in the repository if they don't already exist (idempotent loading).
+
+knowledge_services:
+  - knowledge_service_id: "anthropic-4.5-as-a-knowledge-service"
+    name: "Anthropic 4.5 sonnet as a Knowledge Service"
+    description: "Uses Anthropic's Claude Sonnet 4.5 with its beta file API as an initial knowledge service"
+    service_api: "anthropic"
+    metadata:
+      model: "claude-sonnet-4-5"
+      max_tokens: 4096
+      temperature: 0.2
+      capabilities:
+        - "text_analysis"
+        - "document_extraction"
+        - "summarization"
+        - "question_answering"
+
+  - knowledge_service_id: "anthropic-claude-haiku"
+    name: "Anthropic Claude Haiku 4.5 as a knowledge service"
+    description: "Uses Anthropic's Claude Haiku 4.5 for fast, lightweight text processing"
+    service_api: "anthropic"
+    metadata:
+      model: "claude-haiku-4-5"
+      max_tokens: 2048
+      temperature: 0.1
+      capabilities:
+        - "quick_analysis"
+        - "simple_extraction"
+        - "classification"

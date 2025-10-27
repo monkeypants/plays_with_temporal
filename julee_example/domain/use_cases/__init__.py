@@ -7,9 +7,11 @@ framework-agnostic following Clean Architecture principles.
 """
 
 from .extract_assemble_data import ExtractAssembleDataUseCase
+from .initialize_system_data import InitializeSystemDataUseCase
 from .validate_document import ValidateDocumentUseCase
 
 __all__ = [
     "ExtractAssembleDataUseCase",
+    "InitializeSystemDataUseCase",
     "ValidateDocumentUseCase",
 ]

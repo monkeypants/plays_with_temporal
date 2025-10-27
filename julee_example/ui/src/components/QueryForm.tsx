@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,24 +57,22 @@ interface QueryFormProps {
   onCancel?: () => void;
 }
 
-// TODO: These will be fetched from the server.
-const KNOWLEDGE_SERVICE_OPTIONS = [
-  {
-    id: "anthropic-claude",
-    name: "Anthropic Claude",
-    description: "Claude 3 for general text analysis and extraction",
-  },
-  {
-    id: "openai-gpt4",
-    name: "OpenAI GPT-4",
-    description: "GPT-4 for comprehensive text understanding",
-  },
-  {
-    id: "memory-service",
-    name: "Memory Service",
-    description: "In-memory service for testing and development",
-  },
-];
+interface KnowledgeServiceConfig {
+  knowledge_service_id: string;
+  name: string;
+  description: string;
+  service_api: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface KnowledgeServiceConfigsResponse {
+  items: KnowledgeServiceConfig[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
 
 // Example prompts for different use cases
 const EXAMPLE_PROMPTS = [
@@ -114,6 +112,23 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
       query_metadata: "{}",
     },
   });
+
+  // Fetch knowledge service configurations
+  const {
+    data: knowledgeServicesData,
+    isLoading: isLoadingServices,
+    isError: isServicesError,
+  } = useQuery({
+    queryKey: ["knowledge-service-configs"],
+    queryFn: async (): Promise<KnowledgeServiceConfigsResponse> => {
+      const response = await apiClient.get(
+        "/knowledge_service_configs?size=50",
+      );
+      return response.data;
+    },
+  });
+
+  const knowledgeServices = knowledgeServicesData?.items || [];
 
   const createQueryMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -226,38 +241,63 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
             <Field>
               <Label>Knowledge Service</Label>
               <FieldGroup>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {KNOWLEDGE_SERVICE_OPTIONS.map((service) => (
-                    <Card
-                      key={service.id}
-                      className={`cursor-pointer transition-all hover:shadow-md ${
-                        form.watch("knowledge_service_id") === service.id
-                          ? "border-primary bg-primary/5"
-                          : "hover:bg-accent/50"
-                      }`}
-                      onClick={() => handleServiceSelect(service.id)}
-                    >
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm">
-                            {service.name}
-                          </CardTitle>
-                          {form.watch("knowledge_service_id") ===
-                            service.id && (
-                            <Badge variant="default" className="text-xs">
-                              Selected
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-xs text-muted-foreground">
-                          {service.description}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                {isLoadingServices ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="ml-2">Loading services...</span>
+                  </div>
+                ) : isServicesError ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <div className="ml-2">
+                      Failed to load knowledge services. Please try again.
+                    </div>
+                  </Alert>
+                ) : knowledgeServices.length === 0 ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <div className="ml-2">
+                      No knowledge services available. Contact your
+                      administrator.
+                    </div>
+                  </Alert>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {knowledgeServices.map((service) => (
+                      <Card
+                        key={service.knowledge_service_id}
+                        className={`cursor-pointer transition-all hover:shadow-md ${
+                          form.watch("knowledge_service_id") ===
+                          service.knowledge_service_id
+                            ? "border-primary bg-primary/5"
+                            : "hover:bg-accent/50"
+                        }`}
+                        onClick={() =>
+                          handleServiceSelect(service.knowledge_service_id)
+                        }
+                      >
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm">
+                              {service.name}
+                            </CardTitle>
+                            {form.watch("knowledge_service_id") ===
+                              service.knowledge_service_id && (
+                              <Badge variant="default" className="text-xs">
+                                Selected
+                              </Badge>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-xs text-muted-foreground">
+                            {service.description}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </FieldGroup>
               {form.formState.errors.knowledge_service_id && (
                 <FieldError>

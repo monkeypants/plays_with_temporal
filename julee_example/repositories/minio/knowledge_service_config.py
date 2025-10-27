@@ -139,3 +139,66 @@ class MinioKnowledgeServiceConfigRepository(
             Unique knowledge service ID string
         """
         return self.generate_id_with_prefix("ks")
+
+    async def list_all(self) -> List[KnowledgeServiceConfig]:
+        """List all knowledge service configurations.
+
+        Returns:
+            List of all knowledge service configurations, sorted by
+            knowledge_service_id
+        """
+        self.logger.debug(
+            "MinioKnowledgeServiceConfigRepository: Listing all configs",
+            extra={"bucket": self.bucket_name},
+        )
+
+        try:
+            # List all objects in the bucket
+            objects = self.client.list_objects(
+                bucket_name=self.bucket_name, prefix=""
+            )
+
+            # Extract knowledge service IDs from object names
+            service_ids = []
+            for obj in objects:
+                # Object names are the knowledge service IDs directly
+                service_ids.append(obj.object_name)
+
+            self.logger.debug(
+                "MinioKnowledgeServiceConfigRepository: Found config objects",
+                extra={"count": len(service_ids), "service_ids": service_ids},
+            )
+
+            if not service_ids:
+                return []
+
+            # Get all configurations using the existing get_many method
+            config_results = await self.get_many(service_ids)
+
+            # Filter out None results and sort by knowledge_service_id
+            configs = [
+                config
+                for config in config_results.values()
+                if config is not None
+            ]
+            configs.sort(key=lambda x: x.knowledge_service_id)
+
+            self.logger.debug(
+                "MinioKnowledgeServiceConfigRepository: Retrieved configs",
+                extra={"count": len(configs)},
+            )
+
+            return configs
+
+        except Exception as e:
+            self.logger.error(
+                "MinioKnowledgeServiceConfigRepository: Error listing",
+                exc_info=True,
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "bucket": self.bucket_name,
+                },
+            )
+            # Return empty list on error to avoid breaking the API
+            return []
