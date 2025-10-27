@@ -101,8 +101,8 @@ export default function DashboardPage() {
     queryFn: async (): Promise<DashboardStats> => {
       // This would be replaced with actual API calls to your FastAPI endpoints
       const [queriesResponse, specsResponse] = await Promise.all([
-        apiClient.get("/knowledge_service_queries?limit=1000"),
-        apiClient.get("/assembly_specifications?limit=1000"),
+        apiClient.get("/knowledge_service_queries/?limit=1000"),
+        apiClient.get("/assembly_specifications/?limit=1000"),
       ]);
 
       const queries = queriesResponse.data.items || [];

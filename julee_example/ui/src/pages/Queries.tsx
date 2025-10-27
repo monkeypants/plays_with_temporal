@@ -14,15 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Plus,
-  Search,
-  Database,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  XCircle,
-} from "lucide-react";
+import { Plus, Database, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
 
 interface KnowledgeServiceQuery {
@@ -31,7 +23,7 @@ interface KnowledgeServiceQuery {
   knowledge_service_id: string;
   prompt: string;
   assistant_prompt?: string;
-  query_metadata: Record<string, any>;
+  query_metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -52,18 +44,17 @@ export default function QueriesPage() {
   // Check for success message from navigation state
   useEffect(() => {
     if (location.state?.success) {
-      setSuccessMessage(location.state.success);
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => setSuccessMessage(location.state.success), 0);
       // Clear the state to prevent showing the message on refresh
       navigate(location.pathname, { replace: true });
     }
-  }, [location, navigate]);
+  }, [location.state?.success, location.pathname, navigate]);
 
   // Auto-dismiss success message after 5 seconds
   useEffect(() => {
     if (successMessage) {
-      const timer = setTimeout(() => {
-        setSuccessMessage(null);
-      }, 5000);
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [successMessage]);

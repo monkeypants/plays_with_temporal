@@ -66,9 +66,11 @@ class MinioKnowledgeServiceConfigRepository(
         Returns:
             KnowledgeServiceConfig object if found, None otherwise
         """
+        object_name = f"config/{knowledge_service_id}"
+
         return self.get_json_object(
             bucket_name=self.bucket_name,
-            object_name=knowledge_service_id,
+            object_name=object_name,
             model_class=KnowledgeServiceConfig,
             not_found_log_message="Knowledge service config not found",
             error_log_message="Error retrieving knowledge service config",
@@ -84,9 +86,11 @@ class MinioKnowledgeServiceConfigRepository(
         # Update timestamps
         self.update_timestamps(knowledge_service)
 
+        object_name = f"config/{knowledge_service.knowledge_service_id}"
+
         self.put_json_object(
             bucket_name=self.bucket_name,
-            object_name=knowledge_service.knowledge_service_id,
+            object_name=object_name,
             model=knowledge_service,
             success_log_message="Knowledge service config saved successfully",
             error_log_message="Error saving knowledge service config",
@@ -112,8 +116,10 @@ class MinioKnowledgeServiceConfigRepository(
             Dict mapping knowledge_service_id to KnowledgeServiceConfig (or
             None if not found)
         """
-        # Convert knowledge service IDs to object names (direct mapping)
-        object_names = knowledge_service_ids
+        # Convert knowledge service IDs to object names
+        object_names = [
+            f"config/{service_id}" for service_id in knowledge_service_ids
+        ]
 
         # Get objects from Minio using batch method
         object_results = self.get_many_json_objects(
@@ -127,8 +133,9 @@ class MinioKnowledgeServiceConfigRepository(
 
         # Convert object names back to knowledge service IDs for the result
         result: Dict[str, Optional[KnowledgeServiceConfig]] = {}
-        for service_id in knowledge_service_ids:
-            result[service_id] = object_results[service_id]
+        for i, service_id in enumerate(knowledge_service_ids):
+            object_name = object_names[i]
+            result[service_id] = object_results[object_name]
 
         return result
 
@@ -153,16 +160,18 @@ class MinioKnowledgeServiceConfigRepository(
         )
 
         try:
-            # List all objects in the bucket
+            # List all objects with the config/ prefix
             objects = self.client.list_objects(
-                bucket_name=self.bucket_name, prefix=""
+                bucket_name=self.bucket_name, prefix="config/"
             )
 
             # Extract knowledge service IDs from object names
             service_ids = []
             for obj in objects:
-                # Object names are the knowledge service IDs directly
-                service_ids.append(obj.object_name)
+                if obj.object_name.startswith("config/"):
+                    # Extract service ID from "config/{service_id}" format
+                    service_id = obj.object_name[7:]  # Remove "config/"
+                    service_ids.append(service_id)
 
             self.logger.debug(
                 "MinioKnowledgeServiceConfigRepository: Found config objects",
