@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   FormuleContext,
-  SelectOrEdit,
   SchemaPreview,
   initFormuleSchema,
 } from "react-formule";
@@ -19,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code2, FileJson } from "lucide-react";
 import CustomAiChat from "./CustomAiChat";
+import CustomSelectOrEdit from "./CustomSelectOrEdit";
 
 interface JsonSchemaEditorProps {
   value?: string;
@@ -112,115 +112,8 @@ export default function JsonSchemaEditor({
                 colorPrimary: "#3b82f6", // Blue primary color to match UI
               },
             }}
-            customFieldTypes={(() => {
-              const customFieldTypes = {
-                collections: {
-                  object: {
-                    title: "Object",
-                    icon: <span>&#123;&nbsp;&#125;</span>,
-                    description: "Group of fields, useful for nesting",
-                    child: {},
-                    default: {
-                      schema: {
-                        type: "object",
-                        properties: {},
-                      },
-                      uiSchema: {},
-                    },
-                  },
-                  array: {
-                    title: "List",
-                    icon: <span>[ ]</span>,
-                    description:
-                      "List of fields supporting addition, deletion and reordering",
-                    child: {},
-                    default: {
-                      schema: {
-                        type: "array",
-                        items: {},
-                      },
-                      uiSchema: {},
-                    },
-                  },
-                },
-                simple: {
-                  text: {
-                    title: "Text",
-                    icon: <span>T</span>,
-                    description: "Text field supporting validation",
-                    child: {},
-                    default: {
-                      schema: {
-                        type: "string",
-                      },
-                      uiSchema: {
-                        "ui:widget": "text",
-                      },
-                    },
-                  },
-                  number: {
-                    title: "Number",
-                    icon: <span>#</span>,
-                    description: "Number field (integer or float)",
-                    child: {},
-                    default: {
-                      schema: {
-                        type: "number",
-                      },
-                      uiSchema: {},
-                    },
-                  },
-                },
-                advanced: {},
-              };
-
-              // Hide unwanted default fields by overriding with empty objects
-              const hiddenField = {
-                title: "",
-                icon: <span></span>,
-                description: "",
-                child: {},
-                default: { schema: {}, uiSchema: {} },
-              };
-
-              customFieldTypes.collections = {
-                ...customFieldTypes.collections,
-                accordion: hiddenField,
-                layer: hiddenField,
-                tabView: hiddenField,
-                stepsView: hiddenField,
-              };
-
-              customFieldTypes.simple = {
-                ...customFieldTypes.simple,
-                textarea: hiddenField,
-                checkbox: hiddenField,
-                switch: hiddenField,
-                radio: hiddenField,
-                select: hiddenField,
-                date: hiddenField,
-                email: hiddenField,
-              };
-
-              customFieldTypes.advanced = {
-                uri: hiddenField,
-                richeditor: hiddenField,
-                tags: hiddenField,
-                idFetcher: hiddenField,
-                codeEditor: hiddenField,
-                file: hiddenField,
-                slider: hiddenField,
-                slider_markers: hiddenField,
-              };
-
-              return customFieldTypes;
-            })()}
           >
-            {/* TODO: Temporary CSS solution - will be replaced with custom FieldTypePicker component in next PR */}
             <style>{`
-              .ant-collapse-item:nth-child(3) {
-                display: none !important;
-              }
               /* Hide form diff tab in AI component */
               .ant-tabs-tab:first-child {
                 display: none !important;
@@ -263,7 +156,7 @@ export default function JsonSchemaEditor({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="min-h-[400px] border rounded-lg p-4">
                     <h3 className="text-sm font-medium mb-3">Add Fields</h3>
-                    <SelectOrEdit />
+                    <CustomSelectOrEdit />
                   </div>
                   <div className="min-h-[400px] border rounded-lg p-4">
                     <h3 className="text-sm font-medium mb-3">
