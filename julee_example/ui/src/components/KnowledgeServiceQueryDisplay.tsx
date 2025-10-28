@@ -101,10 +101,12 @@ export default function KnowledgeServiceQueryDisplay({
 
   const getQueryInfo = (queryId: string) => {
     const query = queryLookup[queryId];
+    if (!query) {
+      throw new Error(`Query not found: ${queryId}`);
+    }
     return {
-      name: query?.name || `Query ${queryId.slice(-3)}`,
-      description:
-        query?.prompt || `Extract specific data using query ${queryId}`,
+      name: query.name,
+      description: query.prompt,
     };
   };
 
