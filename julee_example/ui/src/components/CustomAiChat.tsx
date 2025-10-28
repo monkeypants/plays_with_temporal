@@ -22,9 +22,8 @@ export default function CustomAiChat({
 }: CustomAiChatProps) {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [proposedChanges, setProposedChanges] = useState<ProposedChanges | null>(
-    null,
-  );
+  const [proposedChanges, setProposedChanges] =
+    useState<ProposedChanges | null>(null);
   const [error, setError] = useState("");
 
   const generateSchema = async () => {
@@ -104,7 +103,7 @@ Create a JSON schema for: ${prompt}. Current schema: ${JSON.stringify(currentSch
   };
 
   const handleApply = () => {
-    if (proposedChanges && onSchemaChange) {
+    if (proposedChanges) {
       onSchemaChange(proposedChanges.schema);
     }
     setProposedChanges(null);
