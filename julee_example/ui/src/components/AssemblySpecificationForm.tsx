@@ -272,33 +272,20 @@ export default function AssemblySpecificationForm({
                 label="Data to assemble"
                 description="JSON Schema defining the structure of data to be extracted for this assembly"
                 error={form.formState.errors.jsonschema?.message}
+                knowledgeServiceQueries={(() => {
+                  try {
+                    return JSON.parse(
+                      form.getValues("knowledge_service_queries") || "{}",
+                    );
+                  } catch {
+                    return {};
+                  }
+                })()}
+                onFieldSelect={(jsonPointer) => {
+                  // TODO: Navigate to field property editor
+                  console.log("Selected field:", jsonPointer);
+                }}
               />
-
-              {/* Knowledge Service Queries */}
-              <Field>
-                <Label htmlFor="knowledge_service_queries">
-                  Knowledge Service Queries (Optional)
-                </Label>
-                <Textarea
-                  id="knowledge_service_queries"
-                  placeholder='{"\/properties\/meeting_info": "query-id-1", "\/properties\/agenda_items": "query-id-2"}'
-                  className={`min-h-[100px] font-mono text-sm ${
-                    form.formState.errors.knowledge_service_queries
-                      ? "border-red-500"
-                      : ""
-                  }`}
-                  {...form.register("knowledge_service_queries")}
-                />
-                <FieldDescription>
-                  JSON mapping from JSON Pointer paths to Knowledge Service
-                  Query IDs. Leave empty if not using queries yet.
-                </FieldDescription>
-                {form.formState.errors.knowledge_service_queries && (
-                  <FieldError>
-                    {form.formState.errors.knowledge_service_queries.message}
-                  </FieldError>
-                )}
-              </Field>
 
               {/* Available Queries Reference */}
               {availableQueries.length > 0 && (
