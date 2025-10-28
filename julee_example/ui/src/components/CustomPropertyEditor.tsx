@@ -9,6 +9,7 @@ import { ArrowLeft, Trash2, Edit3 } from "lucide-react";
 
 const CustomPropertyEditor = () => {
   const [fieldName, setFieldName] = useState<string>("");
+  const [localFieldName, setLocalFieldName] = useState<string>("");
   const fieldNameInputRef = React.useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
 
@@ -32,9 +33,12 @@ const CustomPropertyEditor = () => {
       const name = path.findLast(
         (item: string) => item !== "properties" && item !== "items",
       );
-      setFieldName(name || "root");
+      const fieldNameValue = name || "root";
+      setFieldName(fieldNameValue);
+      setLocalFieldName(fieldNameValue);
     } else {
       setFieldName("root");
+      setLocalFieldName("root");
     }
   }, [path]);
 
@@ -88,8 +92,14 @@ const CustomPropertyEditor = () => {
           separator: "::", // Default separator used by react-formule
         },
       });
+      setFieldName(newName);
     }
-    setFieldName(newName);
+  };
+
+  const handleFieldNameBlur = () => {
+    if (localFieldName && localFieldName !== fieldName) {
+      handleRename(localFieldName);
+    }
   };
 
   const handleTitleChange = useCallback(
@@ -156,8 +166,9 @@ const CustomPropertyEditor = () => {
               <input
                 ref={fieldNameInputRef}
                 type="text"
-                value={fieldName}
-                onChange={(e) => handleRename(e.target.value)}
+                value={localFieldName}
+                onChange={(e) => setLocalFieldName(e.target.value)}
+                onBlur={handleFieldNameBlur}
                 className="text-lg font-semibold bg-transparent border-none text-center outline-none focus:bg-white focus:border focus:border-blue-500 focus:rounded px-2 py-1"
                 placeholder="Field name"
               />
