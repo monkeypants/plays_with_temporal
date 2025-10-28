@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code2, FileJson } from "lucide-react";
 import CustomAiChat from "./CustomAiChat";
 import CustomSelectOrEdit from "./CustomSelectOrEdit";
+import KnowledgeServiceQueryDisplay from "./KnowledgeServiceQueryDisplay";
 
 interface JsonSchemaEditorProps {
   value?: string;
@@ -26,6 +27,8 @@ interface JsonSchemaEditorProps {
   label?: string;
   description?: string;
   error?: string;
+  knowledgeServiceQueries?: Record<string, string>;
+  onFieldSelect?: (jsonPointer: string) => void;
 }
 
 export default function JsonSchemaEditor({
@@ -34,6 +37,8 @@ export default function JsonSchemaEditor({
   label = "Data to assemble",
   description,
   error,
+  knowledgeServiceQueries = {},
+  onFieldSelect,
 }: JsonSchemaEditorProps) {
   const [activeTab, setActiveTab] = useState("builder");
   const [currentSchema, setCurrentSchema] = useState<string>("{}");
@@ -178,6 +183,13 @@ export default function JsonSchemaEditor({
           </FormuleContext>
         </CardContent>
       </Card>
+
+      {/* Knowledge Service Queries Display */}
+      <KnowledgeServiceQueryDisplay
+        knowledgeServiceQueries={knowledgeServiceQueries}
+        jsonSchema={parsedSchema}
+        onFieldSelect={onFieldSelect}
+      />
     </div>
   );
 }
