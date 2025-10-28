@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import { PropertyEditor } from "react-formule";
 import { useSelector } from "react-redux";
 import { isEmpty } from "lodash-es";
 import FieldTypePicker from "./FieldTypePicker";
+import CustomPropertyEditor from "./CustomPropertyEditor";
 
 export default function CustomSelectOrEdit() {
   // Use Redux selector to watch for field selection changes (same as original SelectOrEdit)
@@ -40,7 +40,11 @@ export default function CustomSelectOrEdit() {
     return <FieldTypePicker />;
   }
 
-  // If a field is selected (not empty), show PropertyEditor, otherwise show our custom picker
+  // If a field is selected (not empty), show CustomPropertyEditor, otherwise show our custom picker
   // This mirrors the logic from the original SelectOrEdit component
-  return isEmpty(selectedField) ? <FieldTypePicker /> : <PropertyEditor />;
+  return isEmpty(selectedField) ? (
+    <FieldTypePicker />
+  ) : (
+    <CustomPropertyEditor />
+  );
 }
