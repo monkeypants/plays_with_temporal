@@ -96,14 +96,9 @@ const DraggableFieldCard: React.FC<DraggableFieldCardProps> = ({
           <div className="flex items-start space-x-3">
             <div className="shrink-0 mt-1 text-primary">{fieldType.icon}</div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h4 className="text-sm font-medium text-foreground">
-                  {fieldType.title}
-                </h4>
-                <Badge variant="outline" className="text-xs">
-                  {fieldType.category}
-                </Badge>
-              </div>
+              <h4 className="text-sm font-medium text-foreground mb-1">
+                {fieldType.title}
+              </h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {fieldType.description}
               </p>
@@ -179,45 +174,11 @@ const FieldTypePickerContent: React.FC = () => {
     return result;
   }, [customizationContext]);
 
-  // Group by category
-  const collections = fieldTypes.filter((ft) => ft.category === "collections");
-  const simple = fieldTypes.filter((ft) => ft.category === "simple");
-
   return (
-    <div className="space-y-6">
-      {/* Collections Section */}
-      {collections.length > 0 && (
-        <div>
-          <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-            Collections
-            <Badge variant="secondary" className="text-xs">
-              {collections.length}
-            </Badge>
-          </h3>
-          <div className="grid gap-3">
-            {collections.map((fieldType) => (
-              <DraggableFieldCard key={fieldType.key} fieldType={fieldType} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Simple Fields Section */}
-      {simple.length > 0 && (
-        <div>
-          <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-            Simple Fields
-            <Badge variant="secondary" className="text-xs">
-              {simple.length}
-            </Badge>
-          </h3>
-          <div className="grid gap-3">
-            {simple.map((fieldType) => (
-              <DraggableFieldCard key={fieldType.key} fieldType={fieldType} />
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="grid gap-3">
+      {fieldTypes.map((fieldType) => (
+        <DraggableFieldCard key={fieldType.key} fieldType={fieldType} />
+      ))}
     </div>
   );
 };
