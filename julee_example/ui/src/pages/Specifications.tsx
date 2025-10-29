@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
@@ -112,7 +112,7 @@ const LoadingSkeleton = () => (
 export default function SpecificationsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [runningWorkflows, setRunningWorkflows] = useState<Set<string>>(
     new Set(),
   );
@@ -124,7 +124,7 @@ export default function SpecificationsPage() {
   useEffect(() => {
     if (location.state?.message) {
       // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => setSuccessMessage(location.state.message), 0);
+      setTimeout(() => setStatusMessage(location.state.message), 0);
       // Clear the navigation state to prevent showing the message on refresh
       navigate(location.pathname, { replace: true });
     }
@@ -132,11 +132,11 @@ export default function SpecificationsPage() {
 
   // Auto-dismiss success message after 5 seconds
   useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+    if (statusMessage) {
+      const timer = setTimeout(() => setStatusMessage(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [successMessage]);
+  }, [statusMessage]);
 
   const {
     data: specificationsData,
@@ -176,7 +176,7 @@ export default function SpecificationsPage() {
         assembly_specification_id: modalSpec.assembly_specification_id,
       });
 
-      setSuccessMessage(
+      setStatusMessage(
         `Workflow started successfully! Workflow ID: ${response.data.workflow_id}`,
       );
 
@@ -184,7 +184,7 @@ export default function SpecificationsPage() {
       // navigate(`/workflows/${response.data.workflow_id}`);
     } catch (error) {
       console.error("Failed to start workflow:", error);
-      setSuccessMessage(
+      setStatusMessage(
         `Failed to start workflow: ${getApiErrorMessage(error)}`,
       );
       throw error; // Re-throw to let modal handle the error state
@@ -216,11 +216,11 @@ export default function SpecificationsPage() {
         </div>
       </div>
 
-      {/* Success Message */}
-      {successMessage && (
+      {/* Status Message */}
+      {statusMessage && (
         <Alert className="mb-6 border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
           <CheckCircle2 className="h-4 w-4" />
-          <div className="ml-2">{successMessage}</div>
+          <AlertDescription>{statusMessage}</AlertDescription>
         </Alert>
       )}
 
@@ -228,7 +228,7 @@ export default function SpecificationsPage() {
       {isError && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
-          <div className="ml-2">
+          <AlertDescription>
             <div className="font-medium">Failed to load specifications</div>
             <div className="text-sm mt-1">
               {getApiErrorMessage(error)}
@@ -241,7 +241,7 @@ export default function SpecificationsPage() {
                 Try Again
               </Button>
             </div>
-          </div>
+          </AlertDescription>
         </Alert>
       )}
 
