@@ -30,6 +30,7 @@ from julee_example.api.routers import (
     knowledge_service_configs_router,
     system_router,
     documents_router,
+    workflows_router,
 )
 from julee_example.api.dependencies import (
     get_startup_dependencies,
@@ -167,6 +168,12 @@ app.include_router(
     documents_router,
     prefix="/documents",
     tags=["Documents"],
+)
+
+app.include_router(
+    workflows_router,
+    prefix="/workflows",
+    tags=["Workflows"],
 )
 
 
