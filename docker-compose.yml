@@ -184,6 +184,20 @@ services:
       - "8000:8000"
     restart: on-failure
 
+  julee-ui:
+    profiles: ["julee"]
+    build:
+      context: .
+      dockerfile: julee_example/Dockerfile.ui
+    depends_on:
+      - julee-api
+    environment:
+      - VITE_GEMINI_API_KEY=${GEMINI_API_KEY}
+      - VITE_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    restart: on-failure
+
 volumes:
   postgres-data:
   calendar-postgres-data:
