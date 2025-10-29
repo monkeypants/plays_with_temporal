@@ -51,15 +51,25 @@ const getFieldInfo = (jsonPointer: string, schema: Record<string, unknown>) => {
     };
   }
 
-  const fieldSchema = jsonpointer.get(schema, jsonPointer);
-  if (fieldSchema && typeof fieldSchema === "object") {
-    return {
-      name: fieldSchema.title || "Untitled Field",
-      description: fieldSchema.description || "No description available",
-    };
+  try {
+    const fieldSchema = jsonpointer.get(schema, jsonPointer);
+    if (fieldSchema && typeof fieldSchema === "object") {
+      return {
+        name: fieldSchema.title || "Untitled Field",
+        description: fieldSchema.description || "No description available",
+      };
+    }
+  } catch (error) {
+    console.warn(
+      `Could not resolve JSON pointer ${jsonPointer} in schema:`,
+      error,
+    );
   }
 
-  throw new Error(`Could not resolve JSON pointer ${jsonPointer} in schema`);
+  return {
+    name: `Field at ${jsonPointer}`,
+    description: "Field not found in current schema",
+  };
 };
 
 export default function KnowledgeServiceQueryDisplay({
@@ -102,7 +112,11 @@ export default function KnowledgeServiceQueryDisplay({
   const getQueryInfo = (queryId: string) => {
     const query = queryLookup[queryId];
     if (!query) {
-      throw new Error(`Query not found: ${queryId}`);
+      console.warn(`Query not found: ${queryId}`);
+      return {
+        name: `Query ${queryId} (not found)`,
+        description: `Query ${queryId} could not be loaded`,
+      };
     }
     return {
       name: query.name,

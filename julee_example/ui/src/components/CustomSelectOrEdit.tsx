@@ -6,7 +6,15 @@ import { isEmpty } from "lodash-es";
 import FieldTypePicker from "./FieldTypePicker";
 import CustomPropertyEditor from "./CustomPropertyEditor";
 
-export default function CustomSelectOrEdit() {
+interface CustomSelectOrEditProps {
+  knowledgeServiceQueries?: Record<string, string>;
+  onUpdateQuery?: (jsonPointer: string, queryId: string | null) => void;
+}
+
+export default function CustomSelectOrEdit({
+  knowledgeServiceQueries = {},
+  onUpdateQuery,
+}: CustomSelectOrEditProps) {
   // Use Redux selector to watch for field selection changes (same as original SelectOrEdit)
   const selectedField = useSelector((state: any) => state.schemaWizard.field);
 
@@ -45,6 +53,9 @@ export default function CustomSelectOrEdit() {
   return isEmpty(selectedField) ? (
     <FieldTypePicker />
   ) : (
-    <CustomPropertyEditor />
+    <CustomPropertyEditor
+      knowledgeServiceQueries={knowledgeServiceQueries}
+      onUpdateQuery={onUpdateQuery}
+    />
   );
 }
