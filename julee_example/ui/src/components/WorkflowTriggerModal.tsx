@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import {
@@ -75,7 +75,10 @@ export default function WorkflowTriggerModal({
     isLoading: isLoadingDocuments,
     error: documentsError,
   } = useQuery({
-    queryKey: ["documents"],
+    queryKey: [
+      "workflow-trigger-documents",
+      specification.assembly_specification_id,
+    ],
     queryFn: async (): Promise<DocumentsResponse> => {
       const response = await apiClient.get("/documents/?size=50");
       return response.data;
@@ -148,16 +151,16 @@ export default function WorkflowTriggerModal({
             ) : documentsError ? (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <div className="ml-2">
+                <AlertDescription>
                   Failed to load documents: {getApiErrorMessage(documentsError)}
-                </div>
+                </AlertDescription>
               </Alert>
             ) : documents.length === 0 ? (
               <Alert>
                 <FileText className="h-4 w-4" />
-                <div className="ml-2">
+                <AlertDescription>
                   No documents available. Please upload documents first.
-                </div>
+                </AlertDescription>
               </Alert>
             ) : (
               <Select
