@@ -1,10 +1,11 @@
 "use client";
 
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -15,7 +16,6 @@ import {
 import {
   Field,
   FieldSet,
-  FieldGroup,
   FieldDescription,
   FieldError,
 } from "@/components/ui/field";
@@ -74,22 +74,24 @@ interface AssemblySpecificationFormProps {
   onCancel?: () => void;
 }
 
-interface KnowledgeServiceQuery {
-  query_id: string;
-  name: string;
-  prompt: string;
-  knowledge_service_id: string;
-  created_at: string;
-  updated_at: string;
-}
+// Interface will be used when implementing query creation modal
+// interface KnowledgeServiceQuery {
+//   query_id: string;
+//   name: string;
+//   prompt: string;
+//   knowledge_service_id: string;
+//   created_at: string;
+//   updated_at: string;
+// }
 
-interface KnowledgeServiceQueriesResponse {
-  items: KnowledgeServiceQuery[];
-  total: number;
-  page: number;
-  size: number;
-  pages: number;
-}
+// Interface will be used when implementing query creation modal
+// interface KnowledgeServiceQueriesResponse {
+//   items: KnowledgeServiceQuery[];
+//   total: number;
+//   page: number;
+//   size: number;
+//   pages: number;
+// }
 
 // Example JSON schemas for different assembly types
 
@@ -99,6 +101,11 @@ export default function AssemblySpecificationForm({
 }: AssemblySpecificationFormProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Separate state for knowledge service queries to avoid form interference
+  const [knowledgeServiceQueries, setKnowledgeServiceQueries] = useState<
+    Record<string, string>
+  >({});
 
   const form = useForm<AssemblySpecFormValues>({
     resolver: zodResolver(assemblySpecFormSchema),
@@ -112,17 +119,16 @@ export default function AssemblySpecificationForm({
   });
 
   // Fetch available knowledge service queries
-  const { data: queriesData } = useQuery({
-    queryKey: ["knowledge-service-queries"],
-    queryFn: async (): Promise<KnowledgeServiceQueriesResponse> => {
-      const response = await apiClient.get(
-        "/knowledge_service_queries/?size=50",
-      );
-      return response.data;
-    },
-  });
-
-  const availableQueries = queriesData?.items || [];
+  // TODO: This query will be used when implementing query creation modal
+  // const { data: _queriesData } = useQuery({
+  //   queryKey: ["knowledge-service-queries"],
+  //   queryFn: async (): Promise<KnowledgeServiceQueriesResponse> => {
+  //     const response = await apiClient.get(
+  //       "/knowledge_service_queries/?size=50",
+  //     );
+  //     return response.data;
+  //   },
+  // });
 
   const createSpecMutation = useMutation({
     mutationFn: async (data: unknown) => {
@@ -148,7 +154,6 @@ export default function AssemblySpecificationForm({
   const onSubmit = (data: AssemblySpecFormValues) => {
     // Prepare data for submission
     let parsedJsonSchema = {};
-    let parsedKnowledgeServiceQueries = {};
 
     // Parse JSON schema
     try {
@@ -159,26 +164,13 @@ export default function AssemblySpecificationForm({
       });
       return;
     }
-
-    // Parse knowledge service queries if provided
-    if (data.knowledge_service_queries?.trim()) {
-      try {
-        parsedKnowledgeServiceQueries = JSON.parse(
-          data.knowledge_service_queries,
-        );
-      } catch {
-        form.setError("knowledge_service_queries", {
-          message: "Invalid JSON format in knowledge service queries",
-        });
-        return;
-      }
-    }
+    // Use the separate state instead of parsing from form
 
     const submitData = {
       name: data.name.trim(),
       applicability: data.applicability.trim(),
       jsonschema: parsedJsonSchema,
-      knowledge_service_queries: parsedKnowledgeServiceQueries,
+      knowledge_service_queries: knowledgeServiceQueries,
       version: data.version.trim(),
     };
 
@@ -272,46 +264,20 @@ export default function AssemblySpecificationForm({
                 label="Data to assemble"
                 description="JSON Schema defining the structure of data to be extracted for this assembly"
                 error={form.formState.errors.jsonschema?.message}
-                knowledgeServiceQueries={(() => {
-                  try {
-                    return JSON.parse(
-                      form.getValues("knowledge_service_queries") || "{}",
-                    );
-                  } catch {
-                    return {};
+                knowledgeServiceQueries={knowledgeServiceQueries}
+                onFieldSelect={(_jsonPointer) => {
+                  // Field navigation is now handled by DOM simulation in JsonSchemaEditor
+                }}
+                onUpdateQuery={(jsonPointer, queryId) => {
+                  const updatedQueries = { ...knowledgeServiceQueries };
+                  if (queryId === null) {
+                    delete updatedQueries[jsonPointer];
+                  } else {
+                    updatedQueries[jsonPointer] = queryId;
                   }
-                })()}
-                onFieldSelect={(jsonPointer) => {
-                  // TODO: Navigate to field property editor
-                  console.log("Selected field:", jsonPointer);
+                  setKnowledgeServiceQueries(updatedQueries);
                 }}
               />
-
-              {/* Available Queries Reference */}
-              {availableQueries.length > 0 && (
-                <Field>
-                  <Label>Available Knowledge Service Queries</Label>
-                  <FieldGroup>
-                    <div className="grid gap-2 md:grid-cols-2 max-h-40 overflow-y-auto">
-                      {availableQueries.map((query) => (
-                        <div
-                          key={query.query_id}
-                          className="p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs"
-                        >
-                          <div className="font-medium">{query.name}</div>
-                          <div className="text-muted-foreground font-mono">
-                            {query.query_id}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </FieldGroup>
-                  <FieldDescription>
-                    Reference: Available query IDs you can use in the mapping
-                    above
-                  </FieldDescription>
-                </Field>
-              )}
 
               {/* Version */}
               <Field>

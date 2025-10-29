@@ -1,46 +1,58 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { get } from "lodash-es";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Trash2, Edit3 } from "lucide-react";
+import KnowledgeServiceSection from "./KnowledgeServiceSection";
 
-const CustomPropertyEditor = () => {
+interface CustomPropertyEditorProps {
+  knowledgeServiceQueries?: Record<string, string>;
+  onUpdateQuery?: (jsonPointer: string, queryId: string | null) => void;
+}
+
+const CustomPropertyEditor = ({
+  knowledgeServiceQueries = {},
+  onUpdateQuery,
+}: CustomPropertyEditorProps = {}) => {
   const [fieldName, setFieldName] = useState<string>("");
   const [localFieldName, setLocalFieldName] = useState<string>("");
   const fieldNameInputRef = React.useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
 
   // Get field information from Redux state
-  const path = useSelector((state: any) => state.schemaWizard.field.path);
-  const uiPath = useSelector((state: any) => state.schemaWizard.field.uiPath);
-
-  const schema = useSelector((state: any) =>
-    get(state.schemaWizard, ["current", "schema", ...path]),
+  const path = useSelector(
+    (state: unknown) => (state as any).schemaWizard.field.path,
   );
-  const uiSchema = useSelector((state: any) =>
-    get(state.schemaWizard, ["current", "uiSchema", ...uiPath]),
+  const uiPath = useSelector(
+    (state: unknown) => (state as any).schemaWizard.field.uiPath,
+  );
+
+  const schema = useSelector((state: unknown) =>
+    get((state as any).schemaWizard, ["current", "schema", ...path]),
   );
 
   // Get field title from schema
   const fieldTitle = schema?.title || "";
 
   // Determine field type and name
-  useEffect(() => {
+  const computedFieldName = useMemo(() => {
     if (path && path.length > 0) {
       const name = path.findLast(
         (item: string) => item !== "properties" && item !== "items",
       );
-      const fieldNameValue = name || "root";
-      setFieldName(fieldNameValue);
-      setLocalFieldName(fieldNameValue);
-    } else {
-      setFieldName("root");
-      setLocalFieldName("root");
+      return name || "root";
     }
+    return "root";
   }, [path]);
+
+  // Update field names when computed name changes
+  useEffect(() => {
+    setFieldName(computedFieldName);
+    setLocalFieldName(computedFieldName);
+  }, [computedFieldName]);
 
   // Create breadcrumb display
   const renderBreadcrumb = () => {
@@ -221,6 +233,12 @@ const CustomPropertyEditor = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Knowledge Service Section */}
+        <KnowledgeServiceSection
+          knowledgeServiceQueries={knowledgeServiceQueries}
+          onUpdateQuery={onUpdateQuery}
+        />
       </div>
     </div>
   );

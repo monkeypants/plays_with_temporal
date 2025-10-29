@@ -1,47 +1,48 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-interface FieldProps extends React.HTMLAttributes<HTMLDivElement> {}
+type FieldProps = React.HTMLAttributes<HTMLDivElement>;
 
-interface FieldSetProps extends React.HTMLAttributes<HTMLFieldSetElement> {}
+type FieldSetProps = React.HTMLAttributes<HTMLFieldSetElement>;
 
-interface FieldGroupProps extends React.HTMLAttributes<HTMLDivElement> {}
+type FieldGroupProps = React.HTMLAttributes<HTMLDivElement>;
 
-interface FieldDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {}
+type FieldDescriptionProps = React.HTMLAttributes<HTMLParagraphElement>;
 
-interface FieldErrorProps extends React.HTMLAttributes<HTMLParagraphElement> {}
+type FieldErrorProps = React.HTMLAttributes<HTMLParagraphElement>;
 
 const Field = React.forwardRef<HTMLDivElement, FieldProps>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn("space-y-2", className)} {...props} />
   ),
-)
-Field.displayName = "Field"
+);
+Field.displayName = "Field";
 
 const FieldSet = React.forwardRef<HTMLFieldSetElement, FieldSetProps>(
   ({ className, ...props }, ref) => (
     <fieldset ref={ref} className={cn("space-y-6", className)} {...props} />
   ),
-)
-FieldSet.displayName = "FieldSet"
+);
+FieldSet.displayName = "FieldSet";
 
 const FieldGroup = React.forwardRef<HTMLDivElement, FieldGroupProps>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn("space-y-2", className)} {...props} />
   ),
-)
-FieldGroup.displayName = "FieldGroup"
+);
+FieldGroup.displayName = "FieldGroup";
 
-const FieldDescription = React.forwardRef<HTMLParagraphElement, FieldDescriptionProps>(
-  ({ className, ...props }, ref) => (
-    <p
-      ref={ref}
-      className={cn("text-sm text-muted-foreground", className)}
-      {...props}
-    />
-  ),
-)
-FieldDescription.displayName = "FieldDescription"
+const FieldDescription = React.forwardRef<
+  HTMLParagraphElement,
+  FieldDescriptionProps
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+));
+FieldDescription.displayName = "FieldDescription";
 
 const FieldError = React.forwardRef<HTMLParagraphElement, FieldErrorProps>(
   ({ className, ...props }, ref) => (
@@ -51,13 +52,7 @@ const FieldError = React.forwardRef<HTMLParagraphElement, FieldErrorProps>(
       {...props}
     />
   ),
-)
-FieldError.displayName = "FieldError"
+);
+FieldError.displayName = "FieldError";
 
-export {
-  Field,
-  FieldSet,
-  FieldGroup,
-  FieldDescription,
-  FieldError,
-}
+export { Field, FieldSet, FieldGroup, FieldDescription, FieldError };
