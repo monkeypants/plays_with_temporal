@@ -22,8 +22,11 @@ import {
   Clock,
   AlertCircle,
   XCircle,
+  Play,
+  Loader2,
 } from "lucide-react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
+import WorkflowTriggerModal from "@/components/WorkflowTriggerModal";
 
 interface AssemblySpecification {
   assembly_specification_id: string;
@@ -110,6 +113,12 @@ export default function SpecificationsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [runningWorkflows, setRunningWorkflows] = useState<Set<string>>(
+    new Set(),
+  );
+  const [modalSpec, setModalSpec] = useState<AssemblySpecification | null>(
+    null,
+  );
 
   // Check for success message from navigation state
   useEffect(() => {
@@ -148,6 +157,44 @@ export default function SpecificationsPage() {
 
   const handleCreateNew = () => {
     navigate("/specifications/create");
+  };
+
+  const handleRunAssembly = (spec: AssemblySpecification) => {
+    setModalSpec(spec);
+  };
+
+  const handleModalSubmit = async (documentId: string) => {
+    if (!modalSpec) return;
+
+    try {
+      setRunningWorkflows(
+        (prev) => new Set([...prev, modalSpec.assembly_specification_id]),
+      );
+
+      const response = await apiClient.post("/workflows/extract-assemble", {
+        document_id: documentId,
+        assembly_specification_id: modalSpec.assembly_specification_id,
+      });
+
+      setSuccessMessage(
+        `Workflow started successfully! Workflow ID: ${response.data.workflow_id}`,
+      );
+
+      // Navigate to a workflow monitoring page (we'll create this later)
+      // navigate(`/workflows/${response.data.workflow_id}`);
+    } catch (error) {
+      console.error("Failed to start workflow:", error);
+      setSuccessMessage(
+        `Failed to start workflow: ${getApiErrorMessage(error)}`,
+      );
+      throw error; // Re-throw to let modal handle the error state
+    } finally {
+      setRunningWorkflows((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(modalSpec.assembly_specification_id);
+        return newSet;
+      });
+    }
   };
 
   return (
@@ -272,6 +319,30 @@ export default function SpecificationsPage() {
                     {spec.assembly_specification_id.split("-")[0]}...
                   </div>
                 </div>
+
+                {/* Run Assembly Button */}
+                <div className="mt-4">
+                  <Button
+                    onClick={() => handleRunAssembly(spec)}
+                    disabled={runningWorkflows.has(
+                      spec.assembly_specification_id,
+                    )}
+                    className="w-full"
+                    variant={spec.status === "active" ? "default" : "outline"}
+                  >
+                    {runningWorkflows.has(spec.assembly_specification_id) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Starting Workflow...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Run Assembly
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -298,6 +369,19 @@ export default function SpecificationsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Workflow Trigger Modal */}
+      {modalSpec && (
+        <WorkflowTriggerModal
+          isOpen={true}
+          onClose={() => setModalSpec(null)}
+          onSubmit={handleModalSubmit}
+          specification={modalSpec}
+          isSubmitting={runningWorkflows.has(
+            modalSpec.assembly_specification_id,
+          )}
+        />
       )}
     </div>
   );
