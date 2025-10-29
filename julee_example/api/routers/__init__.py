@@ -8,6 +8,7 @@ prefix in the main app.
 Organization:
 - knowledge_service_queries: CRUD operations for knowledge service queries
 - assembly_specifications: CRUD operations for assembly specifications
+- documents: CRUD operations for documents
 - system: Health checks and system status endpoints
 
 Router modules follow the pattern:
@@ -28,10 +29,12 @@ from julee_example.api.routers.assembly_specifications import (
     router as assembly_specifications_router,
 )
 from julee_example.api.routers.system import router as system_router
+from julee_example.api.routers.documents import router as documents_router
 
 __all__ = [
     "knowledge_service_queries_router",
     "knowledge_service_configs_router",
     "assembly_specifications_router",
+    "documents_router",
     "system_router",
 ]
