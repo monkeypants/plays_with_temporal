@@ -269,23 +269,11 @@ class TestInitializeSystemDataUseCase:
             memory_config_repository, memory_document_repository
         )
 
-        # Call only the config method directly with exception handling
-        try:
-            await use_case._ensure_knowledge_service_configs_exist()
-        except Exception as e:
-            print(f"Exception during config initialization: {e}")
-            import traceback
-
-            traceback.print_exc()
-            raise
-
-        # Debug: Check what's in the repository
-        saved_configs = await memory_config_repository.list_all()
-        print(f"Configs in repository: {len(saved_configs)}")
-        for config in saved_configs:
-            print(f"  - {config.knowledge_service_id}: {config.name}")
+        # Execute the use case to initialize configs
+        await use_case.execute()
 
         # Verify configs were created
+        saved_configs = await memory_config_repository.list_all()
         assert len(saved_configs) == len(fixture_configs)
 
 

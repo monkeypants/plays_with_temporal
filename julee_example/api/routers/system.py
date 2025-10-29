@@ -44,7 +44,7 @@ async def check_temporal_health() -> ServiceStatus:
         # Simple check - if we can connect, assume it's working
         return ServiceStatus.UP
     except Exception as e:
-        logger.warning(f"Temporal health check failed: {e}")
+        logger.warning("Temporal health check failed: %s", e)
         return ServiceStatus.DOWN
 
 
@@ -69,7 +69,7 @@ async def check_storage_health() -> ServiceStatus:
         _ = list(client.list_buckets())
         return ServiceStatus.UP
     except Exception as e:
-        logger.warning(f"Storage health check failed: {e}")
+        logger.warning("Storage health check failed: %s", e)
         return ServiceStatus.DOWN
 
 
@@ -110,13 +110,13 @@ async def health_check() -> HealthCheckResponse:
     storage_status = results[2]
 
     if isinstance(api_status, Exception):
-        logger.error(f"API health check error: {api_status}")
+        logger.error("API health check error: %s", api_status)
         api_status = ServiceStatus.DOWN
     if isinstance(temporal_status, Exception):
-        logger.error(f"Temporal health check error: {temporal_status}")
+        logger.error("Temporal health check error: %s", temporal_status)
         temporal_status = ServiceStatus.DOWN
     if isinstance(storage_status, Exception):
-        logger.error(f"Storage health check error: {storage_status}")
+        logger.error("Storage health check error: %s", storage_status)
         storage_status = ServiceStatus.DOWN
 
     # Create service health status with proper typing
