@@ -1,0 +1,178 @@
+# Documents Fixture Configuration
+#
+# This file defines the documents that should be created during system
+# initialization for testing and demonstration purposes. Each document
+# represents a sample file with content and metadata that can be used
+# in the CEAP workflow.
+#
+# The documents are loaded during application startup and stored in the
+# repository if they don't already exist (idempotent loading).
+
+documents:
+  - document_id: "meeting-transcript-q1-planning"
+    original_filename: "q1_planning_meeting.txt"
+    content_type: "text/plain"
+    status: "captured"
+    additional_metadata:
+      meeting_type: "planning_session"
+      quarter: "Q1 2024"
+      attendee_count: 3
+      duration_minutes: 90
+      department: "product"
+    content: |
+      Meeting Transcript - Q1 Planning Session
+      Date: March 15, 2024
+      Time: 2:00 PM - 3:30 PM
+      Attendees: Sarah Chen (Product Manager), Mike Rodriguez (Engineering Lead),
+      Lisa Wang (Designer)
+
+      Sarah: Thanks everyone for joining. Let's kick off our Q1 planning. Mike,
+      can you give us an update on the current sprint?
+
+      Mike: Sure, we're about 80% through sprint 23. We've completed the user
+      authentication module and are working on the data migration tool. Should be
+      done by Friday.
+
+      Lisa: Great! I've finished the mockups for the dashboard redesign. Sarah,
+      have you had a chance to review them?
+
+      Sarah: Yes, they look fantastic. I especially like the new navigation
+      structure. When can we start implementation?
+
+      Mike: I'd estimate 2 weeks for the frontend work, plus another week for
+      backend API changes.
+
+      Lisa: I can start on the component library updates while Mike works on the
+      APIs.
+
+      Sarah: Perfect. Let's also discuss the customer feedback integration. We had
+      47 responses to our survey.
+
+      Mike: The main requests were for better reporting and mobile optimization.
+
+      Sarah: Those should be our next priorities then. Lisa, can you start
+      sketching mobile designs?
+
+      Lisa: Absolutely. I'll have initial concepts by next Tuesday.
+
+      Sarah: Excellent. Any other items?
+
+      Mike: Just a heads up that we'll need to schedule downtime for the database
+      migration, probably next weekend.
+
+      Sarah: Noted. I'll coordinate with support. Meeting adjourned at 3:30 PM.
+
+  - document_id: "customer-feedback-survey-q4"
+    original_filename: "customer_survey_results_q4_2023.txt"
+    content_type: "text/plain"
+    status: "captured"
+    additional_metadata:
+      survey_type: "customer_satisfaction"
+      quarter: "Q4 2023"
+      response_count: 47
+      department: "product"
+      collection_method: "email_survey"
+    content: |
+      Customer Feedback Survey Results - Q4 2023
+      Survey Period: October 1 - December 31, 2023
+      Total Responses: 47
+      Response Rate: 23.5%
+
+      === SUMMARY ===
+      Overall Satisfaction: 4.2/5.0 (up from 3.9 in Q3)
+      Net Promoter Score: +15 (up from +8 in Q3)
+
+      === TOP REQUESTED FEATURES ===
+      1. Better reporting dashboard (mentioned by 78% of respondents)
+      2. Mobile application/optimization (mentioned by 65% of respondents)
+      3. Advanced filtering options (mentioned by 52% of respondents)
+      4. Real-time collaboration features (mentioned by 43% of respondents)
+      5. API access for integrations (mentioned by 39% of respondents)
+
+      === KEY FEEDBACK THEMES ===
+
+      Positive Feedback:
+      - "Love the recent performance improvements" - Customer #23
+      - "Interface is much cleaner than competitors" - Customer #41
+      - "Support team is very responsive" - Customer #15
+
+      Areas for Improvement:
+      - "Mobile experience feels like an afterthought" - Customer #7
+      - "Reports are too basic for our needs" - Customer #31
+      - "Would love more customization options" - Customer #18
+
+      === DETAILED METRICS ===
+      Feature Usage:
+      - Dashboard: 95% of users
+      - Reports: 73% of users
+      - Collaboration: 45% of users
+      - API: 12% of users
+
+      Support Satisfaction: 4.5/5.0
+      Performance Rating: 4.1/5.0
+      Ease of Use: 4.0/5.0
+
+  - document_id: "project-requirements-doc"
+    original_filename: "mobile_optimization_requirements.md"
+    content_type: "text/markdown"
+    status: "registered"
+    knowledge_service_id: "anthropic-4.5-as-a-knowledge-service"
+    assembly_types: ["technical_specification"]
+    additional_metadata:
+      document_type: "requirements"
+      project: "mobile_optimization"
+      priority: "high"
+      department: "engineering"
+      version: "1.2"
+    content: |
+      # Mobile Optimization Project Requirements
+
+      ## Overview
+      Based on Q4 customer feedback indicating 65% of users want better mobile experience,
+      this document outlines requirements for mobile optimization across our platform.
+
+      ## Stakeholders
+      - **Product Owner**: Sarah Chen
+      - **Tech Lead**: Mike Rodriguez
+      - **UX Designer**: Lisa Wang
+      - **QA Lead**: James Kim
+
+      ## Success Criteria
+      - Mobile page load time < 3 seconds
+      - 95%+ responsive design coverage
+      - Touch-friendly interface elements
+      - Offline capability for core features
+      - App store rating > 4.0
+
+      ## Technical Requirements
+
+      ### Performance
+      - Implement lazy loading for images and components
+      - Optimize bundle size (target: <2MB initial load)
+      - Add service worker for caching
+      - Implement progressive web app (PWA) features
+
+      ### User Experience
+      - Responsive breakpoints: 320px, 768px, 1024px, 1440px
+      - Touch targets minimum 44px x 44px
+      - Swipe gestures for navigation
+      - Pull-to-refresh functionality
+      - Bottom navigation for primary actions
+
+      ### Browser Support
+      - iOS Safari (last 2 versions)
+      - Android Chrome (last 2 versions)
+      - Samsung Internet (latest)
+      - Firefox Mobile (latest)
+
+      ## Timeline
+      - **Phase 1 (2 weeks)**: Core responsive layouts
+      - **Phase 2 (1 week)**: Performance optimizations
+      - **Phase 3 (1 week)**: PWA features and testing
+
+      ## Definition of Done
+      - [ ] All pages responsive on target devices
+      - [ ] Performance metrics meet targets
+      - [ ] Accessibility audit passes (WCAG 2.1 AA)
+      - [ ] Cross-browser testing complete
+      - [ ] QA sign-off received

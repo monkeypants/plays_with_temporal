@@ -89,7 +89,8 @@ class TestStartupDependenciesProvider:
         assert hasattr(service, "initialize")
 
         # Verify container was called to create dependencies
-        mock_container.get_minio_client.assert_called_once()
+        # The service may need multiple minio clients for different repos
+        assert mock_container.get_minio_client.call_count >= 1
 
     @pytest.mark.asyncio
     async def test_get_system_initialization_service_creates_full_chain(
@@ -110,10 +111,12 @@ class TestStartupDependenciesProvider:
         assert hasattr(service, "initialize_system_data_use_case")
         assert service.initialize_system_data_use_case is not None
 
-        # Verify the use case has the repository
+        # Verify the use case has the repositories
         use_case = service.initialize_system_data_use_case
         assert hasattr(use_case, "config_repo")
         assert use_case.config_repo is not None
+        assert hasattr(use_case, "document_repo")
+        assert use_case.document_repo is not None
 
     @pytest.mark.asyncio
     async def test_container_error_propagation(
@@ -234,8 +237,9 @@ class TestStartupDependenciesProviderEdgeCases:
         assert repo is not None
         assert service is not None
 
-        # Container should have been called for both
-        assert mock_container.get_minio_client.call_count == 2
+        # Container should have been called multiple times:
+        # 1 for direct repo call + 2 for service (config + document repos)
+        assert mock_container.get_minio_client.call_count == 3
 
     def test_provider_with_none_container(self) -> None:
         """Test provider behavior with None container."""

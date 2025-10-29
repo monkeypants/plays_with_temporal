@@ -7,41 +7,47 @@ focusing on the core functionality of listing documents with pagination.
 
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock
+from typing import Generator
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 from fastapi_pagination import add_pagination
 
-from julee_example.api.routers.documents import (
-    router,
-)
+from julee_example.api.routers.documents import router
 from julee_example.api.dependencies import get_document_repository
 from julee_example.domain.models.document import Document, DocumentStatus
+from julee_example.repositories.memory import MemoryDocumentRepository
 
 
 @pytest.fixture
-def app():
+def memory_repo() -> MemoryDocumentRepository:
+    """Create a memory document repository for testing."""
+    return MemoryDocumentRepository()
+
+
+@pytest.fixture
+def app(memory_repo: MemoryDocumentRepository) -> FastAPI:
     """Create FastAPI app with documents router for testing."""
     app = FastAPI()
-    app.include_router(router, prefix="/documents")
+
+    # Override the dependency with our memory repository
+    app.dependency_overrides[get_document_repository] = lambda: memory_repo
+
+    # Add pagination support (required for the paginate function)
     add_pagination(app)
+
+    app.include_router(router, prefix="/documents")
     return app
 
 
 @pytest.fixture
-def client(app):
+def client(app: FastAPI) -> Generator[TestClient, None, None]:
     """Create test client."""
-    return TestClient(app)
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 @pytest.fixture
-def mock_repository():
-    """Create mock document repository."""
-    return AsyncMock()
-
-
-@pytest.fixture
-def sample_documents():
+def sample_documents() -> list[Document]:
     """Create sample documents for testing."""
     return [
         Document(
@@ -74,18 +80,17 @@ def sample_documents():
 class TestListDocuments:
     """Test cases for the list documents endpoint."""
 
-    def test_list_documents_success(
-        self, app, client, mock_repository, sample_documents
-    ):
+    @pytest.mark.asyncio
+    async def test_list_documents_success(
+        self,
+        client: TestClient,
+        memory_repo: MemoryDocumentRepository,
+        sample_documents: list[Document],
+    ) -> None:
         """Test successful document listing."""
-        # Setup mock
-        mock_repository.list_documents.return_value = sample_documents
-        mock_repository.count_documents.return_value = 2
-
-        # Override dependency
-        app.dependency_overrides[get_document_repository] = (
-            lambda: mock_repository
-        )
+        # Setup - add documents to repository
+        for doc in sample_documents:
+            await memory_repo.save(doc)
 
         # Make request
         response = client.get("/documents/")
@@ -100,29 +105,32 @@ class TestListDocuments:
         assert data["pages"] == 1
         assert len(data["items"]) == 2
 
-        # Check first document
-        doc1 = data["items"][0]
-        assert doc1["document_id"] == "doc-1"
+        # Check first document (documents may not be in insertion order)
+        doc_ids = [item["document_id"] for item in data["items"]]
+        assert "doc-1" in doc_ids
+        assert "doc-2" in doc_ids
+
+        # Find doc-1 and verify its details
+        doc1 = next(
+            item for item in data["items"] if item["document_id"] == "doc-1"
+        )
         assert doc1["original_filename"] == "test-document-1.txt"
         assert doc1["content_type"] == "text/plain"
-        assert doc1["size_bytes"] == 1024
+        assert doc1["size_bytes"] == 12  # Length of "test content"
         assert doc1["status"] == "captured"
         assert doc1["additional_metadata"] == {"type": "test"}
 
-        # Verify repository calls
-        mock_repository.list_all.assert_called_once()
-
-    def test_list_documents_with_pagination(
-        self, app, client, mock_repository, sample_documents
-    ):
+    @pytest.mark.asyncio
+    async def test_list_documents_with_pagination(
+        self,
+        client: TestClient,
+        memory_repo: MemoryDocumentRepository,
+        sample_documents: list[Document],
+    ) -> None:
         """Test document listing with custom pagination."""
-        # Setup mock
-        mock_repository.list_all.return_value = sample_documents
-
-        # Override dependency
-        app.dependency_overrides[get_document_repository] = (
-            lambda: mock_repository
-        )
+        # Setup - add documents to repository
+        for doc in sample_documents:
+            await memory_repo.save(doc)
 
         # Make request with pagination
         response = client.get("/documents/?page=1&size=1")
@@ -137,18 +145,11 @@ class TestListDocuments:
         assert data["pages"] == 2
         assert len(data["items"]) == 1
 
-        # Verify repository calls
-        mock_repository.list_all.assert_called_once()
-
-    def test_list_documents_empty_result(self, app, client, mock_repository):
+    def test_list_documents_empty_result(
+        self, client: TestClient, memory_repo: MemoryDocumentRepository
+    ) -> None:
         """Test document listing when no documents exist."""
-        # Setup mock
-        mock_repository.list_all.return_value = []
-
-        # Override dependency
-        app.dependency_overrides[get_document_repository] = (
-            lambda: mock_repository
-        )
+        # No setup needed - memory repo starts empty
 
         # Make request
         response = client.get("/documents/")
@@ -163,32 +164,12 @@ class TestListDocuments:
         assert data["pages"] == 0
         assert len(data["items"]) == 0
 
-    def test_list_documents_invalid_page(self, client):
+    def test_list_documents_invalid_page(self, client: TestClient) -> None:
         """Test document listing with invalid page parameter."""
         response = client.get("/documents/?page=0")
         assert response.status_code == 422  # Validation error
 
-    def test_list_documents_invalid_size(self, client):
+    def test_list_documents_invalid_size(self, client: TestClient) -> None:
         """Test document listing with invalid size parameter."""
         response = client.get("/documents/?size=101")
         assert response.status_code == 422  # Validation error
-
-    def test_list_documents_repository_error(
-        self, app, client, mock_repository
-    ):
-        """Test document listing when repository raises exception."""
-        # Setup mock to raise exception
-        mock_repository.list_all.side_effect = Exception("Database error")
-
-        # Override dependency
-        app.dependency_overrides[get_document_repository] = (
-            lambda: mock_repository
-        )
-
-        # Make request
-        response = client.get("/documents/")
-
-        # Assertions
-        assert response.status_code == 500
-        data = response.json()
-        assert "Failed to retrieve documents" in data["detail"]

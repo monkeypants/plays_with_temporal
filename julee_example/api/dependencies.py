@@ -191,6 +191,15 @@ class StartupDependenciesProvider:
         self.container = container
         self.logger = logging.getLogger("StartupDependenciesProvider")
 
+    async def get_document_repository(self) -> DocumentRepository:
+        """Get document repository for startup dependencies."""
+        minio_client = await self.container.get_minio_client()
+        from julee_example.repositories.minio.document import (
+            MinioDocumentRepository,
+        )
+
+        return MinioDocumentRepository(client=minio_client)
+
     async def get_knowledge_service_config_repository(
         self,
     ) -> KnowledgeServiceConfigRepository:
@@ -212,9 +221,10 @@ class StartupDependenciesProvider:
 
         self.logger.debug("Creating system initialization service")
 
-        # Create repository and use case
+        # Create repositories and use case
         config_repo = await self.get_knowledge_service_config_repository()
-        use_case = InitializeSystemDataUseCase(config_repo)
+        document_repo = await self.get_document_repository()
+        use_case = InitializeSystemDataUseCase(config_repo, document_repo)
 
         # Create and return service
         return SystemInitializationService(use_case)

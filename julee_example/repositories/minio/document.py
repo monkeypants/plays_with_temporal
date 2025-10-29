@@ -342,6 +342,50 @@ class MinioDocumentRepository(DocumentRepository, MinioRepositoryMixin):
 
         return result
 
+    async def list_all(self) -> List[Document]:
+        """List all documents.
+
+        Returns:
+            List of all documents, sorted by document_id
+        """
+        try:
+            # Extract document IDs from objects in the metadata bucket
+            document_ids = self.list_objects_with_prefix_extract_ids(
+                bucket_name=self.metadata_bucket,
+                prefix="",
+                entity_type_name="documents",
+            )
+
+            if not document_ids:
+                return []
+
+            # Get all documents using the existing get_many method
+            document_results = await self.get_many(document_ids)
+
+            # Filter out None results and sort by document_id
+            documents = [
+                doc for doc in document_results.values() if doc is not None
+            ]
+            documents.sort(key=lambda x: x.document_id)
+
+            self.logger.debug(
+                "Retrieved documents",
+                extra={"count": len(documents)},
+            )
+
+            return documents
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to list documents",
+                exc_info=True,
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                },
+            )
+            raise
+
     async def generate_id(self) -> str:
         """Generate a unique document identifier."""
         return self.generate_id_with_prefix("doc")
