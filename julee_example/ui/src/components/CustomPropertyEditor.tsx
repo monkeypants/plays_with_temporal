@@ -16,7 +16,7 @@ interface CustomPropertyEditorProps {
 const CustomPropertyEditor = ({
   knowledgeServiceQueries = {},
   onUpdateQuery,
-}: CustomPropertyEditorProps = {}) => {
+}: CustomPropertyEditorProps) => {
   const [fieldName, setFieldName] = useState<string>("");
   const [localFieldName, setLocalFieldName] = useState<string>("");
   const fieldNameInputRef = React.useRef<HTMLInputElement>(null);

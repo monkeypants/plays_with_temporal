@@ -225,7 +225,12 @@ export default function JsonSchemaEditor({
 
               // If specific selectors don't work, try text content search
               if (!fieldElement) {
-                const allElements = document.querySelectorAll("*");
+                // Limit search to schema tree container for performance
+                const schemaContainer = document.querySelector(
+                  ".ant-formule-container, .formule-container, .schema-preview",
+                );
+                const searchScope = schemaContainer || document;
+                const allElements = searchScope.querySelectorAll("*");
                 for (const element of allElements) {
                   if (
                     element.textContent?.includes(fieldId) &&
