@@ -15,6 +15,12 @@ from pathlib import Path
 from julee_example.repositories.memory.knowledge_service_config import (
     MemoryKnowledgeServiceConfigRepository,
 )
+from julee_example.repositories.memory.knowledge_service_query import (
+    MemoryKnowledgeServiceQueryRepository,
+)
+from julee_example.repositories.memory.assembly_specification import (
+    MemoryAssemblySpecificationRepository,
+)
 from julee_example.repositories.memory.document import (
     MemoryDocumentRepository,
 )
@@ -42,13 +48,32 @@ def memory_document_repository() -> MemoryDocumentRepository:
 
 
 @pytest.fixture
+def memory_query_repository() -> MemoryKnowledgeServiceQueryRepository:
+    """Create memory knowledge service query repository."""
+    return MemoryKnowledgeServiceQueryRepository()
+
+
+@pytest.fixture
+def memory_assembly_spec_repository() -> (
+    MemoryAssemblySpecificationRepository
+):
+    """Create memory assembly specification repository."""
+    return MemoryAssemblySpecificationRepository()
+
+
+@pytest.fixture
 def use_case(
     memory_config_repository: MemoryKnowledgeServiceConfigRepository,
     memory_document_repository: MemoryDocumentRepository,
+    memory_query_repository: MemoryKnowledgeServiceQueryRepository,
+    memory_assembly_spec_repository: MemoryAssemblySpecificationRepository,
 ) -> InitializeSystemDataUseCase:
     """Create use case with memory repositories."""
     return InitializeSystemDataUseCase(
-        memory_config_repository, memory_document_repository
+        memory_config_repository,
+        memory_document_repository,
+        memory_query_repository,
+        memory_assembly_spec_repository,
     )
 
 
@@ -58,7 +83,9 @@ def fixture_configs() -> list[dict]:
     # Get the fixture file path
     current_file = Path(__file__)
     julee_example_dir = current_file.parent.parent.parent.parent
-    fixture_path = julee_example_dir / "knowledge_services_fixture.yaml"
+    fixture_path = (
+        julee_example_dir / "demo_fixtures" / "knowledge_service_configs.yaml"
+    )
 
     assert fixture_path.exists(), f"Fixture file not found: {fixture_path}"
 
@@ -248,13 +275,22 @@ class TestInitializeSystemDataUseCase:
         self,
         memory_config_repository: MemoryKnowledgeServiceConfigRepository,
         memory_document_repository: MemoryDocumentRepository,
+        memory_query_repository: MemoryKnowledgeServiceQueryRepository,
+        memory_assembly_spec_repository: (
+            MemoryAssemblySpecificationRepository
+        ),
     ) -> None:
         """Test use case initialization with repositories."""
         use_case = InitializeSystemDataUseCase(
-            memory_config_repository, memory_document_repository
+            memory_config_repository,
+            memory_document_repository,
+            memory_query_repository,
+            memory_assembly_spec_repository,
         )
         assert use_case.config_repo is memory_config_repository
         assert use_case.document_repo is memory_document_repository
+        assert use_case.query_repo is memory_query_repository
+        assert use_case.assembly_spec_repo is memory_assembly_spec_repository
         assert use_case.logger is not None
 
     @pytest.mark.asyncio
@@ -262,11 +298,18 @@ class TestInitializeSystemDataUseCase:
         self,
         memory_config_repository: MemoryKnowledgeServiceConfigRepository,
         memory_document_repository: MemoryDocumentRepository,
+        memory_query_repository: MemoryKnowledgeServiceQueryRepository,
+        memory_assembly_spec_repository: (
+            MemoryAssemblySpecificationRepository
+        ),
         fixture_configs: list[dict],
     ) -> None:
         """Test only the config initialization part."""
         use_case = InitializeSystemDataUseCase(
-            memory_config_repository, memory_document_repository
+            memory_config_repository,
+            memory_document_repository,
+            memory_query_repository,
+            memory_assembly_spec_repository,
         )
 
         # Execute the use case to initialize configs
@@ -285,7 +328,11 @@ class TestYamlFixtureIntegration:
         # Get the fixture file path
         current_file = Path(__file__)
         julee_example_dir = current_file.parent.parent.parent.parent
-        fixture_path = julee_example_dir / "knowledge_services_fixture.yaml"
+        fixture_path = (
+            julee_example_dir
+            / "demo_fixtures"
+            / "knowledge_service_configs.yaml"
+        )
 
         # Verify file exists
         assert (
