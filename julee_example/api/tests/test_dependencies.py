@@ -117,6 +117,10 @@ class TestStartupDependenciesProvider:
         assert use_case.config_repo is not None
         assert hasattr(use_case, "document_repo")
         assert use_case.document_repo is not None
+        assert hasattr(use_case, "query_repo")
+        assert use_case.query_repo is not None
+        assert hasattr(use_case, "assembly_spec_repo")
+        assert use_case.assembly_spec_repo is not None
 
     @pytest.mark.asyncio
     async def test_container_error_propagation(
@@ -238,8 +242,9 @@ class TestStartupDependenciesProviderEdgeCases:
         assert service is not None
 
         # Container should have been called multiple times:
-        # 1 for direct repo call + 2 for service (config + document repos)
-        assert mock_container.get_minio_client.call_count == 3
+        # 1 for direct repo call + 4 for service (config + document + query +
+        # assembly spec repos)
+        assert mock_container.get_minio_client.call_count == 5
 
     def test_provider_with_none_container(self) -> None:
         """Test provider behavior with None container."""

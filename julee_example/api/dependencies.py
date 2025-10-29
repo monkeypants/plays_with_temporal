@@ -203,10 +203,23 @@ class StartupDependenciesProvider:
     async def get_knowledge_service_config_repository(
         self,
     ) -> KnowledgeServiceConfigRepository:
-        """Get knowledge service config repository for startup use."""
-        self.logger.debug("Creating knowledge service config repository")
+        """Get knowledge service config repository for startup."""
         minio_client = await self.container.get_minio_client()
         return MinioKnowledgeServiceConfigRepository(client=minio_client)
+
+    async def get_knowledge_service_query_repository(
+        self,
+    ) -> KnowledgeServiceQueryRepository:
+        """Get knowledge service query repository for startup dependencies."""
+        minio_client = await self.container.get_minio_client()
+        return MinioKnowledgeServiceQueryRepository(client=minio_client)
+
+    async def get_assembly_specification_repository(
+        self,
+    ) -> AssemblySpecificationRepository:
+        """Get assembly specification repository for startup dependencies."""
+        minio_client = await self.container.get_minio_client()
+        return MinioAssemblySpecificationRepository(client=minio_client)
 
     async def get_system_initialization_service(
         self,
@@ -224,7 +237,13 @@ class StartupDependenciesProvider:
         # Create repositories and use case
         config_repo = await self.get_knowledge_service_config_repository()
         document_repo = await self.get_document_repository()
-        use_case = InitializeSystemDataUseCase(config_repo, document_repo)
+        query_repo = await self.get_knowledge_service_query_repository()
+        assembly_spec_repo = (
+            await self.get_assembly_specification_repository()
+        )
+        use_case = InitializeSystemDataUseCase(
+            config_repo, document_repo, query_repo, assembly_spec_repo
+        )
 
         # Create and return service
         return SystemInitializationService(use_case)
