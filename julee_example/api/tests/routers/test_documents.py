@@ -302,6 +302,6 @@ class TestGetDocumentContent:
         response = client.get(f"/documents/{doc.document_id}/content")
 
         # Assertions
-        assert response.status_code == 404
+        assert response.status_code == 422
         data = response.json()
         assert "has no content" in data["detail"].lower()

@@ -5,7 +5,9 @@ This module provides document management API endpoints for retrieving
 and managing documents in the system.
 
 Routes defined at root level:
-- GET /documents - List all documents with pagination
+- GET / - List all documents with pagination
+- GET /{document_id} - Get document metadata by ID
+- GET /{document_id}/content - Get document content by ID
 
 These routes are mounted with '/documents' prefix in the main app.
 """
@@ -135,7 +137,7 @@ async def get_document_content(
 
         if not document.content:
             raise HTTPException(
-                status_code=404,
+                status_code=422,
                 detail=f"Document '{document_id}' has no content",
             )
 
