@@ -14,7 +14,7 @@ interface CustomSelectOrEditProps {
 export default function CustomSelectOrEdit({
   knowledgeServiceQueries = {},
   onUpdateQuery,
-}: CustomSelectOrEditProps = {}) {
+}: CustomSelectOrEditProps) {
   // Use Redux selector to watch for field selection changes (same as original SelectOrEdit)
   const selectedField = useSelector((state: any) => state.schemaWizard.field);
 
