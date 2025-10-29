@@ -29,6 +29,7 @@ from julee_example.api.routers import (
     knowledge_service_queries_router,
     knowledge_service_configs_router,
     system_router,
+    documents_router,
 )
 from julee_example.api.dependencies import (
     get_startup_dependencies,
@@ -160,6 +161,12 @@ app.include_router(
     assembly_specifications_router,
     prefix="/assembly_specifications",
     tags=["Assembly Specifications"],
+)
+
+app.include_router(
+    documents_router,
+    prefix="/documents",
+    tags=["Documents"],
 )
 
 

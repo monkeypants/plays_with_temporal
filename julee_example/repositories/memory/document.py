@@ -126,6 +126,27 @@ class MemoryDocumentRepository(
         """
         return self.get_many_entities(document_ids)
 
+    async def list_all(self) -> List[Document]:
+        """List all documents.
+
+        Returns:
+            List of all Document entities in the repository
+        """
+        self.logger.debug(
+            f"Memory{self.entity_name}Repository: Listing all "
+            f"{self.entity_name.lower()}s"
+        )
+
+        documents = list(self.storage_dict.values())
+
+        self.logger.info(
+            f"Memory{self.entity_name}Repository: Listed all "
+            f"{self.entity_name.lower()}s",
+            extra={"count": len(documents)},
+        )
+
+        return documents
+
     def _add_entity_specific_log_data(
         self, entity: Document, log_data: Dict[str, Any]
     ) -> None:

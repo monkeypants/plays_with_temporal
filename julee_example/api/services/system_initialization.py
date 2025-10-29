@@ -134,7 +134,7 @@ class SystemInitializationService:
         task_name = "system_data_initialization"
 
         try:
-            self.logger.debug(f"Starting task: {task_name}")
+            self.logger.debug("Starting task: %s", task_name)
 
             await self.initialize_system_data_use_case.execute()
 
@@ -144,7 +144,7 @@ class SystemInitializationService:
                 "description": "System data initialization completed",
             }
 
-            self.logger.debug(f"Completed task: {task_name}")
+            self.logger.debug("Completed task: %s", task_name)
 
         except Exception as e:
             results["tasks_failed"].append(
