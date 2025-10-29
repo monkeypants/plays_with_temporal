@@ -11,9 +11,9 @@ These routes are mounted with '/documents' prefix in the main app.
 """
 
 import logging
-from typing import List
+from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Page, paginate
 
 from julee_example.domain.models.document import Document
@@ -50,7 +50,7 @@ async def list_documents(
         logger.info(f"Retrieved {len(documents)} documents")
 
         # Return paginated result using fastapi-pagination
-        return paginate(documents)
+        return cast(Page[Document], paginate(documents))
 
     except Exception as e:
         logger.error(f"Failed to list documents: {e}")

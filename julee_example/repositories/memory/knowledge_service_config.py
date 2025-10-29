@@ -95,6 +95,27 @@ class MemoryKnowledgeServiceConfigRepository(
         """
         return self.get_many_entities(knowledge_service_ids)
 
+    async def list_all(self) -> List[KnowledgeServiceConfig]:
+        """List all knowledge service configurations.
+
+        Returns:
+            List of all KnowledgeServiceConfig entities in the repository
+        """
+        self.logger.debug(
+            f"Memory{self.entity_name}Repository: Listing all "
+            f"{self.entity_name.lower()}s"
+        )
+
+        configs = list(self.storage_dict.values())
+
+        self.logger.info(
+            f"Memory{self.entity_name}Repository: Listed all "
+            f"{self.entity_name.lower()}s",
+            extra={"count": len(configs)},
+        )
+
+        return configs
+
     def _add_entity_specific_log_data(
         self, entity: KnowledgeServiceConfig, log_data: Dict[str, Any]
     ) -> None:
