@@ -23,9 +23,22 @@ from julee_example.domain.models.knowledge_service_config import (
     KnowledgeServiceConfig,
     ServiceApi,
 )
+from julee_example.domain.models.assembly_specification import (
+    KnowledgeServiceQuery,
+)
+from julee_example.domain.models.assembly_specification import (
+    AssemblySpecification,
+    AssemblySpecificationStatus,
+)
 from julee_example.domain.models.document import Document, DocumentStatus
 from julee_example.domain.repositories.knowledge_service_config import (
     KnowledgeServiceConfigRepository,
+)
+from julee_example.domain.repositories.knowledge_service_query import (
+    KnowledgeServiceQueryRepository,
+)
+from julee_example.domain.repositories.assembly_specification import (
+    AssemblySpecificationRepository,
 )
 from julee_example.domain.repositories.document import DocumentRepository
 
@@ -48,6 +61,8 @@ class InitializeSystemDataUseCase:
         self,
         knowledge_service_config_repository: KnowledgeServiceConfigRepository,
         document_repository: DocumentRepository,
+        knowledge_service_query_repository: KnowledgeServiceQueryRepository,
+        assembly_specification_repository: AssemblySpecificationRepository,
     ) -> None:
         """Initialize the use case with required repositories.
 
@@ -55,9 +70,15 @@ class InitializeSystemDataUseCase:
             knowledge_service_config_repository: Repository for knowledge
                 service configurations
             document_repository: Repository for documents
+            knowledge_service_query_repository: Repository for knowledge
+                service queries
+            assembly_specification_repository: Repository for assembly
+                specifications
         """
         self.config_repo = knowledge_service_config_repository
         self.document_repo = document_repository
+        self.query_repo = knowledge_service_query_repository
+        self.assembly_spec_repo = assembly_specification_repository
         self.logger = logging.getLogger("InitializeSystemDataUseCase")
 
     async def execute(self) -> None:
@@ -74,7 +95,9 @@ class InitializeSystemDataUseCase:
 
         try:
             await self._ensure_knowledge_service_configs_exist()
+            await self._ensure_knowledge_service_queries_exist()
             await self._ensure_example_documents_exist()
+            await self._ensure_assembly_specifications_exist()
 
             self.logger.info(
                 "System data initialization completed successfully"
@@ -90,6 +113,20 @@ class InitializeSystemDataUseCase:
                 },
             )
             raise
+
+    def _get_demo_fixture_path(self, filename: str) -> Path:
+        """
+        Get path to a demo fixture file.
+
+        Args:
+            filename: Name of the fixture file
+
+        Returns:
+            Path to the fixture file
+        """
+        current_file = Path(__file__)
+        julee_example_dir = current_file.parent.parent.parent
+        return julee_example_dir / "demo_fixtures" / filename
 
     async def _ensure_knowledge_service_configs_exist(self) -> None:
         """
@@ -172,10 +209,9 @@ class InitializeSystemDataUseCase:
             yaml.YAMLError: If the fixture file is invalid YAML
             KeyError: If required fields are missing from the fixture
         """
-        # Get the fixture file path relative to this module
-        current_file = Path(__file__)
-        julee_example_dir = current_file.parent.parent.parent
-        fixture_path = julee_example_dir / "knowledge_services_fixture.yaml"
+        fixture_path = self._get_demo_fixture_path(
+            "knowledge_service_configs.yaml"
+        )
 
         self.logger.debug(
             "Loading fixture file",
@@ -271,6 +307,380 @@ class InitializeSystemDataUseCase:
 
         return config
 
+    async def _ensure_knowledge_service_queries_exist(self) -> None:
+        """
+        Ensure all knowledge service queries from fixture exist.
+
+        This loads queries from the YAML fixture file and creates
+        any that don't already exist in the repository. The operation is
+        idempotent - existing queries are not modified.
+        """
+        self.logger.info("Loading knowledge service queries from fixture")
+
+        try:
+            # Load queries from YAML fixture
+            fixture_queries = self._load_fixture_queries()
+
+            created_count = 0
+            skipped_count = 0
+
+            for query_data in fixture_queries:
+                query_id = query_data["query_id"]
+
+                # Check if query already exists
+                existing_query = await self.query_repo.get(query_id)
+                if existing_query:
+                    self.logger.debug(
+                        "Knowledge service query already exists, skipping",
+                        extra={
+                            "query_id": query_id,
+                            "query_name": existing_query.name,
+                        },
+                    )
+                    skipped_count += 1
+                    continue
+
+                # Create new query from fixture data
+                query = self._create_query_from_fixture_data(query_data)
+                await self.query_repo.save(query)
+
+                self.logger.info(
+                    "Knowledge service query created successfully",
+                    extra={
+                        "query_id": query.query_id,
+                        "query_name": query.name,
+                        "knowledge_service_id": query.knowledge_service_id,
+                    },
+                )
+                created_count += 1
+
+            self.logger.info(
+                "Knowledge service queries processed",
+                extra={
+                    "created_count": created_count,
+                    "skipped_count": skipped_count,
+                    "total_count": len(fixture_queries),
+                },
+            )
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to ensure knowledge service queries exist",
+                exc_info=True,
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                },
+            )
+            raise
+
+    def _load_fixture_queries(self) -> List[Dict[str, Any]]:
+        """
+        Load knowledge service queries from the YAML fixture file.
+
+        Returns:
+            List of query dictionaries from the fixture file
+
+        Raises:
+            FileNotFoundError: If the fixture file doesn't exist
+            yaml.YAMLError: If the fixture file is invalid YAML
+            KeyError: If required fields are missing from the fixture
+        """
+        fixture_path = self._get_demo_fixture_path(
+            "knowledge_service_queries.yaml"
+        )
+
+        self.logger.debug(
+            "Loading queries fixture file",
+            extra={"fixture_path": str(fixture_path)},
+        )
+
+        if not fixture_path.exists():
+            raise FileNotFoundError(
+                f"Knowledge service queries fixture file not found: "
+                f"{fixture_path}"
+            )
+
+        try:
+            with open(fixture_path, "r", encoding="utf-8") as f:
+                fixture_data = yaml.safe_load(f)
+
+            if (
+                not fixture_data
+                or "knowledge_service_queries" not in fixture_data
+            ):
+                raise KeyError(
+                    "Fixture file must contain 'knowledge_service_queries' "
+                    "key"
+                )
+
+            queries = fixture_data["knowledge_service_queries"]
+            if not isinstance(queries, list):
+                raise ValueError(
+                    "'knowledge_service_queries' must be a list of query "
+                    "configurations"
+                )
+
+            self.logger.debug(
+                "Loaded fixture queries",
+                extra={"count": len(queries)},
+            )
+
+            return queries
+
+        except yaml.YAMLError as e:
+            raise yaml.YAMLError(f"Invalid YAML in queries fixture file: {e}")
+
+    def _create_query_from_fixture_data(
+        self, query_data: Dict[str, Any]
+    ) -> KnowledgeServiceQuery:
+        """
+        Create a KnowledgeServiceQuery from fixture data.
+
+        Args:
+            query_data: Dictionary containing query data from fixture
+
+        Returns:
+            KnowledgeServiceQuery instance
+
+        Raises:
+            KeyError: If required fields are missing
+            ValueError: If field values are invalid
+        """
+        required_fields = [
+            "query_id",
+            "name",
+            "knowledge_service_id",
+            "prompt",
+            "assistant_prompt",
+        ]
+
+        # Validate required fields
+        for field in required_fields:
+            if field not in query_data:
+                raise KeyError(f"Required field '{field}' missing from query")
+
+        # Get optional fields
+        query_metadata = query_data.get("query_metadata", {})
+
+        # Create query
+        query = KnowledgeServiceQuery(
+            query_id=query_data["query_id"],
+            name=query_data["name"],
+            knowledge_service_id=query_data["knowledge_service_id"],
+            prompt=query_data["prompt"],
+            assistant_prompt=query_data["assistant_prompt"],
+            query_metadata=query_metadata,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        self.logger.debug(
+            "Created query from fixture data",
+            extra={
+                "query_id": query.query_id,
+                "query_name": query.name,
+            },
+        )
+
+        return query
+
+    async def _ensure_assembly_specifications_exist(self) -> None:
+        """
+        Ensure all assembly specifications from fixture exist.
+
+        This loads specifications from the YAML fixture file and creates
+        any that don't already exist in the repository. The operation is
+        idempotent - existing specifications are not modified.
+        """
+        self.logger.info("Loading assembly specifications from fixture")
+
+        try:
+            # Load specifications from YAML fixture
+            fixture_specs = self._load_fixture_assembly_specifications()
+
+            created_count = 0
+            skipped_count = 0
+
+            for spec_data in fixture_specs:
+                spec_id = spec_data["assembly_specification_id"]
+
+                # Check if specification already exists
+                existing_spec = await self.assembly_spec_repo.get(spec_id)
+                if existing_spec:
+                    self.logger.debug(
+                        "Assembly specification already exists, skipping",
+                        extra={
+                            "spec_id": spec_id,
+                            "spec_name": existing_spec.name,
+                        },
+                    )
+                    skipped_count += 1
+                    continue
+
+                # Create new specification from fixture data
+                spec = self._create_assembly_spec_from_fixture_data(spec_data)
+                await self.assembly_spec_repo.save(spec)
+
+                self.logger.info(
+                    "Assembly specification created successfully",
+                    extra={
+                        "spec_id": spec.assembly_specification_id,
+                        "spec_name": spec.name,
+                        "status": spec.status.value,
+                    },
+                )
+                created_count += 1
+
+            self.logger.info(
+                "Assembly specifications processed",
+                extra={
+                    "created_count": created_count,
+                    "skipped_count": skipped_count,
+                    "total_count": len(fixture_specs),
+                },
+            )
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to ensure assembly specifications exist",
+                exc_info=True,
+                extra={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                },
+            )
+            raise
+
+    def _load_fixture_assembly_specifications(self) -> List[Dict[str, Any]]:
+        """
+        Load assembly specifications from the YAML fixture file.
+
+        Returns:
+            List of specification dictionaries from the fixture file
+
+        Raises:
+            FileNotFoundError: If the fixture file doesn't exist
+            yaml.YAMLError: If the fixture file is invalid YAML
+            KeyError: If required fields are missing from the fixture
+        """
+        fixture_path = self._get_demo_fixture_path(
+            "assembly_specifications.yaml"
+        )
+
+        self.logger.debug(
+            "Loading assembly specifications fixture file",
+            extra={"fixture_path": str(fixture_path)},
+        )
+
+        if not fixture_path.exists():
+            raise FileNotFoundError(
+                f"Assembly specifications fixture file not found: "
+                f"{fixture_path}"
+            )
+
+        try:
+            with open(fixture_path, "r", encoding="utf-8") as f:
+                fixture_data = yaml.safe_load(f)
+
+            if (
+                not fixture_data
+                or "assembly_specifications" not in fixture_data
+            ):
+                raise KeyError(
+                    "Fixture file must contain 'assembly_specifications' key"
+                )
+
+            specs = fixture_data["assembly_specifications"]
+            if not isinstance(specs, list):
+                raise ValueError(
+                    "'assembly_specifications' must be a list of "
+                    "specification configurations"
+                )
+
+            self.logger.debug(
+                "Loaded fixture assembly specifications",
+                extra={"count": len(specs)},
+            )
+
+            return specs
+
+        except yaml.YAMLError as e:
+            raise yaml.YAMLError(
+                f"Invalid YAML in assembly specifications fixture file: {e}"
+            )
+
+    def _create_assembly_spec_from_fixture_data(
+        self, spec_data: Dict[str, Any]
+    ) -> AssemblySpecification:
+        """
+        Create an AssemblySpecification from fixture data.
+
+        Args:
+            spec_data: Dictionary containing specification data from fixture
+
+        Returns:
+            AssemblySpecification instance
+
+        Raises:
+            KeyError: If required fields are missing
+            ValueError: If field values are invalid
+        """
+        required_fields = [
+            "assembly_specification_id",
+            "name",
+            "applicability",
+            "jsonschema",
+        ]
+
+        # Validate required fields
+        for field in required_fields:
+            if field not in spec_data:
+                raise KeyError(
+                    f"Required field '{field}' missing from assembly "
+                    "specification"
+                )
+
+        # Parse status
+        status = AssemblySpecificationStatus.ACTIVE
+        if "status" in spec_data:
+            try:
+                status = AssemblySpecificationStatus(spec_data["status"])
+            except ValueError:
+                self.logger.warning(
+                    f"Invalid status '{spec_data['status']}', "
+                    "using default 'active'"
+                )
+
+        # Get optional fields
+        version = spec_data.get("version", "1.0")
+        knowledge_service_queries = spec_data.get(
+            "knowledge_service_queries", {}
+        )
+
+        # Create specification
+        spec = AssemblySpecification(
+            assembly_specification_id=spec_data["assembly_specification_id"],
+            name=spec_data["name"],
+            applicability=spec_data["applicability"],
+            jsonschema=spec_data["jsonschema"],
+            knowledge_service_queries=knowledge_service_queries,
+            status=status,
+            version=version,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        self.logger.debug(
+            "Created assembly specification from fixture data",
+            extra={
+                "spec_id": spec.assembly_specification_id,
+                "spec_name": spec.name,
+            },
+        )
+
+        return spec
+
     async def _ensure_example_documents_exist(self) -> None:
         """
         Ensure all example documents from fixture exist.
@@ -352,10 +762,7 @@ class InitializeSystemDataUseCase:
             yaml.YAMLError: If the fixture file is invalid YAML
             KeyError: If required fields are missing from the fixture
         """
-        # Get the fixture file path relative to this module
-        current_file = Path(__file__)
-        julee_example_dir = current_file.parent.parent.parent
-        fixture_path = julee_example_dir / "documents_fixture.yaml"
+        fixture_path = self._get_demo_fixture_path("documents.yaml")
 
         self.logger.debug(
             "Loading documents fixture file",
