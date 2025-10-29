@@ -350,7 +350,7 @@ class TestGetWorkflowStatus:
         # Assertions
         assert response.status_code == 500
         data = response.json()
-        assert "Failed to retrieve workflow status" in data["detail"]
+        assert "Failed to retrieve workflow handle" in data["detail"]
 
     def test_get_workflow_status_describe_error(
         self,
@@ -371,7 +371,7 @@ class TestGetWorkflowStatus:
         # Assertions
         assert response.status_code == 500
         data = response.json()
-        assert "Failed to retrieve workflow status" in data["detail"]
+        assert "Failed to retrieve workflow description" in data["detail"]
 
 
 class TestWorkflowValidation:

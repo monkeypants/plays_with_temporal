@@ -166,51 +166,11 @@ async def get_workflow_status(
     Raises:
         HTTPException: If workflow not found or query fails
     """
+    logger.info("Getting workflow status", extra={"workflow_id": workflow_id})
+
+    # Get workflow handle - if this fails, workflow doesn't exist
     try:
-        logger.info(
-            "Getting workflow status", extra={"workflow_id": workflow_id}
-        )
-
-        # Get workflow handle
         handle = temporal_client.get_workflow_handle(workflow_id)
-
-        # Get workflow description for status
-        description = await handle.describe()
-
-        # Query current step and assembly ID if workflow supports it
-        current_step = None
-        assembly_id = None
-        try:
-            current_step = await handle.query("get_current_step")
-            assembly_id = await handle.query("get_assembly_id")
-        except Exception as query_error:
-            logger.debug(
-                "Could not query workflow details: %s",
-                query_error,
-                extra={"workflow_id": workflow_id},
-            )
-
-        status_response = WorkflowStatusResponse(
-            workflow_id=workflow_id,
-            run_id=description.run_id or "unknown",
-            status=description.status.name
-            if description.status
-            else "UNKNOWN",
-            current_step=current_step,
-            assembly_id=assembly_id,
-        )
-
-        logger.info(
-            "Retrieved workflow status",
-            extra={
-                "workflow_id": workflow_id,
-                "status": status_response.status,
-                "current_step": current_step,
-            },
-        )
-
-        return status_response
-
     except Exception as e:
         # Check if it's a workflow not found error (common patterns)
         error_message = str(e).lower()
@@ -228,11 +188,57 @@ async def get_workflow_status(
                 detail=f"Workflow with ID '{workflow_id}' not found",
             )
 
+        # Other errors from getting workflow handle
         logger.error(
-            "Failed to get workflow status: %s",
+            "Failed to get workflow handle: %s",
             e,
             extra={"workflow_id": workflow_id},
         )
         raise HTTPException(
-            status_code=500, detail="Failed to retrieve workflow status"
+            status_code=500, detail="Failed to retrieve workflow handle"
         ) from e
+
+    # Get workflow description - if this fails, it's a server error
+    try:
+        description = await handle.describe()
+    except Exception as e:
+        logger.error(
+            "Failed to describe workflow: %s",
+            e,
+            extra={"workflow_id": workflow_id},
+        )
+        raise HTTPException(
+            status_code=500, detail="Failed to retrieve workflow description"
+        ) from e
+
+    # Query current step and assembly ID if workflow supports it
+    current_step = None
+    assembly_id = None
+    try:
+        current_step = await handle.query("get_current_step")
+        assembly_id = await handle.query("get_assembly_id")
+    except Exception as query_error:
+        logger.debug(
+            "Could not query workflow details: %s",
+            query_error,
+            extra={"workflow_id": workflow_id},
+        )
+
+    status_response = WorkflowStatusResponse(
+        workflow_id=workflow_id,
+        run_id=description.run_id or "unknown",
+        status=description.status.name if description.status else "UNKNOWN",
+        current_step=current_step,
+        assembly_id=assembly_id,
+    )
+
+    logger.info(
+        "Retrieved workflow status",
+        extra={
+            "workflow_id": workflow_id,
+            "status": status_response.status,
+            "current_step": current_step,
+        },
+    )
+
+    return status_response
