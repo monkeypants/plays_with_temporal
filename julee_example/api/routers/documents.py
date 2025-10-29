@@ -47,13 +47,13 @@ async def list_documents(
         # Get all documents from repository
         documents = await repository.list_all()
 
-        logger.info(f"Retrieved {len(documents)} documents")
+        logger.info("Retrieved %d documents", len(documents))
 
         # Return paginated result using fastapi-pagination
         return cast(Page[Document], paginate(documents))
 
     except Exception as e:
-        logger.error(f"Failed to list documents: {e}")
+        logger.error("Failed to list documents: %s", e)
         raise HTTPException(
             status_code=500, detail="Failed to retrieve documents"
         ) from e
