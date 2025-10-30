@@ -6,7 +6,6 @@ import Queries from "./pages/Queries";
 import CreateQuery from "./pages/CreateQuery";
 import Specifications from "./pages/Specifications";
 import CreateAssemblySpecification from "./pages/CreateAssemblySpecification";
-import Workflows from "./pages/Workflows";
 import NotFound from "./pages/NotFound";
 import { Skeleton } from "./components/ui/skeleton";
 
@@ -49,7 +48,6 @@ function App() {
               path="/specifications/create"
               element={<CreateAssemblySpecification />}
             />
-            <Route path="/workflows" element={<Workflows />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
