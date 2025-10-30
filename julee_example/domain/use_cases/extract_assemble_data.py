@@ -127,6 +127,7 @@ class ExtractAssembleDataUseCase:
         self,
         document_id: str,
         assembly_specification_id: str,
+        workflow_id: str,
     ) -> Assembly:
         """
         Assemble a document according to its specification and create a new
@@ -146,6 +147,7 @@ class ExtractAssembleDataUseCase:
         Args:
             document_id: ID of the document to assemble
             assembly_specification_id: ID of the specification to use
+            workflow_id: Temporal workflow ID that creates this assembly
 
         Returns:
             New Assembly with the assembled document iteration
@@ -159,6 +161,7 @@ class ExtractAssembleDataUseCase:
             extra={
                 "document_id": document_id,
                 "assembly_specification_id": assembly_specification_id,
+                "workflow_id": workflow_id,
             },
         )
 
@@ -177,6 +180,7 @@ class ExtractAssembleDataUseCase:
             assembly_id=assembly_id,
             assembly_specification_id=assembly_specification_id,
             input_document_id=document_id,
+            workflow_id=workflow_id,
             status=AssemblyStatus.IN_PROGRESS,
             assembled_document_id=None,
             created_at=self.now_fn(),
