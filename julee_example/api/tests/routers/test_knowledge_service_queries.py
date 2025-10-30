@@ -693,3 +693,84 @@ class TestBulkGetKnowledgeServiceQueries:
             assert "knowledge_service_id" in item
             assert "prompt" in item
             assert "query_metadata" in item
+
+
+class TestGetIndividualKnowledgeServiceQuery:
+    """Tests for the GET /knowledge_service_queries/{query_id} endpoint."""
+
+    async def test_get_query_success(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test successfully retrieving an individual query."""
+        # Create a test query
+        query = KnowledgeServiceQuery(
+            query_id="test-query-123",
+            name="Test Query",
+            knowledge_service_id="test-service",
+            prompt="Extract test data",
+            assistant_prompt="Assistant instructions",
+            query_metadata={"max_tokens": 100, "temperature": 0.7},
+        )
+        await memory_repo.save(query)
+
+        # Get the query
+        response = client.get("/knowledge_service_queries/test-query-123")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["query_id"] == "test-query-123"
+        assert data["name"] == "Test Query"
+        assert data["knowledge_service_id"] == "test-service"
+        assert data["prompt"] == "Extract test data"
+        assert data["assistant_prompt"] == "Assistant instructions"
+        assert data["query_metadata"] == {
+            "max_tokens": 100,
+            "temperature": 0.7,
+        }
+        assert "created_at" in data
+        assert "updated_at" in data
+
+    def test_get_query_not_found(self, client: TestClient) -> None:
+        """Test retrieving a non-existent query returns 404."""
+        response = client.get("/knowledge_service_queries/nonexistent-query")
+
+        assert response.status_code == 404
+        data = response.json()
+        assert "not found" in data["detail"].lower()
+        assert "nonexistent-query" in data["detail"]
+
+    def test_get_query_empty_id(self, client: TestClient) -> None:
+        """Test that empty query ID in URL is handled properly."""
+        # FastAPI will treat this as a different route, test edge case
+        response = client.get("/knowledge_service_queries/")
+        # This should hit the list endpoint instead
+        assert response.status_code == 200
+
+    async def test_get_query_without_optional_fields(
+        self,
+        client: TestClient,
+        memory_repo: MemoryKnowledgeServiceQueryRepository,
+    ) -> None:
+        """Test retrieving a query that doesn't have optional fields."""
+        # Create a minimal query without assistant_prompt
+        query = KnowledgeServiceQuery(
+            query_id="minimal-query",
+            name="Minimal Query",
+            knowledge_service_id="test-service",
+            prompt="Basic prompt",
+            query_metadata={},
+        )
+        await memory_repo.save(query)
+
+        response = client.get("/knowledge_service_queries/minimal-query")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["query_id"] == "minimal-query"
+        assert data["name"] == "Minimal Query"
+        assert data["assistant_prompt"] is None
+        assert data["query_metadata"] == {}

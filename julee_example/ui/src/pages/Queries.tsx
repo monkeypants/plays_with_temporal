@@ -196,8 +196,7 @@ export default function QueriesPage() {
                 key={query.query_id}
                 className="hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => {
-                  // TODO: Navigate to query detail page when implemented
-                  console.log("View query:", query.query_id);
+                  navigate(`/queries/${query.query_id}`);
                 }}
               >
                 <CardHeader className="pb-3">

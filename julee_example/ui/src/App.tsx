@@ -4,6 +4,7 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Queries from "./pages/Queries";
 import CreateQuery from "./pages/CreateQuery";
+import QueryDetail from "./pages/QueryDetail";
 import Specifications from "./pages/Specifications";
 import CreateAssemblySpecification from "./pages/CreateAssemblySpecification";
 import NotFound from "./pages/NotFound";
@@ -43,6 +44,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/queries" element={<Queries />} />
             <Route path="/queries/create" element={<CreateQuery />} />
+            <Route path="/queries/:queryId" element={<QueryDetail />} />
             <Route path="/specifications" element={<Specifications />} />
             <Route
               path="/specifications/create"
