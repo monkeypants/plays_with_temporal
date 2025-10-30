@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -20,7 +20,7 @@ import {
   AlertCircle,
   Calendar,
   Settings,
-  FileText
+  FileText,
 } from "lucide-react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
 
@@ -50,7 +50,7 @@ export default function QueryDetailPage() {
     queryFn: async () => {
       if (!queryId) throw new Error("Query ID is required");
       const response = await apiClient.get<KnowledgeServiceQuery>(
-        `/knowledge_service_queries/${queryId}`
+        `/knowledge_service_queries/${queryId}`,
       );
       return response.data;
     },
@@ -230,14 +230,18 @@ export default function QueryDetailPage() {
                   <Calendar className="h-4 w-4" />
                   <span>Created</span>
                 </div>
-                <p className="text-sm font-medium">{formatDate(query.created_at)}</p>
+                <p className="text-sm font-medium">
+                  {formatDate(query.created_at)}
+                </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
                   <span>Last Updated</span>
                 </div>
-                <p className="text-sm font-medium">{formatDate(query.updated_at)}</p>
+                <p className="text-sm font-medium">
+                  {formatDate(query.updated_at)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -309,13 +313,17 @@ export default function QueryDetailPage() {
           <CardContent>
             <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">Query ID</dt>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  Query ID
+                </dt>
                 <dd className="mt-1 text-sm font-mono bg-muted px-2 py-1 rounded">
                   {query.query_id}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">Knowledge Service ID</dt>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  Knowledge Service ID
+                </dt>
                 <dd className="mt-1 text-sm font-mono bg-muted px-2 py-1 rounded">
                   {query.knowledge_service_id}
                 </dd>
