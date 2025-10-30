@@ -143,6 +143,7 @@ class ExtractAssembleWorkflow:
             assembly = await use_case.assemble_data(
                 document_id=document_id,
                 assembly_specification_id=assembly_specification_id,
+                workflow_id=workflow.info().workflow_id,
             )
 
             # Store the assembly ID for queries
