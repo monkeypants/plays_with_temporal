@@ -9,9 +9,11 @@ This guide explains how to set up and run the Julee Example application using Do
 
 ## Quick Start
 
+**Note**: All commands should be run from the top-level `plays_with_temporal` directory.
+
 1. **Set up environment variables**:
    ```bash
-   cp .env.example .env
+   cp julee_example/.env.example .env
    ```
    Edit `.env` and add your API keys:
    ```bash
