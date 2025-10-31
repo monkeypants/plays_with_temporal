@@ -23,7 +23,7 @@ This guide explains how to set up and run the Julee Example application using Do
 
 2. **Run the application**:
    ```bash
-   docker-compose --profile julee up --build
+   docker-compose --profile julee up --build -d
    ```
 
 3. **Access the services**:
