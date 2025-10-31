@@ -7,6 +7,7 @@ import CreateQuery from "./pages/CreateQuery";
 import QueryDetail from "./pages/QueryDetail";
 import Specifications from "./pages/Specifications";
 import CreateAssemblySpecification from "./pages/CreateAssemblySpecification";
+import AssemblySpecificationDetail from "./pages/AssemblySpecificationDetail";
 import NotFound from "./pages/NotFound";
 import { Skeleton } from "./components/ui/skeleton";
 
@@ -49,6 +50,10 @@ function App() {
             <Route
               path="/specifications/create"
               element={<CreateAssemblySpecification />}
+            />
+            <Route
+              path="/specifications/:specificationId"
+              element={<AssemblySpecificationDetail />}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
