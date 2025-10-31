@@ -54,8 +54,12 @@ const getFieldInfo = (jsonPointer: string, schema: Record<string, unknown>) => {
   try {
     const fieldSchema = jsonpointer.get(schema, jsonPointer);
     if (fieldSchema && typeof fieldSchema === "object") {
+      // Extract field name from JSON pointer as fallback
+      const pathParts = jsonPointer.split("/").filter(Boolean);
+      const fieldName = pathParts[pathParts.length - 1] || "field";
+
       return {
-        name: fieldSchema.title || "Untitled Field",
+        name: fieldSchema.title || fieldName,
         description: fieldSchema.description || "No description available",
       };
     }
@@ -66,8 +70,12 @@ const getFieldInfo = (jsonPointer: string, schema: Record<string, unknown>) => {
     );
   }
 
+  // Extract field name from JSON pointer for fallback
+  const pathParts = jsonPointer.split("/").filter(Boolean);
+  const fieldName = pathParts[pathParts.length - 1] || "field";
+
   return {
-    name: `Field at ${jsonPointer}`,
+    name: fieldName,
     description: "Field not found in current schema",
   };
 };
