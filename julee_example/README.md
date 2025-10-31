@@ -28,15 +28,12 @@ This guide explains how to set up and run the Julee Example application using Do
    - **Web UI**: http://localhost:3000
    - **API**: http://localhost:8000
    - **API Docs**: http://localhost:8000/docs
-   - **Temporal UI**: http://localhost:8001
+   - **Temporal UI**: http://localhost:8001 (linked in the UI)
    - **MinIO Console**: http://localhost:9001
 
 ### Building and Running
 
 ```bash
-# Build and start all services
-docker-compose --profile julee up --build
-
 # Start in background
 docker-compose --profile julee up -d --build
 
@@ -45,20 +42,6 @@ docker-compose --profile julee logs -f
 
 # Stop all services
 docker-compose --profile julee down
-```
-
-### Individual Service Management
-
-```bash
-# Rebuild specific service
-docker-compose build julee-ui
-docker-compose up -d julee-ui
-
-# View logs for specific service
-docker-compose logs -f julee-api
-
-# Restart a service
-docker-compose restart julee-worker
 ```
 
 ## Demo Features
@@ -76,7 +59,29 @@ The application includes pre-loaded demo data:
 2. Click **"Run Assembly"** on the Meeting Minutes specification
 3. Select a document from the dropdown
 4. Click **"Start Assembly"** to trigger the workflow
-5. Monitor progress in the Temporal UI
+5. Monitor progress in the Temporal UI (Click on the Workflows option)
+
+## Current Limitations
+
+### Cannot view assembled document output in UI
+
+The current interface doesn't provide a way to view the final assembled document that results from running the workflow. To view the assembled content, you need to use the API directly with the document ID that's returned when the workflow completes successfully.
+
+**API commands to view assembled document:**
+
+```bash
+# curl command
+curl -X GET "http://localhost:8000/documents/doc-68f2047f-6796-4830-91ad-104da83f6f24/content"
+
+# HTTPie command
+http GET http://localhost:8000/documents/doc-68f2047f-6796-4830-91ad-104da83f6f24/content
+
+# With JSON formatting
+curl -X GET "http://localhost:8000/documents/doc-68f2047f-6796-4830-91ad-104da83f6f24/content" \
+  -H "Accept: application/json" | jq .
+```
+
+Replace the document ID with the one returned from your workflow execution.
 
 ## Troubleshooting
 
@@ -95,21 +100,6 @@ The application includes pre-loaded demo data:
 **Build failures:**
 - Clear Docker cache: `docker system prune -f`
 - Rebuild without cache: `docker-compose build --no-cache`
-
-### Logs and Debugging
-
-```bash
-# View all service logs
-docker-compose --profile julee logs
-
-# Follow specific service logs
-docker-compose logs -f julee-api
-docker-compose logs -f julee-worker
-docker-compose logs -f julee-ui
-
-# Check service health
-docker-compose ps
-```
 
 ### Database and Storage
 
