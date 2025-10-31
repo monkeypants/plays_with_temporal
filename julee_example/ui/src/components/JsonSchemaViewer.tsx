@@ -17,6 +17,7 @@ import {
 } from "react-formule";
 import CustomPropertyViewer from "./CustomPropertyViewer";
 import KnowledgeServiceQueryDisplay from "./KnowledgeServiceQueryDisplay";
+import "./JsonSchemaViewer.css";
 
 interface JsonSchemaViewerProps {
   schema: Record<string, unknown>;
@@ -31,10 +32,6 @@ export default function JsonSchemaViewer({
     return (schema.properties as Record<string, unknown>) || {};
   }, [schema]);
 
-  const requiredFields = useMemo(() => {
-    return (schema.required as string[]) || [];
-  }, [schema]);
-
   const formatJsonSchema = (schema: Record<string, unknown>) => {
     return JSON.stringify(schema, null, 2);
   };
@@ -44,7 +41,7 @@ export default function JsonSchemaViewer({
       // Read-only component - no state changes needed
       if (newState?.schema) {
         try {
-          console.log("Schema viewed:", newState.schema);
+          // Schema viewed - no logging in production
         } catch (err) {
           console.error("Error viewing schema:", err);
         }
@@ -94,66 +91,6 @@ export default function JsonSchemaViewer({
                   },
                 }}
               >
-                <style>{`
-                  /* Hide the schema key in read-only mode */
-                  .formule-schema-key {
-                    display: none !important;
-                  }
-                  /* Hide the entire drop zone container with icon and text */
-                  .ant-space:has([data-cy="dropArea"]) {
-                    display: none !important;
-                  }
-                  /* Fallback for browsers that don't support :has() */
-                  [data-cy="dropArea"] {
-                    display: none !important;
-                  }
-                  [data-cy="dropArea"] + .ant-space-item {
-                    display: none !important;
-                  }
-                  /* Hide the parent container by style attributes */
-                  .ant-space[style*="border: 1px solid lightgrey"] {
-                    display: none !important;
-                  }
-                  /* Hide settings cog icons */
-                  .ant-btn[title*="settings"],
-                  .ant-btn[title*="Settings"],
-                  .anticon-setting {
-                    display: none !important;
-                  }
-                  /* Disable drag functionality but keep click interactions */
-                  [draggable="true"] {
-                    -webkit-user-drag: none !important;
-                    -khtml-user-drag: none !important;
-                    -moz-user-drag: none !important;
-                    -o-user-drag: none !important;
-                    user-drag: none !important;
-                    cursor: pointer !important;
-                  }
-                  /* Make clickable items show pointer cursor */
-                  .formule-field-item,
-                  .formule-field,
-                  [role="button"],
-                  .ant-btn {
-                    cursor: pointer !important;
-                    pointer-events: auto !important;
-                  }
-                  /* Allow text selection */
-                  .ant-typography,
-                  span {
-                    user-select: text !important;
-                  }
-                  /* Hide field type selector in read-only mode */
-                  .formule-field-type-selector,
-                  .ant-select[placeholder*="field type"] {
-                    display: none !important;
-                  }
-                  /* Hide add/remove buttons */
-                  .ant-btn[title*="add"],
-                  .ant-btn[title*="remove"],
-                  .ant-btn[title*="delete"] {
-                    display: none !important;
-                  }
-                `}</style>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="min-h-[400px]">
                     <CustomPropertyViewer

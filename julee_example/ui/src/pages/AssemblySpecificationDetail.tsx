@@ -14,21 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import {
   ArrowLeft,
-  FileText,
   Settings,
   Calendar,
   Clock,
   AlertCircle,
   CheckCircle2,
-  Code,
-  Database,
   Play,
   Hash,
-  Code2,
-  FileJson,
 } from "lucide-react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
 import WorkflowTriggerModal from "@/components/WorkflowTriggerModal";
@@ -78,10 +73,6 @@ export default function AssemblySpecificationDetailPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const formatJsonSchema = (schema: Record<string, unknown>) => {
-    return JSON.stringify(schema, null, 2);
   };
 
   const handleWorkflowSubmit = async (documentId: string) => {

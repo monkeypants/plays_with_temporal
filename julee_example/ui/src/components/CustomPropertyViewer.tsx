@@ -104,11 +104,6 @@ export default function CustomPropertyViewer({
       : null,
   );
 
-  // Get the full schema for query display
-  const fullSchema = useSelector((state: unknown) =>
-    get((state as any).schemaWizard, ["current", "schema"]),
-  );
-
   // Get field title from schema
   const fieldTitle = schema?.title || "";
 
@@ -119,6 +114,8 @@ export default function CustomPropertyViewer({
     }
 
     try {
+      // 'properties' and 'items' are JSON Schema keywords used to traverse object and array structures.
+      // We filter them out to extract the actual field name, since they do not represent user-defined fields.
       const name = path.findLast(
         (item: string) => item !== "properties" && item !== "items",
       );
@@ -351,8 +348,8 @@ export default function CustomPropertyViewer({
                 Item Type
               </Label>
               <div className="mt-1">
-                <Badge className={getTypeColor(schema.items.type)}>
-                  {schema.items.type}
+                <Badge className={getTypeColor(schema.items.type || "unknown")}>
+                  {schema.items.type || "unknown"}
                 </Badge>
               </div>
             </div>
@@ -385,7 +382,10 @@ export default function CustomPropertyViewer({
                 Properties Count
               </Label>
               <p className="mt-1 text-sm">
-                {Object.keys(schema.properties).length}
+                {typeof schema.properties === "object" &&
+                schema.properties !== null
+                  ? Object.keys(schema.properties).length
+                  : 0}
               </p>
             </div>
             {schema.required && schema.required.length > 0 && (
