@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   FormuleContext,
   SelectOrEdit,
@@ -18,6 +18,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code2, FileJson } from "lucide-react";
+import CustomAiChat from "./CustomAiChat";
 
 interface JsonSchemaEditorProps {
   value?: string;
@@ -36,6 +37,14 @@ export default function JsonSchemaEditor({
 }: JsonSchemaEditorProps) {
   const [activeTab, setActiveTab] = useState("builder");
   const [currentSchema, setCurrentSchema] = useState<string>("{}");
+  // Parse current schema for AI chat component
+  const parsedSchema = useMemo(() => {
+    try {
+      return JSON.parse(currentSchema);
+    } catch {
+      return {};
+    }
+  }, [currentSchema]);
 
   // Initialize formule with existing schema if provided
   useEffect(() => {
@@ -89,8 +98,10 @@ export default function JsonSchemaEditor({
           <CardTitle className="text-lg">Data format</CardTitle>
           <CardDescription>
             Define the structure and fields of data you want to extract from
-            documents. Drag field types from the left panel to build your data
-            structure in the right panel.
+            documents. You can drag field types from the left panel to build
+            your data structure in the right panel. Or you can simply ask an AI
+            agent to do it for you with a prompt below - you will be shown the
+            changes it proposes and can accept or reject them.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -210,7 +221,28 @@ export default function JsonSchemaEditor({
               .ant-collapse-item:nth-child(3) {
                 display: none !important;
               }
+              /* Hide form diff tab in AI component */
+              .ant-tabs-tab:first-child {
+                display: none !important;
+              }
+              /* Make schema diff tab active by default */
+              .ant-tabs-tab:nth-child(2) .ant-tabs-tab-btn {
+                color: #1890ff !important;
+              }
             `}</style>
+            {/* Custom AI Chat Component */}
+            <div className="mb-4 border rounded-lg p-4">
+              <CustomAiChat
+                onSchemaChange={(newSchema) => {
+                  initFormuleSchema({ schema: newSchema });
+                  const schemaString = JSON.stringify(newSchema, null, 2);
+                  if (onChange) {
+                    onChange(schemaString);
+                  }
+                }}
+                currentSchema={parsedSchema}
+              />
+            </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2">
