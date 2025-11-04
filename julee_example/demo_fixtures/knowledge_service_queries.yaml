@@ -1,0 +1,27 @@
+knowledge_service_queries:
+  - query_id: "extract-meeting-info-query"
+    name: "Extract Meeting Information"
+    knowledge_service_id: "anthropic-4.5-as-a-knowledge-service"
+    prompt: "Extract the basic meeting information from this transcript including title, date, times, and attendees with their roles."
+    assistant_prompt: "Looking at the meeting transcript, here's the extracted meeting information that conforms to the provided schema, without surrounding ```json ... ``` markers:"
+    query_metadata:
+      max_tokens: 1000
+      temperature: 0.1
+
+  - query_id: "extract-agenda-items-query"
+    name: "Extract Agenda Items"
+    knowledge_service_id: "anthropic-4.5-as-a-knowledge-service"
+    prompt: "Analyze the meeting transcript and extract the main agenda items discussed, including the topic, key discussion points, and any decisions made for each item."
+    assistant_prompt: "Analyzing the meeting transcript, here are the agenda items with discussion points and decisions that conform to the provided schema, without surrounding ```json ... ``` markers:"
+    query_metadata:
+      max_tokens: 2000
+      temperature: 0.1
+
+  - query_id: "extract-action-items-query"
+    name: "Extract Action Items"
+    knowledge_service_id: "anthropic-4.5-as-a-knowledge-service"
+    prompt: "Identify and extract action items from the meeting transcript, including the specific task, who it's assigned to, any mentioned due dates, and the priority level."
+    assistant_prompt: "From the meeting transcript, here are the identified action items formatted according to the provided schema, without surrounding ```json ... ``` markers:"
+    query_metadata:
+      max_tokens: 1500
+      temperature: 0.1
