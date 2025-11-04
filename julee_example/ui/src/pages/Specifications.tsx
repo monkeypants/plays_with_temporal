@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
@@ -22,8 +22,11 @@ import {
   Clock,
   AlertCircle,
   XCircle,
+  Play,
+  Loader2,
 } from "lucide-react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
+import WorkflowTriggerModal from "@/components/WorkflowTriggerModal";
 
 interface AssemblySpecification {
   assembly_specification_id: string;
@@ -109,13 +112,19 @@ const LoadingSkeleton = () => (
 export default function SpecificationsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [runningWorkflows, setRunningWorkflows] = useState<Set<string>>(
+    new Set(),
+  );
+  const [modalSpec, setModalSpec] = useState<AssemblySpecification | null>(
+    null,
+  );
 
   // Check for success message from navigation state
   useEffect(() => {
     if (location.state?.message) {
       // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => setSuccessMessage(location.state.message), 0);
+      setTimeout(() => setStatusMessage(location.state.message), 0);
       // Clear the navigation state to prevent showing the message on refresh
       navigate(location.pathname, { replace: true });
     }
@@ -123,11 +132,11 @@ export default function SpecificationsPage() {
 
   // Auto-dismiss success message after 5 seconds
   useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+    if (statusMessage) {
+      const timer = setTimeout(() => setStatusMessage(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [successMessage]);
+  }, [statusMessage]);
 
   const {
     data: specificationsData,
@@ -150,6 +159,44 @@ export default function SpecificationsPage() {
     navigate("/specifications/create");
   };
 
+  const handleRunAssembly = (spec: AssemblySpecification) => {
+    setModalSpec(spec);
+  };
+
+  const handleModalSubmit = async (documentId: string) => {
+    if (!modalSpec) return;
+
+    try {
+      setRunningWorkflows(
+        (prev) => new Set([...prev, modalSpec.assembly_specification_id]),
+      );
+
+      const response = await apiClient.post("/workflows/extract-assemble", {
+        document_id: documentId,
+        assembly_specification_id: modalSpec.assembly_specification_id,
+      });
+
+      setStatusMessage(
+        `Workflow started successfully! Workflow ID: ${response.data.workflow_id}`,
+      );
+
+      // Navigate to a workflow monitoring page (we'll create this later)
+      // navigate(`/workflows/${response.data.workflow_id}`);
+    } catch (error) {
+      console.error("Failed to start workflow:", error);
+      setStatusMessage(
+        `Failed to start workflow: ${getApiErrorMessage(error)}`,
+      );
+      throw error; // Re-throw to let modal handle the error state
+    } finally {
+      setRunningWorkflows((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(modalSpec.assembly_specification_id);
+        return newSet;
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -169,11 +216,11 @@ export default function SpecificationsPage() {
         </div>
       </div>
 
-      {/* Success Message */}
-      {successMessage && (
+      {/* Status Message */}
+      {statusMessage && (
         <Alert className="mb-6 border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
           <CheckCircle2 className="h-4 w-4" />
-          <div className="ml-2">{successMessage}</div>
+          <AlertDescription>{statusMessage}</AlertDescription>
         </Alert>
       )}
 
@@ -181,7 +228,7 @@ export default function SpecificationsPage() {
       {isError && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
-          <div className="ml-2">
+          <AlertDescription>
             <div className="font-medium">Failed to load specifications</div>
             <div className="text-sm mt-1">
               {getApiErrorMessage(error)}
@@ -194,7 +241,7 @@ export default function SpecificationsPage() {
                 Try Again
               </Button>
             </div>
-          </div>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -272,6 +319,30 @@ export default function SpecificationsPage() {
                     {spec.assembly_specification_id.split("-")[0]}...
                   </div>
                 </div>
+
+                {/* Run Assembly Button */}
+                <div className="mt-4">
+                  <Button
+                    onClick={() => handleRunAssembly(spec)}
+                    disabled={runningWorkflows.has(
+                      spec.assembly_specification_id,
+                    )}
+                    className="w-full"
+                    variant={spec.status === "active" ? "default" : "outline"}
+                  >
+                    {runningWorkflows.has(spec.assembly_specification_id) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Starting Workflow...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Run Assembly
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -298,6 +369,19 @@ export default function SpecificationsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Workflow Trigger Modal */}
+      {modalSpec && (
+        <WorkflowTriggerModal
+          isOpen={true}
+          onClose={() => setModalSpec(null)}
+          onSubmit={handleModalSubmit}
+          specification={modalSpec}
+          isSubmitting={runningWorkflows.has(
+            modalSpec.assembly_specification_id,
+          )}
+        />
       )}
     </div>
   );
