@@ -173,3 +173,135 @@ class TestListDocuments:
         """Test document listing with invalid size parameter."""
         response = client.get("/documents/?size=101")
         assert response.status_code == 422  # Validation error
+
+
+class TestGetDocument:
+    """Test cases for the get document metadata endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_get_document_metadata_success(
+        self,
+        client: TestClient,
+        memory_repo: MemoryDocumentRepository,
+        sample_documents: list[Document],
+    ) -> None:
+        """Test successful document metadata retrieval."""
+        # Setup - add document to repository
+        doc = sample_documents[0]
+        await memory_repo.save(doc)
+
+        # Make request
+        response = client.get(f"/documents/{doc.document_id}")
+
+        # Assertions
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["document_id"] == doc.document_id
+        assert data["original_filename"] == doc.original_filename
+        assert data["content_type"] == doc.content_type
+        assert data["status"] == doc.status.value
+        assert data["additional_metadata"] == doc.additional_metadata
+
+        # Content should NOT be included in metadata endpoint
+        assert data["content_string"] is None
+        # Content field is excluded from JSON response
+        assert "content" not in data
+
+    @pytest.mark.asyncio
+    async def test_get_document_metadata_not_found(
+        self, client: TestClient, memory_repo: MemoryDocumentRepository
+    ) -> None:
+        """Test document metadata retrieval when document doesn't exist."""
+        response = client.get("/documents/nonexistent-id")
+
+        assert response.status_code == 404
+        data = response.json()
+        assert "not found" in data["detail"].lower()
+
+    def test_get_document_metadata_invalid_id_format(
+        self, client: TestClient
+    ) -> None:
+        """Test document metadata retrieval with invalid ID format."""
+        # Test with empty ID (should be handled by FastAPI path validation)
+        response = client.get("/documents/")
+        # This should hit the list endpoint instead
+        assert response.status_code == 200
+
+        # Test with very long ID
+        very_long_id = "x" * 1000
+        response = client.get(f"/documents/{very_long_id}")
+        assert response.status_code == 404  # Not found, but valid request
+
+
+class TestGetDocumentContent:
+    """Test cases for the get document content endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_get_document_content_success(
+        self,
+        client: TestClient,
+        memory_repo: MemoryDocumentRepository,
+        sample_documents: list[Document],
+    ) -> None:
+        """Test successful document content retrieval."""
+        # Setup - add document to repository
+        doc = sample_documents[0]
+        await memory_repo.save(doc)
+
+        # Make request
+        response = client.get(f"/documents/{doc.document_id}/content")
+
+        # Assertions
+        assert response.status_code == 200
+        assert response.content.decode("utf-8") == "test content"
+        assert response.headers["content-type"].startswith(doc.content_type)
+        assert (
+            doc.original_filename in response.headers["content-disposition"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_document_content_not_found(
+        self, client: TestClient, memory_repo: MemoryDocumentRepository
+    ) -> None:
+        """Test content retrieval when document doesn't exist."""
+        response = client.get("/documents/nonexistent-id/content")
+
+        assert response.status_code == 404
+        data = response.json()
+        assert "not found" in data["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_get_document_content_no_content(
+        self,
+        client: TestClient,
+        memory_repo: MemoryDocumentRepository,
+    ) -> None:
+        """Test content retrieval when document has no content."""
+        # Create document with content_string first to pass validation
+        doc = Document(
+            document_id="doc-no-content",
+            original_filename="empty.txt",
+            content_type="text/plain",
+            size_bytes=1,
+            content_multihash="empty_hash",
+            status=DocumentStatus.CAPTURED,
+            additional_metadata={"type": "empty"},
+            content_string="temp",
+        )
+
+        # Save document normally, then manually remove content from storage
+        await memory_repo.save(doc)
+        stored_doc = memory_repo.storage_dict[doc.document_id]
+        # Remove content from the stored document
+        memory_repo.storage_dict[doc.document_id] = stored_doc.model_copy(
+            update={"content": None, "content_string": None}
+        )
+
+        # Make request
+        response = client.get(f"/documents/{doc.document_id}/content")
+
+        # Assertions
+        assert response.status_code == 422
+        data = response.json()
+        assert "has no content" in data["detail"].lower()
