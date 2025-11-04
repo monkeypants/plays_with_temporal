@@ -29,6 +29,7 @@ interface JsonSchemaEditorProps {
   error?: string;
   knowledgeServiceQueries?: Record<string, string>;
   onFieldSelect?: (jsonPointer: string) => void;
+  onUpdateQuery?: (jsonPointer: string, queryId: string | null) => void;
 }
 
 export default function JsonSchemaEditor({
@@ -38,7 +39,8 @@ export default function JsonSchemaEditor({
   description,
   error,
   knowledgeServiceQueries = {},
-  onFieldSelect,
+  onFieldSelect: _onFieldSelect,
+  onUpdateQuery = () => {},
 }: JsonSchemaEditorProps) {
   const [activeTab, setActiveTab] = useState("builder");
   const [currentSchema, setCurrentSchema] = useState<string>("{}");
@@ -51,7 +53,7 @@ export default function JsonSchemaEditor({
     }
   }, [currentSchema]);
 
-  // Initialize formule with existing schema if provided
+  // Initialize formule only once on mount with the initial value
   useEffect(() => {
     try {
       const parsedSchema = JSON.parse(value);
@@ -64,7 +66,7 @@ export default function JsonSchemaEditor({
       // If invalid JSON, initialize with empty schema
       initFormuleSchema();
     }
-  }, [value]);
+  }, []); // Empty dependency array = only run on mount
 
   // Handle formule state changes
   const handleFormuleStateChange = useCallback(
@@ -161,7 +163,10 @@ export default function JsonSchemaEditor({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="min-h-[400px] border rounded-lg p-4">
                     <h3 className="text-sm font-medium mb-3">Add Fields</h3>
-                    <CustomSelectOrEdit />
+                    <CustomSelectOrEdit
+                      knowledgeServiceQueries={knowledgeServiceQueries}
+                      onUpdateQuery={onUpdateQuery}
+                    />
                   </div>
                   <div className="min-h-[400px] border rounded-lg p-4">
                     <h3 className="text-sm font-medium mb-3">
@@ -188,7 +193,78 @@ export default function JsonSchemaEditor({
       <KnowledgeServiceQueryDisplay
         knowledgeServiceQueries={knowledgeServiceQueries}
         jsonSchema={parsedSchema}
-        onFieldSelect={onFieldSelect}
+        onFieldSelect={(jsonPointer) => {
+          // Try DOM simulation approach - find and click the field in schema tree
+          if (!jsonPointer || jsonPointer === "/") return;
+
+          const pathParts = jsonPointer.split("/").filter(Boolean);
+          if (pathParts.length >= 2 && pathParts[0] === "properties") {
+            const fieldId = pathParts[1];
+
+            // Wait a moment, then find the field
+            setTimeout(() => {
+              // Try to find the field element in the schema tree
+              // Look for elements containing the field name
+              const possibleSelectors = [
+                `[data-field-id="${fieldId}"]`,
+                `[data-id="${fieldId}"]`,
+                `[title="${fieldId}"]`,
+                `.field-${fieldId}`,
+                `#field-${fieldId}`,
+                `[data-node-key="${fieldId}"]`,
+                `[data-key="${fieldId}"]`,
+              ];
+
+              let fieldElement = null;
+              for (const selector of possibleSelectors) {
+                fieldElement = document.querySelector(selector);
+                if (fieldElement) {
+                  break;
+                }
+              }
+
+              // If specific selectors don't work, try text content search
+              if (!fieldElement) {
+                // Limit search to schema tree container for performance
+                const schemaContainer = document.querySelector(
+                  ".ant-formule-container, .formule-container, .schema-preview",
+                );
+                const searchScope = schemaContainer || document;
+                const allElements = searchScope.querySelectorAll("*");
+                for (const element of allElements) {
+                  if (
+                    element.textContent?.includes(fieldId) &&
+                    element.textContent.trim() === fieldId
+                  ) {
+                    fieldElement = element;
+                    break;
+                  }
+                }
+              }
+
+              if (fieldElement) {
+                // Scroll element into view first
+                fieldElement.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+
+                // Try different click methods
+                if (fieldElement.click) {
+                  fieldElement.click();
+                } else {
+                  // Manual event dispatch
+                  const clickEvent = new MouseEvent("click", {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                  });
+                  fieldElement.dispatchEvent(clickEvent);
+                }
+              }
+            }, 300); // Wait 300ms for animations
+          }
+        }}
       />
     </div>
   );
