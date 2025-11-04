@@ -32,6 +32,9 @@ from julee_example.domain.repositories.knowledge_service_config import (
 from julee_example.domain.repositories.assembly_specification import (
     AssemblySpecificationRepository,
 )
+from julee_example.domain.repositories.document import (
+    DocumentRepository,
+)
 from julee_example.repositories.minio.knowledge_service_query import (
     MinioKnowledgeServiceQueryRepository,
 )
@@ -40,6 +43,9 @@ from julee_example.repositories.minio.knowledge_service_config import (
 )
 from julee_example.repositories.minio.assembly_specification import (
     MinioAssemblySpecificationRepository,
+)
+from julee_example.repositories.minio.document import (
+    MinioDocumentRepository,
 )
 from julee_example.repositories.minio.client import MinioClient
 from minio import Minio
@@ -164,6 +170,13 @@ async def get_assembly_specification_repository(
     return MinioAssemblySpecificationRepository(client=minio_client)
 
 
+async def get_document_repository(
+    minio_client: MinioClient = Depends(get_minio_client),
+) -> DocumentRepository:
+    """FastAPI dependency for DocumentRepository."""
+    return MinioDocumentRepository(client=minio_client)
+
+
 class StartupDependenciesProvider:
     """
     Provider for dependencies needed during application startup.
@@ -177,6 +190,15 @@ class StartupDependenciesProvider:
         """Initialize with dependency container."""
         self.container = container
         self.logger = logging.getLogger("StartupDependenciesProvider")
+
+    async def get_document_repository(self) -> DocumentRepository:
+        """Get document repository for startup dependencies."""
+        minio_client = await self.container.get_minio_client()
+        from julee_example.repositories.minio.document import (
+            MinioDocumentRepository,
+        )
+
+        return MinioDocumentRepository(client=minio_client)
 
     async def get_knowledge_service_config_repository(
         self,
@@ -199,9 +221,10 @@ class StartupDependenciesProvider:
 
         self.logger.debug("Creating system initialization service")
 
-        # Create repository and use case
+        # Create repositories and use case
         config_repo = await self.get_knowledge_service_config_repository()
-        use_case = InitializeSystemDataUseCase(config_repo)
+        document_repo = await self.get_document_repository()
+        use_case = InitializeSystemDataUseCase(config_repo, document_repo)
 
         # Create and return service
         return SystemInitializationService(use_case)
