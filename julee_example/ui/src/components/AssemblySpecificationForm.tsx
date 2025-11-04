@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
+import JsonSchemaEditor from "@/components/JsonSchemaEditor";
 
 // Form validation schema
 const assemblySpecFormSchema = z.object({
@@ -91,101 +92,6 @@ interface KnowledgeServiceQueriesResponse {
 }
 
 // Example JSON schemas for different assembly types
-const EXAMPLE_SCHEMAS = [
-  {
-    name: "Meeting Minutes",
-    schema: {
-      $schema: "http://json-schema.org/draft-07/schema#",
-      title: "Meeting Minutes",
-      type: "object",
-      properties: {
-        meeting_info: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            date: { type: "string", format: "date" },
-            attendees: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  role: { type: "string" },
-                },
-              },
-            },
-          },
-        },
-        agenda_items: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              topic: { type: "string" },
-              decisions: {
-                type: "array",
-                items: { type: "string" },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "Document Summary",
-    schema: {
-      $schema: "http://json-schema.org/draft-07/schema#",
-      title: "Document Summary",
-      type: "object",
-      properties: {
-        title: { type: "string" },
-        summary: { type: "string" },
-        key_points: {
-          type: "array",
-          items: { type: "string" },
-        },
-        metadata: {
-          type: "object",
-          properties: {
-            author: { type: "string" },
-            date_created: { type: "string", format: "date" },
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "Project Report",
-    schema: {
-      $schema: "http://json-schema.org/draft-07/schema#",
-      title: "Project Report",
-      type: "object",
-      properties: {
-        project_info: {
-          type: "object",
-          properties: {
-            name: { type: "string" },
-            status: { type: "string", enum: ["active", "completed", "paused"] },
-            start_date: { type: "string", format: "date" },
-            end_date: { type: "string", format: "date" },
-          },
-        },
-        deliverables: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              status: { type: "string" },
-              due_date: { type: "string", format: "date" },
-            },
-          },
-        },
-      },
-    },
-  },
-];
 
 export default function AssemblySpecificationForm({
   onSuccess,
@@ -279,10 +185,6 @@ export default function AssemblySpecificationForm({
     createSpecMutation.mutate(submitData);
   };
 
-  const handleExampleSchema = (exampleSchema: unknown) => {
-    form.setValue("jsonschema", JSON.stringify(exampleSchema, null, 2));
-  };
-
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
@@ -292,228 +194,188 @@ export default function AssemblySpecificationForm({
   };
 
   return (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Create Assembly Specification</CardTitle>
-        <CardDescription>
-          Define a new assembly specification that describes how to structure
-          extracted data into a specific document type
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Error Alert */}
-          {createSpecMutation.isError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <div className="ml-2">
-                {getApiErrorMessage(createSpecMutation.error)}
-              </div>
-            </Alert>
-          )}
-
-          {/* Success Alert */}
-          {createSpecMutation.isSuccess && (
-            <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
-              <CheckCircle2 className="h-4 w-4" />
-              <div className="ml-2">
-                Assembly specification created successfully! Redirecting...
-              </div>
-            </Alert>
-          )}
-
-          <FieldSet>
-            {/* Assembly Name */}
-            <Field>
-              <Label htmlFor="name">Assembly Name</Label>
-              <Input
-                id="name"
-                placeholder="e.g., Meeting Minutes"
-                {...form.register("name")}
-                className={form.formState.errors.name ? "border-red-500" : ""}
-              />
-              <FieldDescription>
-                A human-readable name for this assembly type
-              </FieldDescription>
-              {form.formState.errors.name && (
-                <FieldError>{form.formState.errors.name.message}</FieldError>
-              )}
-            </Field>
-
-            {/* Applicability */}
-            <Field>
-              <Label htmlFor="applicability">Applicability</Label>
-              <Textarea
-                id="applicability"
-                placeholder="Describe what type of information this assembly applies to..."
-                className={`min-h-[100px] ${
-                  form.formState.errors.applicability ? "border-red-500" : ""
-                }`}
-                {...form.register("applicability")}
-              />
-              <FieldDescription>
-                Description of what type of information this assembly applies
-                to, used for document-assembly matching
-              </FieldDescription>
-              {form.formState.errors.applicability && (
-                <FieldError>
-                  {form.formState.errors.applicability.message}
-                </FieldError>
-              )}
-            </Field>
-
-            {/* JSON Schema */}
-            <Field>
-              <Label htmlFor="jsonschema">JSON Schema</Label>
-              <Textarea
-                id="jsonschema"
-                placeholder="Enter the JSON schema that defines the data structure..."
-                className={`min-h-[200px] font-mono text-sm ${
-                  form.formState.errors.jsonschema ? "border-red-500" : ""
-                }`}
-                {...form.register("jsonschema")}
-              />
-              <FieldDescription>
-                JSON Schema defining the structure of data to be extracted for
-                this assembly
-              </FieldDescription>
-              {form.formState.errors.jsonschema && (
-                <FieldError>
-                  {form.formState.errors.jsonschema.message}
-                </FieldError>
-              )}
-            </Field>
-
-            {/* Example Schemas */}
-            <Field>
-              <Label>Example Schemas</Label>
-              <FieldGroup>
-                <div className="grid gap-2 md:grid-cols-3">
-                  {EXAMPLE_SCHEMAS.map((example, index) => (
-                    <Button
-                      key={index}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-auto p-3 text-left justify-start min-h-[60px]"
-                      onClick={() => handleExampleSchema(example.schema)}
-                    >
-                      <div className="w-full">
-                        <div className="font-medium text-xs mb-1">
-                          {example.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Click to load this schema template
-                        </div>
-                      </div>
-                    </Button>
-                  ))}
+    <div className="space-y-8">
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>Create Assembly Specification</CardTitle>
+          <CardDescription>
+            Define a new assembly specification that describes how to structure
+            extracted data into a specific document type
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Error Alert */}
+            {createSpecMutation.isError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <div className="ml-2">
+                  {getApiErrorMessage(createSpecMutation.error)}
                 </div>
-              </FieldGroup>
-              <FieldDescription>
-                Click any example to use it as a starting point for your schema
-              </FieldDescription>
-            </Field>
-
-            {/* Knowledge Service Queries */}
-            <Field>
-              <Label htmlFor="knowledge_service_queries">
-                Knowledge Service Queries (Optional)
-              </Label>
-              <Textarea
-                id="knowledge_service_queries"
-                placeholder='{"\/properties\/meeting_info": "query-id-1", "\/properties\/agenda_items": "query-id-2"}'
-                className={`min-h-[100px] font-mono text-sm ${
-                  form.formState.errors.knowledge_service_queries
-                    ? "border-red-500"
-                    : ""
-                }`}
-                {...form.register("knowledge_service_queries")}
-              />
-              <FieldDescription>
-                JSON mapping from JSON Pointer paths to Knowledge Service Query
-                IDs. Leave empty if not using queries yet.
-              </FieldDescription>
-              {form.formState.errors.knowledge_service_queries && (
-                <FieldError>
-                  {form.formState.errors.knowledge_service_queries.message}
-                </FieldError>
-              )}
-            </Field>
-
-            {/* Available Queries Reference */}
-            {availableQueries.length > 0 && (
-              <Field>
-                <Label>Available Knowledge Service Queries</Label>
-                <FieldGroup>
-                  <div className="grid gap-2 md:grid-cols-2 max-h-40 overflow-y-auto">
-                    {availableQueries.map((query) => (
-                      <div
-                        key={query.query_id}
-                        className="p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs"
-                      >
-                        <div className="font-medium">{query.name}</div>
-                        <div className="text-muted-foreground font-mono">
-                          {query.query_id}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </FieldGroup>
-                <FieldDescription>
-                  Reference: Available query IDs you can use in the mapping
-                  above
-                </FieldDescription>
-              </Field>
+              </Alert>
             )}
 
-            {/* Version */}
-            <Field>
-              <Label htmlFor="version">Version</Label>
-              <Input
-                id="version"
-                placeholder="e.g., 0.1.0"
-                {...form.register("version")}
-                className={
-                  form.formState.errors.version ? "border-red-500" : ""
-                }
-              />
-              <FieldDescription>
-                Version identifier for this assembly definition
-              </FieldDescription>
-              {form.formState.errors.version && (
-                <FieldError>{form.formState.errors.version.message}</FieldError>
-              )}
-            </Field>
-          </FieldSet>
+            {/* Success Alert */}
+            {createSpecMutation.isSuccess && (
+              <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+                <CheckCircle2 className="h-4 w-4" />
+                <div className="ml-2">
+                  Assembly specification created successfully! Redirecting...
+                </div>
+              </Alert>
+            )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-4 pt-4">
-            <Button
-              type="submit"
-              disabled={createSpecMutation.isPending}
-              className="flex-1 md:flex-initial"
-            >
-              {createSpecMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Assembly Specification"
+            <FieldSet>
+              {/* Assembly Name */}
+              <Field>
+                <Label htmlFor="name">Assembly Name</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., Meeting Minutes"
+                  {...form.register("name")}
+                  className={form.formState.errors.name ? "border-red-500" : ""}
+                />
+                <FieldDescription>
+                  A human-readable name for this assembly type
+                </FieldDescription>
+                {form.formState.errors.name && (
+                  <FieldError>{form.formState.errors.name.message}</FieldError>
+                )}
+              </Field>
+
+              {/* Applicability */}
+              <Field>
+                <Label htmlFor="applicability">Applicability</Label>
+                <Textarea
+                  id="applicability"
+                  placeholder="Describe what type of information this assembly applies to..."
+                  className={`min-h-[100px] ${
+                    form.formState.errors.applicability ? "border-red-500" : ""
+                  }`}
+                  {...form.register("applicability")}
+                />
+                <FieldDescription>
+                  Description of what type of information this assembly applies
+                  to, used for document-assembly matching
+                </FieldDescription>
+                {form.formState.errors.applicability && (
+                  <FieldError>
+                    {form.formState.errors.applicability.message}
+                  </FieldError>
+                )}
+              </Field>
+
+              {/* JSON Schema */}
+              <JsonSchemaEditor
+                value={form.getValues("jsonschema") || "{}"}
+                onChange={(value) => form.setValue("jsonschema", value)}
+                label="Data to assemble"
+                description="JSON Schema defining the structure of data to be extracted for this assembly"
+                error={form.formState.errors.jsonschema?.message}
+              />
+
+              {/* Knowledge Service Queries */}
+              <Field>
+                <Label htmlFor="knowledge_service_queries">
+                  Knowledge Service Queries (Optional)
+                </Label>
+                <Textarea
+                  id="knowledge_service_queries"
+                  placeholder='{"\/properties\/meeting_info": "query-id-1", "\/properties\/agenda_items": "query-id-2"}'
+                  className={`min-h-[100px] font-mono text-sm ${
+                    form.formState.errors.knowledge_service_queries
+                      ? "border-red-500"
+                      : ""
+                  }`}
+                  {...form.register("knowledge_service_queries")}
+                />
+                <FieldDescription>
+                  JSON mapping from JSON Pointer paths to Knowledge Service
+                  Query IDs. Leave empty if not using queries yet.
+                </FieldDescription>
+                {form.formState.errors.knowledge_service_queries && (
+                  <FieldError>
+                    {form.formState.errors.knowledge_service_queries.message}
+                  </FieldError>
+                )}
+              </Field>
+
+              {/* Available Queries Reference */}
+              {availableQueries.length > 0 && (
+                <Field>
+                  <Label>Available Knowledge Service Queries</Label>
+                  <FieldGroup>
+                    <div className="grid gap-2 md:grid-cols-2 max-h-40 overflow-y-auto">
+                      {availableQueries.map((query) => (
+                        <div
+                          key={query.query_id}
+                          className="p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs"
+                        >
+                          <div className="font-medium">{query.name}</div>
+                          <div className="text-muted-foreground font-mono">
+                            {query.query_id}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </FieldGroup>
+                  <FieldDescription>
+                    Reference: Available query IDs you can use in the mapping
+                    above
+                  </FieldDescription>
+                </Field>
               )}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={createSpecMutation.isPending}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+
+              {/* Version */}
+              <Field>
+                <Label htmlFor="version">Version</Label>
+                <Input
+                  id="version"
+                  placeholder="e.g., 0.1.0"
+                  {...form.register("version")}
+                  className={
+                    form.formState.errors.version ? "border-red-500" : ""
+                  }
+                />
+                <FieldDescription>
+                  Version identifier for this assembly definition
+                </FieldDescription>
+                {form.formState.errors.version && (
+                  <FieldError>
+                    {form.formState.errors.version.message}
+                  </FieldError>
+                )}
+              </Field>
+            </FieldSet>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 pt-4">
+              <Button
+                type="submit"
+                disabled={createSpecMutation.isPending}
+                className="flex-1 md:flex-initial"
+              >
+                {createSpecMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Assembly Specification"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={createSpecMutation.isPending}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

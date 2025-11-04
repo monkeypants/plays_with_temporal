@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -110,6 +110,12 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
       assistant_prompt: "",
       query_metadata: "{}",
     },
+  });
+
+  // Watch for knowledge_service_id changes
+  const selectedServiceId = useWatch({
+    control: form.control,
+    name: "knowledge_service_id",
   });
 
   // Fetch knowledge service configurations
@@ -269,8 +275,7 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
                       <Card
                         key={service.knowledge_service_id}
                         className={`cursor-pointer transition-all hover:shadow-md ${
-                          form.watch("knowledge_service_id") ===
-                          service.knowledge_service_id
+                          selectedServiceId === service.knowledge_service_id
                             ? "border-primary bg-primary/5"
                             : "hover:bg-accent/50"
                         }`}
@@ -283,7 +288,7 @@ export default function QueryForm({ onSuccess, onCancel }: QueryFormProps) {
                             <CardTitle className="text-sm">
                               {service.name}
                             </CardTitle>
-                            {form.watch("knowledge_service_id") ===
+                            {selectedServiceId ===
                               service.knowledge_service_id && (
                               <Badge variant="default" className="text-xs">
                                 Selected
