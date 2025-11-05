@@ -7,6 +7,7 @@ during the assembly process.
 
 Routes defined at root level:
 - GET / - List knowledge service queries (paginated)
+- GET /{query_id} - Get individual query details
 - POST / - Create new knowledge service query
 
 These routes are mounted at /knowledge_service_queries in the main app.
@@ -226,4 +227,72 @@ async def create_knowledge_service_query(
         raise HTTPException(
             status_code=500,
             detail="Failed to create query due to an internal error.",
+        )
+
+
+@router.get("/{query_id}", response_model=KnowledgeServiceQuery)
+async def get_knowledge_service_query(
+    query_id: str,
+    repository: KnowledgeServiceQueryRepository = Depends(  # type: ignore[misc]
+        get_knowledge_service_query_repository
+    ),
+) -> KnowledgeServiceQuery:
+    """
+    Get a specific knowledge service query by ID.
+
+    Args:
+        query_id: The ID of the query to retrieve
+        repository: Injected repository for data access
+
+    Returns:
+        KnowledgeServiceQuery: The requested query
+
+    Raises:
+        HTTPException: 404 if query not found, 500 for internal errors
+    """
+    logger.info(
+        "Knowledge service query detail requested",
+        extra={"query_id": query_id},
+    )
+
+    try:
+        query = await repository.get(query_id)
+
+        if query is None:
+            logger.warning(
+                "Knowledge service query not found",
+                extra={"query_id": query_id},
+            )
+            raise HTTPException(
+                status_code=404,
+                detail=f"Knowledge service query with ID '{query_id}' "
+                "not found",
+            )
+
+        logger.info(
+            "Knowledge service query retrieved successfully",
+            extra={
+                "query_id": query.query_id,
+                "query_name": query.name,
+            },
+        )
+
+        return query
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404 Not Found)
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to retrieve knowledge service query",
+            exc_info=True,
+            extra={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "query_id": query_id,
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve query due to an internal error.",
         )

@@ -18,11 +18,23 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const navigation = [
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  external?: boolean;
+}
+
+const navigation: NavigationItem[] = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Queries", href: "/queries", icon: Database },
   { name: "Specifications", href: "/specifications", icon: Activity },
-  { name: "Workflows", href: "/workflows", icon: Workflow },
+  {
+    name: "Workflows",
+    href: configHelpers.getTemporalWebUrl(),
+    icon: Workflow,
+    external: true,
+  },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -59,6 +71,23 @@ export default function Layout({ children }: LayoutProps) {
             <nav className="hidden md:flex items-center space-x-6">
               {navigation.map((item) => {
                 const Icon = item.icon;
+
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.name}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center space-x-1 text-sm font-medium transition-colors text-gray-700 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.name}</span>
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </a>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.name}
@@ -121,6 +150,24 @@ export default function Layout({ children }: LayoutProps) {
             <div className="container mx-auto px-4 py-3 space-y-1">
               {navigation.map((item) => {
                 const Icon = item.icon;
+
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.name}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium transition-colors text-gray-700 hover:text-primary-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-primary-400 dark:hover:bg-gray-800"
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span>{item.name}</span>
+                      <ExternalLink className="h-4 w-4 ml-auto" />
+                    </a>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.name}
