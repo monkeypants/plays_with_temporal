@@ -277,7 +277,10 @@ export default function SpecificationsPage() {
           {specifications.map((spec) => (
             <Card
               key={spec.assembly_specification_id}
-              className="hover:shadow-md transition-shadow"
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => {
+                navigate(`/specifications/${spec.assembly_specification_id}`);
+              }}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -323,7 +326,10 @@ export default function SpecificationsPage() {
                 {/* Run Assembly Button */}
                 <div className="mt-4">
                   <Button
-                    onClick={() => handleRunAssembly(spec)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRunAssembly(spec);
+                    }}
                     disabled={runningWorkflows.has(
                       spec.assembly_specification_id,
                     )}
