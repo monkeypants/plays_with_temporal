@@ -66,6 +66,7 @@ class TestAssemblyInstantiation:
                 assembly_id=assembly_id,
                 assembly_specification_id=assembly_specification_id,
                 input_document_id=input_document_id,
+                workflow_id="test-workflow-123",
             )
             assert assembly.assembly_id == assembly_id.strip()
             assert (
@@ -86,6 +87,7 @@ class TestAssemblyInstantiation:
                     assembly_id=assembly_id,
                     assembly_specification_id=assembly_specification_id,
                     input_document_id=input_document_id,
+                    workflow_id="test-workflow-123",
                 )
 
 
@@ -112,6 +114,7 @@ class TestAssemblySerialization:
             == assembly.assembly_specification_id
         )
         assert json_data["input_document_id"] == assembly.input_document_id
+        assert json_data["workflow_id"] == assembly.workflow_id
         assert json_data["status"] == assembly.status.value
         assert "created_at" in json_data
         assert "updated_at" in json_data
@@ -147,6 +150,10 @@ class TestAssemblySerialization:
             reconstructed_assembly.input_document_id
             == original_assembly.input_document_id
         )
+        assert (
+            reconstructed_assembly.workflow_id
+            == original_assembly.workflow_id
+        )
         assert reconstructed_assembly.status == original_assembly.status
         assert (
             reconstructed_assembly.assembled_document_id
@@ -163,6 +170,7 @@ class TestAssemblyDefaults:
             assembly_id="test-id",
             assembly_specification_id="spec-id",
             input_document_id="doc-id",
+            workflow_id="test-workflow-123",
         )
 
         assert minimal_assembly.status == AssemblyStatus.PENDING
@@ -188,6 +196,7 @@ class TestAssemblyDefaults:
             assembly_id="custom-id",
             assembly_specification_id="custom-spec",
             input_document_id="custom-doc",
+            workflow_id="custom-workflow-456",
             status=AssemblyStatus.COMPLETED,
             assembled_document_id="custom-output-doc",
             created_at=custom_created_at,
@@ -225,6 +234,7 @@ class TestAssemblyFieldValidation:
             assembly_id="valid-id",
             assembly_specification_id="spec-id",
             input_document_id="doc-id",
+            workflow_id="test-workflow-123",
         )
         assert valid_assembly.assembly_id == "valid-id"
 
@@ -234,6 +244,7 @@ class TestAssemblyFieldValidation:
                 assembly_id="",
                 assembly_specification_id="spec-id",
                 input_document_id="doc-id",
+                workflow_id="test-workflow-123",
             )
 
         with pytest.raises(Exception):
@@ -241,6 +252,7 @@ class TestAssemblyFieldValidation:
                 assembly_id="   ",
                 assembly_specification_id="spec-id",
                 input_document_id="doc-id",
+                workflow_id="test-workflow-123",
             )
 
     def test_assembly_specification_id_validation(self) -> None:
@@ -250,6 +262,7 @@ class TestAssemblyFieldValidation:
             assembly_id="asm-id",
             assembly_specification_id="valid-spec-id",
             input_document_id="doc-id",
+            workflow_id="test-workflow-123",
         )
         assert valid_assembly.assembly_specification_id == "valid-spec-id"
 
@@ -259,6 +272,7 @@ class TestAssemblyFieldValidation:
                 assembly_id="asm-id",
                 assembly_specification_id="",
                 input_document_id="doc-id",
+                workflow_id="test-workflow-123",
             )
 
         with pytest.raises(Exception):
@@ -266,6 +280,7 @@ class TestAssemblyFieldValidation:
                 assembly_id="asm-id",
                 assembly_specification_id="   ",
                 input_document_id="doc-id",
+                workflow_id="test-workflow-123",
             )
 
     def test_input_document_id_validation(self) -> None:
@@ -275,6 +290,7 @@ class TestAssemblyFieldValidation:
             assembly_id="asm-id",
             assembly_specification_id="spec-id",
             input_document_id="valid-doc-id",
+            workflow_id="test-workflow-123",
         )
         assert valid_assembly.input_document_id == "valid-doc-id"
 
@@ -284,6 +300,7 @@ class TestAssemblyFieldValidation:
                 assembly_id="asm-id",
                 assembly_specification_id="spec-id",
                 input_document_id="",
+                workflow_id="test-workflow-123",
             )
 
         with pytest.raises(Exception):
@@ -291,6 +308,7 @@ class TestAssemblyFieldValidation:
                 assembly_id="asm-id",
                 assembly_specification_id="spec-id",
                 input_document_id="   ",
+                workflow_id="test-workflow-123",
             )
 
     def test_field_trimming(self) -> None:
@@ -299,11 +317,13 @@ class TestAssemblyFieldValidation:
             assembly_id="  trim-asm  ",
             assembly_specification_id="  trim-spec  ",
             input_document_id="  trim-doc  ",
+            workflow_id="  trim-workflow  ",
         )
 
         assert assembly.assembly_id == "trim-asm"
         assert assembly.assembly_specification_id == "trim-spec"
         assert assembly.input_document_id == "trim-doc"
+        assert assembly.workflow_id == "trim-workflow"
 
 
 class TestAssemblyDocumentManagement:
@@ -328,6 +348,7 @@ class TestAssemblyDocumentManagement:
             assembly_id="asm-id",
             assembly_specification_id="spec-id",
             input_document_id="doc-id",
+            workflow_id="test-workflow-123",
             assembled_document_id="valid-output-doc",
         )
         assert valid_assembly.assembled_document_id == "valid-output-doc"
@@ -337,6 +358,7 @@ class TestAssemblyDocumentManagement:
             assembly_id="asm-id",
             assembly_specification_id="spec-id",
             input_document_id="doc-id",
+            workflow_id="test-workflow-123",
             assembled_document_id=None,
         )
         assert none_assembly.assembled_document_id is None
@@ -347,6 +369,7 @@ class TestAssemblyDocumentManagement:
                 assembly_id="asm-id",
                 assembly_specification_id="spec-id",
                 input_document_id="doc-id",
+                workflow_id="test-workflow-123",
                 assembled_document_id="",
             )
 
@@ -356,6 +379,7 @@ class TestAssemblyDocumentManagement:
                 assembly_id="asm-id",
                 assembly_specification_id="spec-id",
                 input_document_id="doc-id",
+                workflow_id="test-workflow-123",
                 assembled_document_id="   ",
             )
 
@@ -365,6 +389,61 @@ class TestAssemblyDocumentManagement:
             assembly_id="asm-id",
             assembly_specification_id="spec-id",
             input_document_id="doc-id",
+            workflow_id="test-workflow-123",
             assembled_document_id="  trim-output-doc  ",
         )
         assert assembly.assembled_document_id == "trim-output-doc"
+
+
+class TestAssemblyWorkflowIdValidation:
+    """Test Assembly workflow_id field validation."""
+
+    def test_workflow_id_validation(self) -> None:
+        """Test workflow_id field validation."""
+        # Valid cases
+        valid_assembly = Assembly(
+            assembly_id="asm-id",
+            assembly_specification_id="spec-id",
+            input_document_id="doc-id",
+            workflow_id="valid-workflow-id",
+        )
+        assert valid_assembly.workflow_id == "valid-workflow-id"
+
+        # Invalid cases - empty string
+        with pytest.raises(Exception):
+            Assembly(
+                assembly_id="asm-id",
+                assembly_specification_id="spec-id",
+                input_document_id="doc-id",
+                workflow_id="",
+            )
+
+        # Invalid cases - whitespace only
+        with pytest.raises(Exception):
+            Assembly(
+                assembly_id="asm-id",
+                assembly_specification_id="spec-id",
+                input_document_id="doc-id",
+                workflow_id="   ",
+            )
+
+    def test_workflow_id_trimming(self) -> None:
+        """Test that workflow_id is properly trimmed."""
+        assembly = Assembly(
+            assembly_id="asm-id",
+            assembly_specification_id="spec-id",
+            input_document_id="doc-id",
+            workflow_id="  trim-workflow-id  ",
+        )
+        assert assembly.workflow_id == "trim-workflow-id"
+
+    def test_workflow_id_required(self) -> None:
+        """Test that workflow_id is required."""
+        # workflow_id is required and cannot be omitted
+        with pytest.raises(Exception):
+            Assembly(  # type: ignore[call-arg]
+                assembly_id="asm-id",
+                assembly_specification_id="spec-id",
+                input_document_id="doc-id",
+                # workflow_id is missing - should fail
+            )
